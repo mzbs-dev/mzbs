@@ -1,0 +1,50 @@
+================================================================================
+BACKEND STRUCTURE GUIDE
+================================================================================
+
+FOLDER DESCRIPTIONS
+--------------------------------------------------------------------------------
+
+📁 ROUTER FOLDER
+   Location: ./router/
+   Purpose: FastAPI route handlers and endpoint definitions
+   Contents:
+      - admin_create_user.py: Admin user creation endpoints
+      - students.py: Student CRUD operations
+      - teacher_names.py: Teacher management endpoints
+      - class_names.py: Class setup and management
+      - attendance_time.py: Time slot management
+      - mark_attendance.py: Attendance recording
+      - fee.py, income.py, expense.py: Financial operations
+      - dashboard.py: Dashboard data endpoints
+
+📁 SCHEMAS FOLDER
+   Location: ./schemas/
+   Purpose: Pydantic validation models and data schemas
+   Contents:
+      - *_model.py: Request/Response schemas for each entity
+      - Includes: Create, Update, and Response variants
+      - Features: Type hints, validation rules, examples
+
+📁 USER FOLDER
+   Location: ./user/
+   Purpose: User management, authentication, and services
+   Contents:
+      - user_models.py: SQLAlchemy User model definition
+      - user_crud.py: Database CRUD operations for users
+      - user_router.py: User-related endpoints
+      - services.py: Business logic and authentication
+      - settings.py: Configuration and environment settings
+
+
+================================================================================
+INTEGRATION NOTES
+================================================================================
+
+1. Router files should be imported in main.py
+2. Schemas are used by router endpoints for validation
+3. User module handles authentication and authorization
+4. All routers use Depends(get_db) for database sessions
+5. Services contain business logic separate from routes
+
+================================================================================

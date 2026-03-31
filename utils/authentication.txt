@@ -1,0 +1,12 @@
+current_user: Annotated[User, Depends(check_authenticated_user)],
+
+user: Annotated[User, Depends(check_admin)],
+
+
+from user.user_crud import check_admin, check_authenticated_user
+from user.user_models import User, UserRoles
+from typing import Annotated, List
+
+
+
+    student_id: Optional[int] = Field(default=None, primary_key=True)

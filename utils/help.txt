@@ -1,0 +1,5 @@
+1. add dockerfile -> make change in cmd command
+2. add compose file -> make change name of container.
+                    -> add postgres Image.
+                    -> add volumes and networks in compose.
+3. add .env file with URL.

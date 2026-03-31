@@ -1,0 +1,131 @@
+================================================================================
+FRONTEND FILES INDEX
+================================================================================
+
+
+📁 API
+----------------------------------------
+  📄 attendanceTimeAPI.ts                     (   713 bytes)
+  📄 AttendanceAPI.ts                         (   700 bytes)
+  📄 ClassNameAPI.ts                          (   673 bytes)
+  📄 dashboardAPI.ts                          (   500 bytes)
+  📄 ExpenseAPI.ts                            (   687 bytes)
+  📄 AddFeeAPI.tsx                            (   652 bytes)
+  📄 IncomeAPI.ts                             (   679 bytes)
+  📄 Login.ts                                 (   655 bytes)
+  📄 StudentsAPI.tsx                          (   841 bytes)
+  📄 TeachetAPI.ts                            (   841 bytes)
+  📄 axiosInterceptorInstance.ts              (   818 bytes)
+
+📁 APP
+----------------------------------------
+  📄 ThemeProvider.tsx                        (   328 bytes)
+  📄 route.ts                                 (   906 bytes)
+  📄 page.tsx                                 (   637 bytes)
+  📄 page.tsx                                 (   764 bytes)
+  📄 page.tsx                                 (   773 bytes)
+  📄 page.tsx                                 (   611 bytes)
+  📄 page.tsx                                 (   754 bytes)
+  📄 page.tsx                                 (   578 bytes)
+  📄 page.tsx                                 (   727 bytes)
+  📄 page.tsx                                 (   601 bytes)
+  📄 page.tsx                                 (   746 bytes)
+  📄 layout.tsx                               (   511 bytes)
+  📄 page.tsx                                 (   865 bytes)
+  📄 page.tsx                                 (   770 bytes)
+  📄 page.tsx                                 (   787 bytes)
+  📄 page.tsx                                 (   310 bytes)
+  📄 page.tsx                                 (   307 bytes)
+  📄 page.tsx                                 (   750 bytes)
+  📄 page.tsx                                 (   747 bytes)
+  📄 favicon.ico                              (     1 bytes)
+  📄 GeistMonoVF.woff                         (     1 bytes)
+  📄 GeistVF.woff                             (     1 bytes)
+  📄 globals.css                              (   208 bytes)
+  📄 layout.tsx                               (   479 bytes)
+  📄 page.tsx                                 (   150 bytes)
+  📄 page.tsx                                 (   365 bytes)
+  📄 page.tsx                                 (   635 bytes)
+
+📁 COMPONENTS
+----------------------------------------
+  📄 EditAttendance.tsx                       (   714 bytes)
+  📄 MarkAttendance.tsx                       (   541 bytes)
+  📄 ViewAttendance.tsx                       (   710 bytes)
+  📄 ClassTable.tsx                           (   444 bytes)
+  📄 CreateClass.tsx                          (   590 bytes)
+  📄 CreateTIming.tsx                         (   618 bytes)
+  📄 TimingTable.tsx                          (   525 bytes)
+  📄 DelConfMsg.tsx                           (   777 bytes)
+  📄 CreateExpenseCat.tsx                     (   543 bytes)
+  📄 ExpenseCat.tsx                           (   183 bytes)
+  📄 viewExpense.tsx                          (   685 bytes)
+  📄 AddFees.tsx                              (   552 bytes)
+  📄 ViewFees.tsx                             (   662 bytes)
+  📄 CreateIncomeCat.tsx                      (   540 bytes)
+  📄 IncomeCat.tsx                            (   181 bytes)
+  📄 ViewIncome.tsx                           (   678 bytes)
+  📄 Loader.tsx                               (   224 bytes)
+  📄 Login.tsx                                (  1975 bytes)
+  📄 ProtectedRoute.tsx                       (   443 bytes)
+  📄 Select.tsx                               (   624 bytes)
+  📄 AddNewStudent.tsx                        (   588 bytes)
+  📄 CreateStudent.tsx                        (   589 bytes)
+  📄 StudentTable.tsx                         (   586 bytes)
+  📄 AccountantDashboard.tsx                  (   180 bytes)
+  📄 AdminDashboard.tsx                       (   165 bytes)
+  📄 Header.tsx                               (   322 bytes)
+  📄 Sidebar.tsx                              (   527 bytes)
+  📄 Skeleton.tsx                             (   289 bytes)
+  📄 StudentDashboard.tsx                     (   171 bytes)
+  📄 TeacherDashboard.tsx                     (   171 bytes)
+  📄 ResponsiveGrid.tsx                       (   276 bytes)
+  📄 ResponsiveTable.tsx                      (   242 bytes)
+  📄 ResponsiveTypography.tsx                 (   529 bytes)
+  📄 CreateTeacher.tsx                        (   588 bytes)
+  📄 TeacherTable.tsx                         (   517 bytes)
+  📄 alert-dialog.tsx                         (   864 bytes)
+  📄 animated-modal.tsx                       (   637 bytes)
+  📄 button.tsx                               (   781 bytes)
+  📄 calendar.tsx                             (   409 bytes)
+  📄 card.tsx                                 (   277 bytes)
+  📄 checkbox.tsx                             (   221 bytes)
+  📄 command.tsx                              (   190 bytes)
+  📄 dialog.tsx                               (   420 bytes)
+  📄 input.tsx                                (   298 bytes)
+  📄 label.tsx                                (   228 bytes)
+  📄 pagination.tsx                           (   809 bytes)
+  📄 popover.tsx                              (   388 bytes)
+  📄 select.tsx                               (   448 bytes)
+  📄 sonner.tsx                               (    67 bytes)
+  📄 table.tsx                                (   201 bytes)
+  📄 toast.tsx                                (   408 bytes)
+
+📁 CONTEXT
+----------------------------------------
+  📄 RoleContext.tsx                          (   676 bytes)
+
+📁 HOOKS
+----------------------------------------
+  📄 use-mobile.tsx                           (   405 bytes)
+
+📁 LIBS
+----------------------------------------
+  📄 utils.ts                                 (   391 bytes)
+
+📁 MODELS
+----------------------------------------
+  📄 EntityBase.ts                            (    95 bytes)
+  📄 Fee.ts                                   (   217 bytes)
+  📄 className.ts                             (   149 bytes)
+  📄 classTiming.ts                           (   166 bytes)
+  📄 expense.ts                               (   168 bytes)
+  📄 income.ts                                (   167 bytes)
+  📄 markattendance.ts                        (   185 bytes)
+  📄 Student.ts                               (   244 bytes)
+  📄 Teacher.ts                               (   203 bytes)
+
+📁 UTILS
+----------------------------------------
+  📄 GetActionDetail.ts                       (   364 bytes)
+  📄 rolePermissions.ts                       (   483 bytes)
