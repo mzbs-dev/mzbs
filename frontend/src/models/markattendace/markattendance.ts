@@ -30,4 +30,3 @@ export interface MarkAttUpdate extends EntityBase {
   student_id?: number;
   attendance_value_id?: number;
 }
-}
