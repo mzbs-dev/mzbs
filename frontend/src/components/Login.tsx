@@ -53,7 +53,8 @@ export default function LoginForm() {
     try {
       const response: LoginResponse = await LoginAPI(data)
       if (response?.user) {
-        // Security: Tokens are now in HTTPOnly cookies (not accessible here)
+        // Store auth token for axios interceptor and ProtectedRoute
+        localStorage.setItem("authToken", response.access_token)
         // Store full user object to localStorage (persists across refresh)
         localStorage.setItem("user", JSON.stringify(response.user))
         // Also store to sessionStorage for current session

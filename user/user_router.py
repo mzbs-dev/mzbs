@@ -351,11 +351,12 @@ async def login_for_frontend(
             max_age=60 * 60 * 24 * 7  # 7 days
         )
 
-        # Return user info only (tokens are in secure cookies)
+        # Return tokens in response so frontend can store in localStorage
+        # (tokens are ALSO in secure HTTPOnly cookies for double protection)
         return LoginResponse(
-            access_token="",  # Empty - token is in HTTPOnly cookie
-            refresh_token="",  # Empty - token is in HTTPOnly cookie
-            expires_in=15 * 60,
+            access_token=login_response.access_token,
+            refresh_token=login_response.refresh_token,
+            expires_in=login_response.expires_in,
             token_type="bearer",
             user=login_response.user
         )

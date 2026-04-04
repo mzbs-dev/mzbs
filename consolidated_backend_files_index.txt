@@ -1,0 +1,57 @@
+================================================================================
+BACKEND FILES INDEX
+================================================================================
+
+
+📁 ROUTER
+----------------------------------------
+  📄 __init__.py                              (     0 bytes)
+  📄 adm_del.py                               (   388 bytes)
+  📄 admin_create_user.py                     (   453 bytes)
+  📄 attendance_time.py                       (   992 bytes)
+  📄 class_names.py                           (   900 bytes)
+  📄 dashboard.py                             (   554 bytes)
+  📄 expense.py                               (   866 bytes)
+  📄 expense_cat_names.py                     (  1010 bytes)
+  📄 fee.py                                   (   771 bytes)
+  📄 income.py                                (   870 bytes)
+  📄 income_cat_names.py                      (   994 bytes)
+  📄 mark_attendance.py                       (  1018 bytes)
+  📄 students.py                              (   900 bytes)
+  📄 teacher_names.py                         (   887 bytes)
+
+📁 SCHEMAS
+----------------------------------------
+  📄 __init__.py                              (     0 bytes)
+  📄 admin_create_user_model.py               (   518 bytes)
+  📄 admission_model.py                       (   430 bytes)
+  📄 attendance_model.py                      (   345 bytes)
+  📄 attendance_time_model.py                 (   372 bytes)
+  📄 attendance_value_model.py                (   483 bytes)
+  📄 class_names_model.py                     (   418 bytes)
+  📄 dashboard_model.py                       (   400 bytes)
+  📄 expense_cat_names_model.py               (   353 bytes)
+  📄 expense_model.py                         (   388 bytes)
+  📄 fee_model.py                             (   464 bytes)
+  📄 income_cat_names_model.py                (   346 bytes)
+  📄 income_model.py                          (   381 bytes)
+  📄 students_model.py                        (   497 bytes)
+  📄 teacher_names_model.py                   (   489 bytes)
+
+📁 USER
+----------------------------------------
+  📄 __init__.py                              (     0 bytes)
+  📄 services.py                              (   998 bytes)
+  📄 settings.py                              (   311 bytes)
+  📄 user_crud.py                             (  1194 bytes)
+  📄 user_models.py                           (   654 bytes)
+  📄 user_router.py                           (  1290 bytes)
+
+
+================================================================================
+SECTION SUMMARY
+================================================================================
+
+ROUTER                14 files    10,603 bytes
+SCHEMAS               15 files     5,884 bytes
+USER                   6 files     4,447 bytes

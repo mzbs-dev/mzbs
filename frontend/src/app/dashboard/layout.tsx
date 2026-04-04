@@ -1,6 +1,6 @@
 "use client";
 import Sidebar from "@/components/dashboard/Sidebar";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import  ProtectedRoute  from "@/components/ProtectedRoute";
 import React, { useState } from "react";
 import { Menu } from "lucide-react";
 
