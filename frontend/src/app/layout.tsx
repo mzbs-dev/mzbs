@@ -19,6 +19,9 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Madrasah Management System",
   description: "Madrasah Management System",
+  icons: {
+    icon: "/logo.png", 
+  },
 };
 
 export default function RootLayout({
