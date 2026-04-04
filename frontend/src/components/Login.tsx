@@ -93,7 +93,7 @@ export default function LoginForm() {
         <p className="text-center text-gray-500 mb-4">Enter your credentials to access your account</p>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700">Email or Phone</label>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
             <div className="relative mt-1">
               <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               <input
