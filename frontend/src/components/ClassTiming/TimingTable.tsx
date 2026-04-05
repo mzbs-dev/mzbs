@@ -11,7 +11,6 @@ import {
 } from "@tanstack/react-table";
 import { Search, ChevronLeft, ChevronRight, LoaderIcon } from "lucide-react";
 import { AttendanceTimeAPI as API } from "@/api/AttendaceTime/attendanceTimeAPI";
-export { format } from "date-fns";
 import type { ClassTiming } from "@/models/classTiming/classTiming";
 
 import {
@@ -88,7 +87,7 @@ export default function ClassTiming() {
     },
     {
       accessorKey: "attendance_time",
-      header: "Class Name",
+      header: "Time Slot",
     },
     {
       accessorKey: "created_at",
@@ -117,9 +116,10 @@ export default function ClassTiming() {
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    state: {
-      globalFilter,
+    initialState: {
+      pagination: { pageSize: 25, pageIndex: 0 },
     },
+    state: { globalFilter },
     onGlobalFilterChange: setGlobalFilter,
   });
 
@@ -130,7 +130,7 @@ export default function ClassTiming() {
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
           <Input
-            placeholder="Search Class..."
+            placeholder="Search Timing..."
             value={globalFilter ?? ""}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGlobalFilter(e.target.value)}
             className="pl-10 pr-4 py-2 w-full rounded-lg border-purple-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all duration-300"
@@ -219,15 +219,20 @@ export default function ClassTiming() {
             >
               <div>
                 <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Time Slot</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {row.original.attendance_time}
-                </p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{row.original.attendance_time}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Created Date</p>
                 <p className="text-sm text-gray-900 dark:text-white">
                   {new Date(row.original.created_at).toLocaleDateString("en-GB")}
                 </p>
+              </div>
+              {/* ✅ Delete button on mobile */}
+              <div className="flex justify-end pt-1">
+                <DelConfirmMsg
+                  rowId={row.original.attendance_time_id}
+                  OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+                />
               </div>
             </div>
           ))
@@ -237,20 +242,17 @@ export default function ClassTiming() {
       </div>
 
       {/* Pagination */}
-      <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-4">
-        <div className="text-xs sm:text-sm text-gray-500">
-          Showing{" "}
-          {table.getState().pagination.pageIndex *
-            table.getState().pagination.pageSize +
-            1}{" "}
-          to{" "}
-          {Math.min(
-            (table.getState().pagination.pageIndex + 1) *
-              table.getState().pagination.pageSize,
-            table.getFilteredRowModel().rows.length
-          )}{" "}
-          of {table.getFilteredRowModel().rows.length} time slots
-        </div>
+      {table.getFilteredRowModel().rows.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-4">
+          <div className="text-xs sm:text-sm text-gray-500">
+            Showing{" "}
+            {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{" "}
+            {Math.min(
+              (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+              table.getFilteredRowModel().rows.length
+            )}{" "}
+            of {table.getFilteredRowModel().rows.length} time slots
+          </div>
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -270,8 +272,9 @@ export default function ClassTiming() {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

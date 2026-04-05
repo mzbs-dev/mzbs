@@ -75,18 +75,14 @@ export default function ModernStudentTable() {
       id: "sr_no",
       header: "Sr. No",
       cell: ({ row }) => (
-        <div className="font-semibold text-gray-700 dark:text-gray-200">
-          {row.index + 1}
-        </div>
+        <div className="font-semibold text-gray-700 dark:text-gray-200">{row.index + 1}</div>
       ),
     },
     {
       accessorKey: "class_name",
       header: "Class Name",
       cell: ({ row }) => (
-        <div className="text-gray-600 dark:text-gray-200 font-medium">
-          {row.getValue("class_name")}
-        </div>
+        <div className="text-gray-600 dark:text-gray-200 font-medium">{row.getValue("class_name")}</div>
       ),
     },
     {
@@ -94,18 +90,15 @@ export default function ModernStudentTable() {
       header: "Created Date",
       cell: ({ row }) => {
         const date = new Date(row.getValue("created_at"));
-        const formattedDate = format(date, "dd/MM/yyyy");
-        return (
-          <div className="text-gray-500 dark:text-gray-200">{formattedDate}</div>
-        );
+        return <div className="text-gray-500 dark:text-gray-200">{format(date, "dd/MM/yyyy")}</div>;
       },
     },
     {
-      accessorKey: "Delete",
+      id: "delete",
       header: "Delete",
       cell: ({ row }) => (
         <DelConfirmMsg
-          rowId={row.getValue("class_name_id")}
+          rowId={row.original.class_name_id}
           OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
         />
       ),
@@ -122,9 +115,10 @@ export default function ModernStudentTable() {
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    state: {
-      globalFilter,
+    initialState: {
+      pagination: { pageSize: 25, pageIndex: 0 },
     },
+    state: { globalFilter },
     onGlobalFilterChange: setGlobalFilter,
   });
 
@@ -221,9 +215,7 @@ export default function ModernStudentTable() {
             >
               <div>
                 <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Class Name</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {row.original.class_name}
-                </p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{row.original.class_name}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">Created Date</p>
@@ -231,27 +223,32 @@ export default function ModernStudentTable() {
                   {new Date(row.original.created_at).toLocaleDateString("en-GB")}
                 </p>
               </div>
+              {/* ✅ Delete button on mobile */}
+              <div className="flex justify-end pt-1">
+                <DelConfirmMsg
+                  rowId={row.original.class_name_id}
+                  OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+                />
+              </div>
             </div>
           ))
         ) : (
           <div className="text-center py-8 text-gray-500">No results found.</div>
         )}
       </div>
+
       {/* Pagination */}
-      <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-4">
-        <span className="text-xs sm:text-sm text-gray-500">
-          Showing{" "}
-          {table.getState().pagination.pageIndex *
-            table.getState().pagination.pageSize +
-            1}{" "}
-          -{" "}
-          {Math.min(
-            (table.getState().pagination.pageIndex + 1) *
-              table.getState().pagination.pageSize,
-            table.getFilteredRowModel().rows.length
-          )}{" "}
-          of {table.getFilteredRowModel().rows.length} classes
-        </span>
+      {table.getFilteredRowModel().rows.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-4">
+          <span className="text-xs sm:text-sm text-gray-500">
+            Showing{" "}
+            {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} -{" "}
+            {Math.min(
+              (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+              table.getFilteredRowModel().rows.length
+            )}{" "}
+            of {table.getFilteredRowModel().rows.length} classes
+          </span>
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -271,8 +268,9 @@ export default function ModernStudentTable() {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

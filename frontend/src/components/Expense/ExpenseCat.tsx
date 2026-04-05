@@ -11,7 +11,6 @@ import {
 } from "@tanstack/react-table";
 import { Search, ChevronLeft, ChevronRight, LoaderIcon } from "lucide-react";
 import { ExpenseAPI as API } from "@/api/Expense/ExpenseAPI";
-export { format } from "date-fns";
 
 import {
   Table,
@@ -40,12 +39,11 @@ export default function ExpenseCat() {
   }, []);
 
   const GetData = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const response = await API.GetExpenseCategory();
       const responseData = (response as { data?: ExpenseCategory[] })?.data;
-      console.log("API Response:", responseData);
-      setData(Array.isArray(responseData) ? responseData : []); // Just use the data directly if it already matches the interface
+      setData(Array.isArray(responseData) ? responseData : []);
     } catch (error) {
       console.error("Error fetching data:", error);
       setData([]);
@@ -118,9 +116,10 @@ export default function ExpenseCat() {
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    state: {
-      globalFilter,
+    initialState: {
+      pagination: { pageSize: 25, pageIndex: 0 },
     },
+    state: { globalFilter },
     onGlobalFilterChange: setGlobalFilter,
   });
 
@@ -207,41 +206,27 @@ export default function ExpenseCat() {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between mt-4">
-        <div className="text-sm text-gray-500">
-          Showing{" "}
-          {table.getState().pagination.pageIndex *
-            table.getState().pagination.pageSize +
-            1}{" "}
-          to{" "}
-          {Math.min(
-            (table.getState().pagination.pageIndex + 1) *
-              table.getState().pagination.pageSize,
-            table.getFilteredRowModel().rows.length
-          )}{" "}
-          of {table.getFilteredRowModel().rows.length} students
+      {table.getFilteredRowModel().rows.length > 0 && (
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-sm text-gray-500">
+            Showing{" "}
+            {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{" "}
+            {Math.min(
+              (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+              table.getFilteredRowModel().rows.length
+            )}{" "}
+            of {table.getFilteredRowModel().rows.length} categories
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-3 py-2 rounded-full">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-3 py-2 rounded-full">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="px-3 py-2 rounded-full"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="px-3 py-2 rounded-full"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

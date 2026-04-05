@@ -125,8 +125,6 @@ const AttendanceTable: React.FC = () => {
   const [attendanceRecords, setAttendanceRecords] = useState<
     AttendanceRecord[]
   >([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const recordsPerPage = 15;
   const [formRefresh, setFormRefresh] = useState(true);
   const [studentsList, setStudentsList] = useState<SelectComponentOption[]>([]);
   const [open, setOpen] = useState(false);
@@ -427,12 +425,8 @@ const AttendanceTable: React.FC = () => {
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    pageCount: Math.ceil(attendanceRecords.length / recordsPerPage),
-    state: {
-      pagination: {
-        pageIndex: currentPage - 1,
-        pageSize: recordsPerPage,
-      },
+    initialState: {
+      pagination: { pageSize: 15, pageIndex: 0 },
     },
   });
 
@@ -701,85 +695,37 @@ const AttendanceTable: React.FC = () => {
           <div className="border-t border-gray-200">
             <div className="flex items-center justify-between px-2 py-2 sm:px-4 sm:py-3">
               <div className="text-xs sm:text-sm text-gray-700">
-                <span className="hidden sm:inline">Showing </span>
-                <span className="font-medium">{(currentPage - 1) * recordsPerPage + 1}</span>
-                <span className="hidden sm:inline"> to </span>
-                <span className="sm:hidden">-</span>
+                Showing{" "}
                 <span className="font-medium">
-                  {Math.min(currentPage * recordsPerPage, attendanceRecords.length)}
-                </span>
-                <span className="hidden sm:inline"> of </span>
-                <span className="sm:hidden">/</span>
-                <span className="font-medium">{attendanceRecords.length}</span>
+                  {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}
+                </span>{" "}
+                -{" "}
+                <span className="font-medium">
+                  {Math.min(
+                    (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+                    attendanceRecords.length
+                  )}
+                </span>{" "}
+                of <span className="font-medium">{attendanceRecords.length}</span>
               </div>
-              
               <div className="flex space-x-1 sm:space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-8 w-8 sm:h-9 sm:w-9 p-0"
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Previous Page</span>
                 </Button>
-                
-                <div className="hidden sm:flex space-x-1">
-                  {Array.from({ length: Math.min(5, Math.ceil(attendanceRecords.length / recordsPerPage)) }, (_, i) => {
-                    // Logic to show pages around current page
-                    const totalPages = Math.ceil(attendanceRecords.length / recordsPerPage);
-                    let pageToShow;
-                    
-                    if (totalPages <= 5) {
-                      pageToShow = i + 1;
-                    } else {
-                      // Show pages around current page
-                      let startPage = Math.max(currentPage - 2, 1);
-                      const endPage = Math.min(startPage + 4, totalPages);
-                      
-                      if (endPage - startPage < 4) {
-                        startPage = Math.max(endPage - 4, 1);
-                      }
-                      
-                      pageToShow = startPage + i;
-                      
-                      if (pageToShow > totalPages) return null;
-                    }
-                    
-                    return (
-                      <Button
-                        key={pageToShow}
-                        variant={currentPage === pageToShow ? "default" : "outline"}
-                        size="sm"
-                        className="h-9 w-9 p-0"
-                        onClick={() => setCurrentPage(pageToShow)}
-                      >
-                        {pageToShow}
-                      </Button>
-                    );
-                  }).filter(Boolean)}
-                </div>
-                
-                <div className="flex items-center justify-center sm:hidden">
-                  <span className="text-xs font-medium mx-2">
-                    {currentPage} / {Math.ceil(attendanceRecords.length / recordsPerPage)}
-                  </span>
-                </div>
-                
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-8 w-8 sm:h-9 sm:w-9 p-0"
-                  onClick={() =>
-                    setCurrentPage((prev) => 
-                      Math.min(prev + 1, Math.ceil(attendanceRecords.length / recordsPerPage))
-                    )
-                  }
-                  disabled={currentPage === Math.ceil(attendanceRecords.length / recordsPerPage)}
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
                 >
                   <ChevronRight className="h-4 w-4" />
-                  <span className="sr-only">Next Page</span>
                 </Button>
               </div>
             </div>
