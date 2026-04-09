@@ -129,7 +129,9 @@ const AddNewStudent = ({ onClassAdded }: { onClassAdded: () => void }) => {
                   </label>
                   <Select
                     options={classNameList}
-                    {...register("class_name")}
+                    {...register("class_name", {
+                      required: "Field is required",
+                    })}
                     onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
                       register("class_name").onChange({
                         target: { value: event.target.value },
@@ -182,15 +184,13 @@ const AddNewStudent = ({ onClassAdded }: { onClassAdded: () => void }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="w-full">
                     <label className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-400 block mb-1.5">
-                      Age
+                      Age (Optional)
                     </label>
                     <Input
                       type="number"
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-10 sm:h-11"
                       placeholder="Age"
-                      {...register("student_age", {
-                        required: "Field is required",
-                      })}
+                      {...register("student_age")}
                     />
                     <p className="text-red-500 text-xs mt-1">
                       {errors.student_age?.message}
@@ -218,14 +218,12 @@ const AddNewStudent = ({ onClassAdded }: { onClassAdded: () => void }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="w-full">
                     <label className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-400 block mb-1.5">
-                      Father Caste
+                      Father Caste (Optional)
                     </label>
                     <Input
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-10 sm:h-11"
                       placeholder="Father Caste"
-                      {...register("father_cast_name", {
-                        required: "Field is required",
-                      })}
+                      {...register("father_cast_name")}
                     />
                     <p className="text-red-500 text-xs mt-1">
                       {errors.father_cast_name?.message}
@@ -275,14 +273,12 @@ const AddNewStudent = ({ onClassAdded }: { onClassAdded: () => void }) => {
                   </div>
                   <div className="w-full">
                     <label className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-400 block mb-1.5">
-                      Father&apos;s CNIC
+                      Father&apos;s CNIC (Optional)
                     </label>
                     <Input
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-10 sm:h-11"
                       placeholder="Father's CNIC"
-                      {...register("father_cnic", {
-                        required: "Field is required",
-                      })}
+                      {...register("father_cnic")}
                     />
                     <p className="text-red-500 text-xs mt-1">
                       {errors.father_cnic?.message}
@@ -293,14 +289,12 @@ const AddNewStudent = ({ onClassAdded }: { onClassAdded: () => void }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="w-full">
                     <label className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-400 block mb-1.5">
-                      Education
+                      Education (Optional)
                     </label>
                     <Input
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-10 sm:h-11"
                       placeholder="Education"
-                      {...register("student_education", {
-                        required: "Field is required",
-                      })}
+                      {...register("student_education")}
                     />
                     <p className="text-red-500 text-xs mt-1">
                       {errors.student_education?.message}
@@ -309,15 +303,13 @@ const AddNewStudent = ({ onClassAdded }: { onClassAdded: () => void }) => {
 
                   <div className="w-full">
                     <label className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-400 block mb-1.5">
-                      Father Contact
+                      Father Contact (Optional)
                     </label>
                     <Input
                       type="number"
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-10 sm:h-11"
                       placeholder="Contact Number"
-                      {...register("father_contact", {
-                        required: "Field is required",
-                      })}
+                      {...register("father_contact")}
                     />
                     <p className="text-red-500 text-xs mt-1">
                       {errors.father_contact?.message}
@@ -329,14 +321,12 @@ const AddNewStudent = ({ onClassAdded }: { onClassAdded: () => void }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="w-full">
                     <label className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-400 block mb-1.5">
-                      Father Occupation
+                      Father Occupation (Optional)
                     </label>
                     <Input
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-10 sm:h-11"
                       placeholder="Occupation"
-                      {...register("father_occupation", {
-                        required: "Field is required",
-                      })}
+                      {...register("father_occupation")}
                     />
                     <p className="text-red-500 text-xs mt-1">
                       {errors.father_occupation?.message}
@@ -345,14 +335,12 @@ const AddNewStudent = ({ onClassAdded }: { onClassAdded: () => void }) => {
 
                   <div className="w-full">
                     <label className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-400 block mb-1.5">
-                      Address
+                      Address (Optional)
                     </label>
                     <Input
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-10 sm:h-11"
                       placeholder="Address"
-                      {...register("student_address", {
-                        required: "Field is required",
-                      })}
+                      {...register("student_address")}
                     />
                     <p className="text-red-500 text-xs mt-1">
                       {errors.student_address?.message}

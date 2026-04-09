@@ -52,19 +52,22 @@ class Students(StudentsBase, table=True):
 
 
 class StudentsCreate(SQLModel):
+    # Required fields
     student_name: str
     student_date_of_birth: datetime = Field(sa_column=Column(DateTime))
     student_gender: str
-    student_age: str
-    student_education: str
     class_name: str
     student_city: str
-    student_address: str
     father_name: str
-    father_occupation: str
-    father_cnic: str
-    father_cast_name: str
-    father_contact: str
+    
+    # Optional fields
+    student_age: Optional[str] = None
+    student_education: Optional[str] = None
+    student_address: Optional[str] = None
+    father_occupation: Optional[str] = None
+    father_cnic: Optional[str] = None
+    father_cast_name: Optional[str] = None
+    father_contact: Optional[str] = None
 
 
 class StudentsResponse(StudentsBase):
