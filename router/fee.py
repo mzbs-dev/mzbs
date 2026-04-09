@@ -12,7 +12,7 @@ from schemas.fee_model import MONTHS
 
 from db import get_session
 from schemas.fee_model import Fee, FeeCreate, FeeResponse, FeeStatus, FeeUpdateRequest, FeeFilter, FilterPaidUnpaid
-from user.user_crud import require_admin_fee_manager
+from user.user_crud import require_admin_accountant_fee_manager
 from user.user_models import User
 
 fee_router = APIRouter(
@@ -28,7 +28,7 @@ async def root():
 @fee_router.get("/all", response_model=List[FeeResponse])
 async def get_all_fees(
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_fee_manager())]
+    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())]
 ):
     """Retrieve all student fee records (Authenticated users)."""
     fees = db.exec(select(Fee)).all()
@@ -60,7 +60,7 @@ async def get_all_fees(
 async def create_fee(
     fee_data: FeeCreate,
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_fee_manager())]
+    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())]
 ):
     """Create a new student fee record (Admin only)."""
     try:
@@ -118,7 +118,7 @@ async def create_fee(
 async def delete_fee(
     fee_id: int,
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_fee_manager())]
+    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())]
 ):
     """Delete a student fee record by ID (Admin only)."""
     try:
@@ -143,7 +143,7 @@ async def delete_fee(
 @fee_router.post("/filter/", response_model=List[FeeResponse])
 async def filter_fees(
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_fee_manager())],
+    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
     student_id: Optional[int] = Query(None, description="Filter by student ID"),
     class_id: Optional[int] = Query(None, description="Filter by class ID"),
     fee_month: Optional[str] = Query(None, description="Filter by fee month"),
@@ -204,7 +204,7 @@ async def filter_fees(
 @fee_router.get("/paid-students/", response_model=List[FilterPaidUnpaid])
 async def get_paid_students(
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_fee_manager())],
+    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
     class_id: Optional[int] = Query(None, description="Filter by class ID"),
     fee_month: Optional[str] = Query(None, description="Filter by month", enum=MONTHS),
     fee_year: Optional[str] = Query(None, description="Filter by fee year")
@@ -258,7 +258,7 @@ async def get_paid_students(
 @fee_router.get("/unpaid_students/", response_model=List[FilterPaidUnpaid])
 async def get_unpaid_students(
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_fee_manager())],
+    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
     class_id: Optional[int] = Query(None, description="Filter by class ID"),
     fee_month: Optional[str] = Query(None, description="Filter by month", enum=MONTHS),
     fee_year: Optional[str] = Query(None, description="Filter by fee year"),
@@ -321,7 +321,7 @@ async def get_unpaid_students(
 @fee_router.get("/class-fee-status/{class_id}", response_model=List[FilterPaidUnpaid])
 async def get_class_fee_status(
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_fee_manager())],
+    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
     class_id: int,
     fee_month: Optional[str] = Query(None, description="Filter by month", enum=MONTHS),
     fee_year: Optional[str] = Query(None, description="Filter by year")

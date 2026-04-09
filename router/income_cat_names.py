@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError  # <-- Add this import
 from db import get_session
 
 from schemas.income_cat_names_model import IncomeCatNames, IncomeCatNamesCreate, IncomeCatNamesResponse
-from user.user_crud import require_admin_accountant
+from user.user_crud import require_admin_accountant_fee_manager
 from user.user_models import User
 from schemas.income_model import Income  # <-- Add this import
 
@@ -24,7 +24,7 @@ async def root():
 
 
 @income_cat_names_router.post("/add_income_cat_name/", response_model=IncomeCatNamesResponse)
-def create_income_cat_name( user: Annotated[User, Depends(require_admin_accountant())], income_cat_name: IncomeCatNamesCreate, session: Session = Depends(get_session),):
+def create_income_cat_name( user: Annotated[User, Depends(require_admin_accountant_fee_manager())], income_cat_name: IncomeCatNamesCreate, session: Session = Depends(get_session),):
     db_income_cat_name = IncomeCatNames(**income_cat_name.model_dump())
     session.add(db_income_cat_name)
 
@@ -57,7 +57,7 @@ def create_income_cat_name( user: Annotated[User, Depends(require_admin_accounta
 
 
 @income_cat_names_router.get("/income-cat-names-all/", response_model=List[IncomeCatNamesResponse])
-def read_income_cat_names(current_user: Annotated[User, Depends(require_admin_accountant())], session: Session = Depends(get_session)):
+def read_income_cat_names(current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())], session: Session = Depends(get_session)):
     income_cat_names = session.exec(select(IncomeCatNames)).all()
     return income_cat_names
 
@@ -65,7 +65,7 @@ def read_income_cat_names(current_user: Annotated[User, Depends(require_admin_ac
 
 
 @income_cat_names_router.get("/{income_cat_id}", response_model=IncomeCatNamesResponse)
-def read_income_cat_name(current_user: Annotated[User, Depends(require_admin_accountant())], income_cat_id: int, session: Session = Depends(get_session)):
+def read_income_cat_name(current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())], income_cat_id: int, session: Session = Depends(get_session)):
     income_cat_name = session.get(IncomeCatNames, income_cat_id)
     if not income_cat_name:
         raise HTTPException(
@@ -74,7 +74,7 @@ def read_income_cat_name(current_user: Annotated[User, Depends(require_admin_acc
 
 
 @income_cat_names_router.delete("/del/{income_cat_id}", response_model=dict)
-def delete_income_cat_name(user: Annotated[User, Depends(require_admin_accountant())], income_cat_id: int, session: Session = Depends(get_session)):
+def delete_income_cat_name(user: Annotated[User, Depends(require_admin_accountant_fee_manager())], income_cat_id: int, session: Session = Depends(get_session)):
     income_cat_name = session.get(IncomeCatNames, income_cat_id)
     if not income_cat_name:
         raise HTTPException(

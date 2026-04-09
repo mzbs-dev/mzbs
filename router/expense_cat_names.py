@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError  # <-- Add this import
 from db import get_session
 
 from schemas.expense_cat_names_model import ExpenseCatNames, ExpenseCatNamesCreate, ExpenseCatNamesResponse
-from user.user_crud import require_admin_accountant
+from user.user_crud import require_admin_accountant_fee_manager
 from user.user_models import User
 from schemas.expense_model import Expense  # <-- Add this import
 
@@ -24,7 +24,7 @@ async def root():
 
 @expense_cat_names_router.post("/add_expense_cat_name/", response_model=ExpenseCatNamesResponse)
 def create_expense_cat_name( 
-    user: Annotated[User, Depends(require_admin_accountant())],
+    user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
     expense_cat_name: ExpenseCatNamesCreate, session: Session = Depends(get_session),):
     db_expense_cat_name = ExpenseCatNames(**expense_cat_name.model_dump())
     session.add(db_expense_cat_name)
@@ -54,14 +54,14 @@ def create_expense_cat_name(
 
 @expense_cat_names_router.get("/expense-cat-names-all/", response_model=List[ExpenseCatNamesResponse])
 def read_expense_cat_names(
-    user: Annotated[User, Depends(require_admin_accountant())],
+    user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
     session: Session = Depends(get_session)):
     expense_cat_names = session.exec(select(ExpenseCatNames)).all()
     return expense_cat_names
 
 @expense_cat_names_router.get("/{expense_cat_id}", response_model=ExpenseCatNamesResponse)
 def read_expense_cat_name(
-    user: Annotated[User, Depends(require_admin_accountant())],
+    user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
     expense_cat_id: int, session: Session = Depends(get_session)):
     expense_cat_name = session.get(ExpenseCatNames, expense_cat_id)
     if not expense_cat_name:
@@ -71,7 +71,7 @@ def read_expense_cat_name(
 
 @expense_cat_names_router.delete("/del/{expense_cat_id}", response_model=dict)
 def delete_expense_cat_name(
-    user: Annotated[User, Depends(require_admin_accountant())],
+    user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
     expense_cat_id: int, session: Session = Depends(get_session)):
     expense_cat_name = session.get(ExpenseCatNames, expense_cat_id)
     if not expense_cat_name:

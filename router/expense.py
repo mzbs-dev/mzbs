@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 from db import get_session
 from schemas.expense_model import Expense, ExpenseCreate, ExpenseResponse, ExpenseUpdate
 from schemas.expense_cat_names_model import ExpenseCatNames  # Import ExpenseCatNames
-from user.user_crud import require_admin_accountant
+from user.user_crud import require_admin_accountant_fee_manager
 from user.user_models import User, UserRole
 
 expense_router = APIRouter(
@@ -22,7 +22,7 @@ async def root():
 
 @expense_router.post("/add_expense/", response_model=ExpenseResponse)
 def create_expense(
-     user: Annotated[User, Depends(require_admin_accountant())],session: Session = Depends(get_session), expense: ExpenseCreate = None
+     user: Annotated[User, Depends(require_admin_accountant_fee_manager())],session: Session = Depends(get_session), expense: ExpenseCreate = None
 ):
     # Ensure created_at is set to the current datetime if not provided
     if not expense.created_at:
@@ -64,7 +64,7 @@ def create_expense(
     )
 
 @expense_router.get("/expenses-all/", response_model=List[ExpenseResponse])
-def read_expenses(user: Annotated[User, Depends(require_admin_accountant())], session: Session = Depends(get_session)):
+def read_expenses(user: Annotated[User, Depends(require_admin_accountant_fee_manager())], session: Session = Depends(get_session)):
     expenses = session.exec(select(Expense)).all()
     # Map category to its string representation
     return [
@@ -82,7 +82,7 @@ def read_expenses(user: Annotated[User, Depends(require_admin_accountant())], se
     ]
 
 @expense_router.get("/{expense_id}", response_model=ExpenseResponse)
-def read_expense(user: Annotated[User, Depends(require_admin_accountant())],expense_id: int, session: Session = Depends(get_session)):
+def read_expense(user: Annotated[User, Depends(require_admin_accountant_fee_manager())],expense_id: int, session: Session = Depends(get_session)):
     expense = session.get(Expense, expense_id)
     if not expense:
         raise HTTPException(
@@ -100,7 +100,7 @@ def read_expense(user: Annotated[User, Depends(require_admin_accountant())],expe
     )
 
 @expense_router.put("/update/{expense_id}", response_model=ExpenseResponse)
-def update_expense(user: Annotated[User, Depends(require_admin_accountant())],
+def update_expense(user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
     expense_id: int, expense_update: ExpenseUpdate, session: Session = Depends(get_session)):
     db_expense = session.get(Expense, expense_id)
     if not db_expense:
@@ -132,7 +132,7 @@ def update_expense(user: Annotated[User, Depends(require_admin_accountant())],
     )
 
 @expense_router.delete("/del/{expense_id}", response_model=dict)
-def delete_expense(user: Annotated[User, Depends(require_admin_accountant())],expense_id: int, session: Session = Depends(get_session)):
+def delete_expense(user: Annotated[User, Depends(require_admin_accountant_fee_manager())],expense_id: int, session: Session = Depends(get_session)):
     expense = session.get(Expense, expense_id)
     if not expense:
         raise HTTPException(
@@ -145,7 +145,7 @@ def delete_expense(user: Annotated[User, Depends(require_admin_accountant())],ex
 def filter_expense_by_category(
     category_id: int,
     session: Session = Depends(get_session),
-    user: User = Depends(require_admin_accountant()),
+    user: User = Depends(require_admin_accountant_fee_manager()),
 ):
     """Compatibility endpoint for older frontend callers (/filter-by-category/{id})."""
     try:

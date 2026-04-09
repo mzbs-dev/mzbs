@@ -42,8 +42,8 @@ const ROLE_PERMISSIONS: Record<UserRole, Section[]> = {
     "fees",
   ],
   TEACHER: ["attendance", "students", "dashboard"],
-  ACCOUNTANT: ["expenses", "fees", "income", "dashboard"],
-  FEE_MANAGER: ["fees", "students", "dashboard"],
+  ACCOUNTANT: ["expenses", "fees", "income", "dashboard", "students"],
+  FEE_MANAGER: ["expenses", "fees", "income", "dashboard", "students"],
   USER: ["dashboard"], // Students can access own attendance & fees through filtered endpoints
 };
 
@@ -130,11 +130,6 @@ export function canAccessSubmenuItem(role: string | null, submenuPath: string): 
 
   // PRINCIPAL: can view fees but not add
   if (role === "PRINCIPAL" && submenuPath.includes("/fees/add_fees")) {
-    return false;
-  }
-
-  // ACCOUNTANT: can view fees but not add
-  if (role === "ACCOUNTANT" && submenuPath.includes("/fees/add_fees")) {
     return false;
   }
 

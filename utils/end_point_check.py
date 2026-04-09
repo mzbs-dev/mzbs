@@ -66,6 +66,10 @@ def require_admin_accountant():
 def require_admin_fee_manager():
     return require_roles([UserRole.ADMIN, UserRole.FEE_MANAGER])
 
+def require_admin_accountant_fee_manager():
+    """Unified role checker for ACCOUNTANT and FEE_MANAGER with same privileges"""
+    return require_roles([UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.FEE_MANAGER])
+
 def require_all_roles():
     return require_roles([UserRole.ADMIN, UserRole.TEACHER, UserRole.ACCOUNTANT, 
                          UserRole.FEE_MANAGER, UserRole.PRINCIPAL, UserRole.USER])
