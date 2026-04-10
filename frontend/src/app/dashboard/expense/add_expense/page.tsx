@@ -46,10 +46,10 @@ const AddExpense = () => {
   const AddExpenseFunction = async (data: AddExpenseModel) => {
     setIsLoading(true);
     try {
-      // Convert empty strings to null for optional fields
+      // Convert empty strings to undefined for optional fields
       const cleanedData = {
         ...data,
-        description: data.description === '' ? null : data.description,
+        description: data.description === '' ? undefined : data.description,
       };
       const response = await API.AddExpense(cleanedData);
       if (response.status === 200 || response.status === 201) {
