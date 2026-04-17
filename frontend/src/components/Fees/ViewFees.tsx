@@ -1,30 +1,15 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "../Select";
 import { useForm } from "react-hook-form";
-import { StudentAPI as API1 } from "@/api/Student/StudentsAPI";
 import { ClassNameAPI as API2 } from "@/api/Classname/ClassNameAPI";
 import { FeeAPI as API3 } from "@/api/Fees/AddFeeAPI"
 import { GetFeeModel} from "@/models/Fees/Fee";
 import { toast } from "sonner";
 import { usePrint } from "@/components/print/usePrint";
-import { Printer } from "lucide-react";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/libs/utils";
+import { Printer, Edit2, X } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -39,11 +24,6 @@ import { Header } from "../dashboard/Header";
 interface ClassNameResponse {
   class_name_id: number;
   class_name: string;
-}
-
-interface StudentResponse {
-  student_id: number;
-  student_name: string;
 }
 
 interface FeeData {
@@ -65,38 +45,23 @@ const ViewFees: React.FC = () => {
     formState: { errors },
   } = useForm<GetFeeModel>();
   const { printRecords } = usePrint();
-  const [studentsList, setStudentsList] = useState<
-    { id: number; title: string }[]
-  >([]);
   const [classNameList, setClassNameList] = useState<
     { id: number; title: string }[]
   >([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState("");
   const [feesData, setFeesData] = useState<FeeData[]>([]);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedFee, setSelectedFee] = useState<FeeData | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    fee_amount: "",
+    fee_month: "",
+    fee_year: "",
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    GetStudents();
     GetClassName();
   }, []);
-
-  const GetStudents = async () => {
-    setIsLoading(true);
-    try {
-      const response = (await API1.Get()) as { data: StudentResponse[] };
-      setStudentsList(
-        response.data.map((student) => ({
-          id: student.student_id,
-          title: student.student_name,
-        }))
-      );
-    } catch (error) {
-      console.error("Error fetching students:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const GetClassName = async () => {                          
     setIsLoading(true);
@@ -123,13 +88,14 @@ const ViewFees: React.FC = () => {
 
 const handleGetFees = async (data: GetFeeModel) => {
   try {
-    // Use new Filter API with all 5 filter parameters
-    // Strip empty strings, zeros, "all" values before sending
+    // Validate that year is selected (year is now mandatory)
+    if (!data.fee_year) {
+      toast.error("Please select a year");
+      return;
+    }
+
+    // Use Filter API with Class, Month, Year, Status filters
     const response = await API3.Filter({
-      // student_id: 0 means "All students" (combobox deselected)
-      student_id: data.student_id && data.student_id !== 0
-        ? data.student_id
-        : undefined,
       // class_id: 0 is the "All" option prepended in GetClassName()
       class_id: data.class_id && Number(data.class_id) !== 0
         ? Number(data.class_id)
@@ -138,9 +104,8 @@ const handleGetFees = async (data: GetFeeModel) => {
       fee_month: data.fee_month && data.fee_month !== "all"
         ? data.fee_month
         : undefined,
-      fee_year: data.fee_year && data.fee_year !== "all"
-        ? data.fee_year
-        : undefined,
+      // Year is now mandatory, always send it
+      fee_year: data.fee_year,
       // "all" or empty string = skip fee_status filter
       fee_status: data.fee_status && data.fee_status !== "all"
         ? data.fee_status
@@ -162,86 +127,66 @@ const handleGetFees = async (data: GetFeeModel) => {
   }
 };
 
+const handleEditClick = (fee: FeeData) => {
+  setSelectedFee(fee);
+  setEditFormData({
+    fee_amount: fee.fee_amount.toString(),
+    fee_month: fee.fee_month,
+    fee_year: fee.fee_year.toString(),
+  });
+  setIsEditModalOpen(true);
+};
+
+const handleUpdateFee = async () => {
+  try {
+    if (!selectedFee) {
+      toast.error("No fee selected");
+      return;
+    }
+
+    if (!selectedFee.fee_id) {
+      toast.error("Cannot edit this fee record - fee_id is missing");
+      return;
+    }
+
+    // Validate input
+    if (!editFormData.fee_amount || !editFormData.fee_month || !editFormData.fee_year) {
+      toast.error("Please fill all fields");
+      return;
+    }
+
+    setIsUpdating(true);
+
+    const response = await API3.Update(selectedFee.fee_id, {
+      fee_amount: parseFloat(editFormData.fee_amount),
+      fee_month: editFormData.fee_month,
+      fee_year: editFormData.fee_year,
+    });
+
+    toast.success("Fee record updated successfully");
+    setIsEditModalOpen(false);
+    setSelectedFee(null);
+
+    // Refresh the current data by refetching
+    // We'll need to keep track of current filter params for this
+    // For now, just clear the data
+    setFeesData([]);
+  } catch (error) {
+    console.error("Error updating fee:", error);
+    toast.error("Failed to update fee record");
+  } finally {
+    setIsUpdating(false);
+  }
+};
+
   return (
     <div className="container mx-auto px-2 sm:px-4">
       <Header value="View Fees" />
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 mt-3">
         <form
           onSubmit={handleSubmit(handleGetFees)}
-          className="flex flex-col gap-3 sm:gap-4 p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 lg:items-end"
+          className="flex flex-col gap-3 sm:gap-4 p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 lg:items-end"
         >
-          <div className="space-y-2 col-span-1">
-            <label className="text-sm text-gray-700 dark:text-gray-300 font-bold">
-              Student
-            </label>
-            <Popover open={open} onOpenChange={setOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={open}
-                  className="w-full justify-between"
-                >
-                  {selectedStudent
-                    ? studentsList.find(
-                        (student) => student.id.toString() === selectedStudent
-                      )?.title
-                    : "Select student..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0">
-                <Command>
-                  <CommandInput
-                    placeholder="Search student..."
-                    className="h-9"
-                  />
-                  <CommandList>
-                    {isLoading ? (
-                      <div className="p-2 text-center text-gray-500">
-                        Loading...
-                      </div>
-                    ) : (
-                      <>
-                        <CommandEmpty>No student found.</CommandEmpty>
-                        <CommandGroup>
-                          {studentsList.map((student) => (
-                            <CommandItem
-                              key={student.id}
-                              value={student.id.toString()}
-                              onSelect={(currentValue: string) => {
-                                setSelectedStudent(
-                                  currentValue === selectedStudent
-                                    ? ""
-                                    : currentValue
-                                );
-                                setOpen(false);
-                                setFormValue(
-                                  "student_id",
-                                  currentValue ? parseInt(currentValue, 10) : 0
-                                );
-                              }}
-                            >
-                              {student.title}
-                              <Check
-                                className={cn(
-                                  "ml-auto h-4 w-4",
-                                  selectedStudent === student.id.toString()
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                )}
-                              />
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </>
-                    )}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            <p className="text-red-500 text-xs">{errors.student_id?.message}</p>
-          </div>
           <div className="col-span-1">
             <label className="text-sm text-gray-700 dark:text-gray-300 font-bold">
               Class Name
@@ -285,7 +230,6 @@ const handleGetFees = async (data: GetFeeModel) => {
             <Select
               label=""
               options={[
-                { id: "all", title: "All" },
                 { id: "2023", title: "2023" },
                 { id: "2024", title: "2024" },
                 { id: "2025", title: "2025" },
@@ -302,6 +246,7 @@ const handleGetFees = async (data: GetFeeModel) => {
             <Select
               label=""
               options={[
+                { id: "all", title: "All" },
                 { id: "Paid", title: "Paid" },
                 { id: "Unpaid", title: "Unpaid" },
               ]}
@@ -333,13 +278,14 @@ const handleGetFees = async (data: GetFeeModel) => {
               <Table className="w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-1/7">Student Name</TableHead>
-                    <TableHead className="w-1/7">Father Name</TableHead>
-                    <TableHead className="w-1/7">Class</TableHead>
-                    <TableHead className="w-1/7">Amount</TableHead>
-                    <TableHead className="w-1/7">Month</TableHead>
-                    <TableHead className="w-1/7">Year</TableHead>
-                    <TableHead className="w-1/7">Status</TableHead>
+                    <TableHead className="w-1/8">Student Name</TableHead>
+                    <TableHead className="w-1/8">Father Name</TableHead>
+                    <TableHead className="w-1/8">Class</TableHead>
+                    <TableHead className="w-1/8">Amount</TableHead>
+                    <TableHead className="w-1/8">Month</TableHead>
+                    <TableHead className="w-1/8">Year</TableHead>
+                    <TableHead className="w-1/8">Status</TableHead>
+                    <TableHead className="w-1/8 no-print">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -360,10 +306,167 @@ const handleGetFees = async (data: GetFeeModel) => {
                           {fee.fee_status}
                         </span>
                       </TableCell>
+                      <TableCell className="no-print">
+                        {fee.fee_status === "Paid" && fee.fee_id ? (
+                          <button
+                            onClick={() => handleEditClick(fee)}
+                            className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
+                            title="Edit paid fee record"
+                          >
+                            <Edit2 size={14} />
+                            Edit
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 text-sm">N/A</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Fee Modal */}
+        {isEditModalOpen && selectedFee && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Edit Fee Record</h2>
+                <button
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedFee(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Read-only fields */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Student Name</label>
+                  <input
+                    type="text"
+                    value={selectedFee.student_name}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Father Name</label>
+                  <input
+                    type="text"
+                    value={selectedFee.father_name}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Class</label>
+                  <input
+                    type="text"
+                    value={selectedFee.class_name}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <input
+                    type="text"
+                    value={selectedFee.fee_status}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                  />
+                </div>
+
+                {/* Editable fields */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Fee Amount</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editFormData.fee_amount}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, fee_amount: e.target.value })
+                    }
+                    placeholder="Enter fee amount"
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Fee Month</label>
+                  <select
+                    value={editFormData.fee_month}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, fee_month: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select Month</option>
+                    <option value="January">January</option>
+                    <option value="February">February</option>
+                    <option value="March">March</option>
+                    <option value="April">April</option>
+                    <option value="May">May</option>
+                    <option value="June">June</option>
+                    <option value="July">July</option>
+                    <option value="August">August</option>
+                    <option value="September">September</option>
+                    <option value="October">October</option>
+                    <option value="November">November</option>
+                    <option value="December">December</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Fee Year</label>
+                  <select
+                    value={editFormData.fee_year}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, fee_year: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select Year</option>
+                    <option value="2023">2023</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex gap-3 mt-6">
+                <Button
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedFee(null);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isUpdating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdateFee}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? "Updating..." : "Save Changes"}
+                </Button>
+              </div>
             </div>
           </div>
         )}

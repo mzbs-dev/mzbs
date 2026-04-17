@@ -164,9 +164,7 @@ const AddIncome = () => {
                 Description
               </label>
               <Input
-                {...register("description", {
-                  required: "Required",
-                })}
+                {...register("description")}
                 placeholder="Enter description"
                 className="h-9 text-sm"
               />
@@ -182,7 +180,7 @@ const AddIncome = () => {
                 Contact
               </label>
               <Input
-                {...register("contact", { required: "Required" })}
+                {...register("contact")}
                 placeholder="Enter contact"
                 className="h-9 text-sm"
               />

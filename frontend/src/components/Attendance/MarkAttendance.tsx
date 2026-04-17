@@ -373,12 +373,16 @@ const onSubmit = async (formData: MarkAttInput) => {
   };
 
   return (
-    <div className="flex flex-col gap-2 w-full overflow-y-auto">
+    <div className="flex flex-col gap-2 w-full min-h-screen">
       <Header value="Mark Attendance" />
       <Loader isActive={isLoading} />
-      <div className="mx-auto bg-white dark:bg-transparent drop-shadow-sm border border-gray-200 dark:border-secondary rounded-lg w-full max-w-6xl px-2 sm:px-4 py-3 sm:py-4">
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 border p-3 rounded-lg">
+      
+      {/* SINGLE CARD CONTAINER — 3 ZONES: filters, scrollable table, submit button */}
+      <div className="mx-auto bg-white dark:bg-transparent drop-shadow-sm border border-gray-200 dark:border-secondary rounded-lg w-full max-w-6xl flex flex-col overflow-hidden flex-1">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full">
+          
+          {/* ZONE 1: Filter Bar — shrink-0, always visible */}
+          <div className="shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 border-b border-gray-200 dark:border-secondary p-3 sm:p-4">
             <div className="space-y-1">
               <label className="text-gray-700 font-bold dark:text-gray-400 text-sm">
                 Date
@@ -445,10 +449,10 @@ const onSubmit = async (formData: MarkAttInput) => {
             </div>
           </div>
 
+          {/* ZONE 2: Scrollable Table Body — flex-1, overflow-y-auto (THE ONLY SCROLLING ZONE) */}
           {data.length > 0 && (
-            <div className="py-4 px-1 bg-background mt-4 flex flex-col gap-3">
-              {/* Scrollable table — capped height so Submit button is always reachable */}
-              <div className="rounded-md border overflow-y-auto max-h-[45vh]">
+            <div className="flex-1 overflow-y-auto bg-background">
+              <div className="rounded-none border-none">
                 <Table className="w-full">
                   <TableHeader className="sticky top-0 z-10">
                     {table.getHeaderGroups().map((headerGroup) => (
@@ -483,11 +487,18 @@ const onSubmit = async (formData: MarkAttInput) => {
                   </TableBody>
                 </Table>
               </div>
+            </div>
+          )}
 
-              {/* Submit button — always visible below the table */}
-              <Button type="submit" className="w-full">
+          {/* ZONE 3: Submit Button — shrink-0, always visible at bottom (INSIDE THE CARD) */}
+          {data.length > 0 && (
+            <div className="shrink-0 border-t border-gray-200 dark:border-secondary p-3 sm:p-4 bg-white dark:bg-transparent">
+              <button
+                type="submit"
+                className="w-full bg-black dark:bg-gray-800 text-white font-medium py-2 px-4 rounded hover:bg-gray-900 dark:hover:bg-gray-700 transition-colors"
+              >
                 Submit Attendance
-              </Button>
+              </button>
             </div>
           )}
         </form>

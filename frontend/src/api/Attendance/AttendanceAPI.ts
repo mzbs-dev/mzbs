@@ -109,4 +109,29 @@ export const Create = async (Attendances: MarkAttInput) => {
       throw error;
     }
   }
+  export const GetAttendanceStatusSummary = async (
+    studentId: number,
+    fromDate?: string,
+    toDate?: string
+  ) => {
+    try {
+      const params = new URLSearchParams();
+      params.append('student_id', studentId.toString());
+      
+      if (fromDate) {
+        params.append('from_date', fromDate);
+      }
+      if (toDate) {
+        params.append('to_date', toDate);
+      }
+
+      const response = await AxiosInstance.get(
+        `/mark_attendance/attendance_status_summary?${params.toString()}`
+      );
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  };
 }

@@ -83,6 +83,12 @@ const menuList: MenuItem[] = [
         icon: GoDotFill,
         path: "/dashboard/attendance/view_attendance",
       },
+      {
+        id: 31,
+        name: "Attendance Summary",
+        icon: GoDotFill,
+        path: "/dashboard/attendance/attendance_status_summary",
+      },
     ],
   },
   {

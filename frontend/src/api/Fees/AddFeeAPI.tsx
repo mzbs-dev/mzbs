@@ -74,7 +74,34 @@ export const FeeAPI = {
       throw error;
     }
   },
+
+  // Update fee record - only paid fees can be edited
+  Update: async (
+    fee_id: number,
+    updateData: {
+      fee_amount?: number;
+      fee_month?: string;
+      fee_year?: string;
+    }
+  ) => {
+    try {
+      const response = await AxiosInstance.put(
+        `/fee/update_fee/${fee_id}`,
+        JSON.stringify(updateData),
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("Update Response:", response);
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
 };
 
 // For backward compatibility, also export individual functions
-export const { Create, GetClassFeeStatus, Filter } = FeeAPI;
+export const { Create, GetClassFeeStatus, Filter, Update } = FeeAPI;

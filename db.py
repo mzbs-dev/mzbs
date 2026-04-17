@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import SQLModel, create_engine, Session, select
 from utils.logging import logger
 import setting
 
@@ -36,9 +36,42 @@ engine = get_engine(CONN_STRING=CONN_STRING)
 # Add SessionLocal
 SessionLocal = Session
 
+def seed_attendance_values():
+    """Seed initial attendance values into the database"""
+    try:
+        session = SessionLocal(engine)
+        from schemas.attendance_value_model import AttendanceValue
+        
+        # Check if values already exist
+        existing_values = session.exec(select(AttendanceValue)).all()
+        if existing_values:
+            logger.info(f"Attendance values already exist: {len(existing_values)} values found")
+            session.close()
+            return
+        
+        # Define the 4 core attendance values
+        attendance_values = [
+            AttendanceValue(attendance_value="Present"),
+            AttendanceValue(attendance_value="Absent"),
+            AttendanceValue(attendance_value="Late"),
+            AttendanceValue(attendance_value="Leave"),
+        ]
+        
+        for value in attendance_values:
+            session.add(value)
+        
+        session.commit()
+        logger.info("Attendance values seeded successfully: Present, Absent, Late, Leave")
+        session.close()
+    except Exception as e:
+        logger.error(f"Error seeding attendance values: {str(e)}")
+        session.close()
+        raise
+
 def create_db_and_tables():
     # SQLModel.metadata.drop_all(engine)  # Drop existing tables
     SQLModel.metadata.create_all(engine)
+    seed_attendance_values()  # Seed initial data
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

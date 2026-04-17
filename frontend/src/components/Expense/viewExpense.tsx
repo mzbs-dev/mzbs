@@ -61,7 +61,7 @@ const ViewExpense = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [expenseCategory, setExpenseCategory] = useState<ExpenseCategory[]>([]);
   const [expenseData, setExpenseData] = useState<ExpenseDataItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("0");
 
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -75,9 +75,10 @@ const ViewExpense = () => {
     amount: "",
   });
 
-  // Load categories on first mount (don't load all expenses by default)
+  // Load categories on first mount and get all expense records
   useEffect(() => {
     getCategories();
+    getAllExpense(); // Load all expense records by default
   }, []);
 
   const getCategories = async () => {

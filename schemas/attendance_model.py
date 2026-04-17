@@ -78,3 +78,15 @@ class FilteredAttendanceResponse(SQLModel):
 
 class BulkAttendanceCreate(SQLModel):
     attendances: List[AttendanceCreate]
+
+
+class AttendanceStatusSummary(SQLModel):
+    student_id: int
+    student_name: str
+    father_name: str
+    class_name: str
+    present: int
+    absent: int
+    late: int
+    leave: int
+    total: int

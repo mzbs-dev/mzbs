@@ -211,7 +211,7 @@ const AttendanceTable: React.FC = () => {
                 <AlertCircle className="w-3 h-3 mr-1" />
                 Absent
               </span>
-            ) : value === "leave" ? (
+            ) : value === "late" ? (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-50 dark:bg-transparent text-yellow-700">
                 <Clock className="w-3 h-3 mr-1" />
                 Late

@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 from router.class_names import get_class_name
 
 from schemas.class_names_model import ClassNames
+from schemas.students_model import Students
 from router.students import get_student_by_id, get_student_details, get_student_details_utility
 from sqlalchemy import func
 from datetime import datetime
@@ -140,11 +141,77 @@ async def delete_fee(
             detail=f"Error deleting fee record: {str(e)}"
         )
 
-@fee_router.post("/filter/", response_model=List[FeeResponse])
+@fee_router.put("/update_fee/{fee_id}", response_model=FeeResponse, status_code=status.HTTP_200_OK)
+async def update_fee(
+    fee_id: int,
+    fee_data: FeeUpdateRequest,
+    db: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())]
+):
+    """Update a student fee record - only paid fees can be edited (Admin/Accountant only)."""
+    try:
+        fee = db.exec(select(Fee).where(Fee.fee_id == fee_id)).first()
+        if not fee:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Fee record with ID {fee_id} not found"
+            )
+
+        # Only allow editing of paid fee records
+        if fee.fee_status != FeeStatus.PAID:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Only paid fee records can be edited. This fee is marked as {fee.fee_status}."
+            )
+
+        # Update fields if provided
+        if fee_data.fee_amount is not None:
+            fee.fee_amount = fee_data.fee_amount
+        
+        if fee_data.fee_month is not None:
+            fee.fee_month = fee_data.fee_month
+        
+        if fee_data.fee_year is not None:
+            fee.fee_year = str(fee_data.fee_year)
+
+        db.add(fee)
+        db.commit()
+        db.refresh(fee)
+
+        # Fetch student and class info for response
+        student_details = get_student_details_utility(db, fee.student_id)
+        class_name_obj = db.exec(
+            select(ClassNames)
+            .where(ClassNames.class_name_id == fee.class_id)
+        ).first()
+
+        response = FeeResponse(
+            fee_id=fee.fee_id,
+            created_at=fee.created_at,
+            student_name=student_details["student_name"] if student_details else None,
+            father_name=student_details["father_name"] if student_details else None,
+            class_name=class_name_obj.class_name if class_name_obj else None,
+            fee_amount=fee.fee_amount,
+            fee_month=fee.fee_month,
+            fee_year=str(fee.fee_year),
+            fee_status=fee.fee_status
+        )
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating fee record: {str(e)}"
+        )
+
+@fee_router.post("/filter/", response_model=List[FilterPaidUnpaid])
 async def filter_fees(
     db: Annotated[Session, Depends(get_session)],
     current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
-    student_id: Optional[int] = Query(None, description="Filter by student ID"),
     class_id: Optional[int] = Query(None, description="Filter by class ID"),
     fee_month: Optional[str] = Query(None, description="Filter by fee month"),
     fee_year: Optional[str] = Query(None, description="Filter by fee year"),
@@ -153,48 +220,224 @@ async def filter_fees(
     limit: int = Query(100, description="Limit records per page"),
     sort_by: Optional[str] = Query(None, description="Sort by field")
 ):
-    """Filter student fee records based on provided criteria (Admin only)."""
+    """Filter student fee records based on provided criteria. Returns both paid and unpaid records."""
     try:
-        query = select(Fee)
-        if student_id:
-            query = query.where(Fee.student_id == student_id)
+        # If class_id is provided, get all students in that class and their fee status
         if class_id:
-            query = query.where(Fee.class_id == class_id)
-        if fee_month:
-            query = query.where(Fee.fee_month == fee_month)
-        if fee_year:
-            query = query.where(Fee.fee_year == str(fee_year))
-        if fee_status:
-            query = query.where(Fee.fee_status == fee_status)
-
-        if sort_by:
-            if hasattr(Fee, sort_by):
-                query = query.order_by(getattr(Fee, sort_by))
-                
-        query = query.offset(skip).limit(limit)
-
-        fees = db.exec(query).all()
-
-        filtered_response = []
-        for fee in fees:
-            student_details = get_student_details_utility(db, fee.student_id)
-            class_name = get_class_name(db, fee.class_id)
-
-            filtered_response.append(
-                FeeResponse(
-                    fee_id=fee.fee_id,
-                    created_at=fee.created_at,
-                    student_name=student_details["student_name"] if student_details else None,
-                    father_name=student_details["father_name"] if student_details else None,
-                    class_name=class_name,
-                    fee_amount=fee.fee_amount,
-                    fee_month=fee.fee_month,
-                    fee_year=str(fee.fee_year),
-                    fee_status=fee.fee_status
+            class_obj = db.exec(select(ClassNames).where(ClassNames.class_name_id == class_id)).first()
+            if not class_obj:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Class with ID {class_id} not found"
                 )
-            )
+            class_name = class_obj.class_name
+
+            # Get all students in the class
+            students_query = select(Students).where(Students.class_name == class_name)
+            all_students = db.exec(students_query).all()
+
+            filtered_response = []
+
+            # Special handling for "Unpaid" status filter
+            if fee_status and fee_status == "Unpaid":
+                # When fee_month is "All", show unpaid for EACH month
+                if fee_month is None or fee_month == "":
+                    # Iterate through all months
+                    months_to_check = MONTHS
+                else:
+                    # Single month selected
+                    months_to_check = [fee_month]
+                
+                for month in months_to_check:
+                    # For each month, get students who PAID
+                    paid_query = select(Fee.student_id).where(
+                        Fee.class_id == class_id,
+                        Fee.fee_status == FeeStatus.PAID,
+                        Fee.fee_month == month
+                    )
+                    
+                    if fee_year:
+                        paid_query = paid_query.where(Fee.fee_year == str(fee_year))
+                    
+                    paid_student_ids = set([row for row in db.exec(paid_query).all()])
+                    
+                    # Return all students NOT in paid list as unpaid for this month
+                    for student in all_students:
+                        if student.student_id not in paid_student_ids:
+                            filtered_response.append(
+                                FilterPaidUnpaid(
+                                    fee_id=None,
+                                    student_id=student.student_id,
+                                    student_name=student.student_name,
+                                    father_name=student.father_name,
+                                    class_name=class_name,
+                                    fee_status=FeeStatus.UNPAID,
+                                    fee_month=month,
+                                    fee_year=str(fee_year) if fee_year else "N/A",
+                                    fee_amount=0.0
+                                )
+                            )
+            
+            # Special handling for "All" status filter with optional month selection
+            elif not fee_status or fee_status == "All":
+                # When status is "All", show each student's paid/unpaid status for each month
+                if fee_month is None or fee_month == "":
+                    # Iterate through all months
+                    months_to_check = MONTHS
+                else:
+                    # Single month selected
+                    months_to_check = [fee_month]
+                
+                for month in months_to_check:
+                    # Get fee records for this month
+                    fee_query = select(Fee).where(
+                        Fee.class_id == class_id,
+                        Fee.fee_month == month
+                    )
+                    
+                    if fee_year:
+                        fee_query = fee_query.where(Fee.fee_year == str(fee_year))
+                    
+                    month_fees = db.exec(fee_query).all()
+                    
+                    # Create mapping of paid students for this month
+                    paid_student_map = {}
+                    for fee in month_fees:
+                        if fee.fee_status == FeeStatus.PAID:
+                            paid_student_map[fee.student_id] = fee
+                    
+                    # For each student in the class
+                    for student in all_students:
+                        if student.student_id in paid_student_map:
+                            # Student paid this month
+                            fee = paid_student_map[student.student_id]
+                            filtered_response.append(
+                                FilterPaidUnpaid(
+                                    fee_id=fee.fee_id,
+                                    student_id=student.student_id,
+                                    student_name=student.student_name,
+                                    father_name=student.father_name,
+                                    class_name=class_name,
+                                    fee_status=FeeStatus.PAID,
+                                    fee_month=month,
+                                    fee_year=str(fee_year) if fee_year else "N/A",
+                                    fee_amount=fee.fee_amount
+                                )
+                            )
+                        else:
+                            # Student didn't pay this month
+                            filtered_response.append(
+                                FilterPaidUnpaid(
+                                    fee_id=None,
+                                    student_id=student.student_id,
+                                    student_name=student.student_name,
+                                    father_name=student.father_name,
+                                    class_name=class_name,
+                                    fee_status=FeeStatus.UNPAID,
+                                    fee_month=month,
+                                    fee_year=str(fee_year) if fee_year else "N/A",
+                                    fee_amount=0.0
+                                )
+                            )
+            else:
+                # For "Paid" or "All" status
+                # Build fee query with filters
+                fee_query = select(Fee).where(Fee.class_id == class_id)
+                if fee_month:
+                    fee_query = fee_query.where(Fee.fee_month == fee_month)
+                if fee_year:
+                    fee_query = fee_query.where(Fee.fee_year == str(fee_year))
+                if fee_status:
+                    fee_query = fee_query.where(Fee.fee_status == FeeStatus(fee_status))
+                
+                all_fees = db.exec(fee_query).all()
+
+                # Create mapping of student fees (list to store ALL fees per student)
+                student_fee_map = {}
+                for fee in all_fees:
+                    if fee.student_id not in student_fee_map:
+                        student_fee_map[fee.student_id] = []
+                    student_fee_map[fee.student_id].append(fee)
+
+                # Return all students with their fee status
+                for student in all_students:
+                    fees = student_fee_map.get(student.student_id, [])
+                    
+                    if fees:
+                        # Add ALL fee records for this student
+                        for fee in fees:
+                            filtered_response.append(
+                                FilterPaidUnpaid(
+                                    fee_id=fee.fee_id,
+                                    student_id=student.student_id,
+                                    student_name=student.student_name,
+                                    father_name=student.father_name,
+                                    class_name=class_name,
+                                    fee_status=fee.fee_status,
+                                    fee_month=fee.fee_month,
+                                    fee_year=str(fee.fee_year),
+                                    fee_amount=fee.fee_amount
+                                )
+                            )
+                    else:
+                        # Student has no fee record - only include if fee_status filter is not applied
+                        if not fee_status:
+                            filtered_response.append(
+                                FilterPaidUnpaid(
+                                    fee_id=None,
+                                    student_id=student.student_id,
+                                    student_name=student.student_name,
+                                    father_name=student.father_name,
+                                    class_name=class_name,
+                                    fee_status=FeeStatus.UNPAID,
+                                    fee_month=fee_month if fee_month else "N/A",
+                                    fee_year=str(fee_year) if fee_year else "N/A",
+                                    fee_amount=0.0
+                                )
+                            )
+            
+            # Apply pagination
+            filtered_response = filtered_response[skip:skip + limit]
+            return filtered_response
         
-        return filtered_response
+        # If no class_id, fall back to fee-based filtering
+        else:
+            query = select(Fee)
+            if fee_month:
+                query = query.where(Fee.fee_month == fee_month)
+            if fee_year:
+                query = query.where(Fee.fee_year == str(fee_year))
+            if fee_status:
+                query = query.where(Fee.fee_status == FeeStatus(fee_status))
+
+            if sort_by:
+                if hasattr(Fee, sort_by):
+                    query = query.order_by(getattr(Fee, sort_by))
+                    
+            query = query.offset(skip).limit(limit)
+
+            fees = db.exec(query).all()
+
+            filtered_response = []
+            for fee in fees:
+                student_details = get_student_details_utility(db, fee.student_id)
+                class_name = get_class_name(db, fee.class_id)
+
+                filtered_response.append(
+                    FilterPaidUnpaid(
+                        fee_id=fee.fee_id,
+                        student_id=fee.student_id,
+                        student_name=student_details["student_name"] if student_details else None,
+                        father_name=student_details["father_name"] if student_details else None,
+                        class_name=class_name,
+                        fee_status=fee.fee_status,
+                        fee_month=fee.fee_month,
+                        fee_year=str(fee.fee_year),
+                        fee_amount=fee.fee_amount
+                    )
+                )
+            
+            return filtered_response
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -236,6 +479,7 @@ async def get_paid_students(
             class_name = get_class_name(db, fee.class_id)
             
             student_info = FilterPaidUnpaid(
+                fee_id=fee.fee_id,
                 student_id=fee.student_id,
                 student_name=student_details["student_name"],
                 father_name=student_details["father_name"],
@@ -299,6 +543,7 @@ async def get_unpaid_students(
             
             response_list.append(
                 FilterPaidUnpaid(
+                    fee_id=None,
                     student_id=student.student_id,
                     student_name=student.student_name,
                     father_name=student.father_name,
@@ -352,6 +597,7 @@ async def get_class_fee_status(
         for fee in all_fees:
             if fee.student_id not in student_fee_status:
                 student_fee_status[fee.student_id] = {
+                    'fee_id': fee.fee_id,
                     'status': fee.fee_status,
                     'month': fee.fee_month,
                     'year': fee.fee_year,
@@ -366,6 +612,7 @@ async def get_class_fee_status(
             if fee_info and fee_info['status'] == FeeStatus.PAID:
                 response_list.append(
                     FilterPaidUnpaid(
+                        fee_id=fee_info['fee_id'],
                         student_id=student.student_id,
                         student_name=student.student_name,
                         father_name=student.father_name,
@@ -379,6 +626,7 @@ async def get_class_fee_status(
             else:
                 response_list.append(
                     FilterPaidUnpaid(
+                        fee_id=None,
                         student_id=student.student_id,
                         student_name=student.student_name,
                         father_name=student.father_name,

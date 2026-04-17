@@ -61,7 +61,7 @@ const ViewIncome = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [incomeCategory, setIncomeCategory] = useState<IncomeCategory[]>([]);
   const [incomeData, setIncomeData] = useState<IncomeDataItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("0");
   
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -76,9 +76,10 @@ const ViewIncome = () => {
     amount: "",
   });
 
-  // Load categories on first mount (don't load all incomes by default)
+  // Load categories on first mount and get all income records
   useEffect(() => {
     getCategories();
+    getAllIncome(); // Load all income records by default
   }, []);
 
   const getCategories = async () => {
