@@ -200,12 +200,13 @@ const SetSalary = () => {
       <Header value="Set Teacher Salary" />
       
       <div className="p-4 sm:p-6 space-y-6">
-        {/* Form Section */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-            {isEditing ? "Edit Teacher Salary" : "Set Teacher Base Salary"}
-          </h3>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Form Section - Only visible to Admin */}
+        {isAdmin && (
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+              {isEditing ? "Edit Teacher Salary" : "Set Teacher Base Salary"}
+            </h3>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Teacher Selection */}
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
@@ -300,9 +301,10 @@ const SetSalary = () => {
               </Button>
             </div>
           </form>
-        </div>
+          </div>
+        )}
 
-        {/* Salary Records Table */}
+        {/* Salary Records Table - Visible to all roles */}
         <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6 overflow-x-auto">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -389,7 +391,7 @@ const SetSalary = () => {
             </table>
           ) : (
             <div className="text-center py-8 text-gray-600 dark:text-gray-400">
-              No teacher salary records found. Create one using the form above.
+              {isAdmin ? "No teacher salary records found. Create one using the form above." : "No teacher salary records found."}
             </div>
           )}
         </div>

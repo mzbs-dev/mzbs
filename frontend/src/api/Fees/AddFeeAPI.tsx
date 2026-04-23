@@ -101,7 +101,21 @@ export const FeeAPI = {
       throw error;
     }
   },
+
+  // Delete fee record
+  Delete: async (fee_id: number) => {
+    try {
+      const response = await AxiosInstance.delete(
+        `/fee/delete_fee/${fee_id}`
+      );
+      console.log("Delete Response:", response);
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
 };
 
 // For backward compatibility, also export individual functions
-export const { Create, GetClassFeeStatus, Filter, Update } = FeeAPI;
+export const { Create, GetClassFeeStatus, Filter, Update, Delete } = FeeAPI;

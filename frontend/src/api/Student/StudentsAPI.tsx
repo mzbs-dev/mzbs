@@ -65,7 +65,8 @@ export namespace StudentAPI {
       );
       return response;
     } catch (error) {
-      return error;
+      console.error("API Error:", error);
+      throw error;
     }
   }
 

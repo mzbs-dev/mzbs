@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError  # <-- Add this import
 from db import get_session
 from schemas.class_names_model import ClassNames, ClassNamesCreate, ClassNamesResponse
 from schemas.attendance_model import Attendance
-from user.user_crud import require_admin, require_admin_teacher_principal
+from user.user_crud import require_admin, require_admin_teacher_principal, require_admin_teacher_principal_accountant
 from user.user_models import User
 
 classnames_router = APIRouter(
@@ -53,7 +53,7 @@ def create_classnames(user: Annotated[User, Depends(require_admin())],classnames
 
 
 @classnames_router.get("/class-names-all/", response_model=List[ClassNamesResponse])
-def read_classnames(current_user: Annotated[User, Depends(require_admin_teacher_principal())],session: Session = Depends(get_session)):
+def read_classnames(current_user: Annotated[User, Depends(require_admin_teacher_principal_accountant())],session: Session = Depends(get_session)):
     classnames = session.exec(select(ClassNames)).all()
     return classnames
 
@@ -61,7 +61,7 @@ def read_classnames(current_user: Annotated[User, Depends(require_admin_teacher_
 
 
 @classnames_router.get("/{class_name_id}", response_model=ClassNamesResponse)
-def read_classname(current_user: Annotated[User, Depends(require_admin_teacher_principal())],class_name_id: int, session: Session = Depends(get_session)):
+def read_classname(current_user: Annotated[User, Depends(require_admin_teacher_principal_accountant())],class_name_id: int, session: Session = Depends(get_session)):
     classnames = session.get(ClassNames, class_name_id)
     if not classnames:
         raise HTTPException(

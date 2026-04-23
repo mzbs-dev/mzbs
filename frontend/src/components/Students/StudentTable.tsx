@@ -165,22 +165,15 @@ export default function ModernStudentTable() {
         deleted_by: currentUserId
       };
       const response = await API.Delete(modalStudent.id, payload);
-      if (response && typeof response === 'object' && 'status' in response) {
-        if (response.status === 200) {
-          toast.success("Record deleted successfully", {
-            position: "bottom-center",
-          });
-          GetData(); // Refresh data after delete
-          setModalStudent(null);
-        } else {
-          toast.error("An error occurred", {
-            position: "bottom-center",
-          });
-        }
-      }
+      // API returns successful response with status 200
+      toast.success("Student deleted successfully and moved to deleted records", {
+        position: "bottom-center",
+      });
+      GetData(); // Refresh data after delete
+      setModalStudent(null);
     } catch (error) {
       console.log("Error on Delete", error);
-      toast.error("Failed to delete student", {
+      toast.error("Failed to delete student. Please try again.", {
         position: "bottom-center",
       });
     }

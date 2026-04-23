@@ -13,7 +13,7 @@ from schemas.fee_model import MONTHS
 
 from db import get_session
 from schemas.fee_model import Fee, FeeCreate, FeeResponse, FeeStatus, FeeUpdateRequest, FeeFilter, FilterPaidUnpaid
-from user.user_crud import require_admin_accountant_fee_manager
+from user.user_crud import require_admin_accountant_fee_manager, require_admin
 from user.user_models import User
 
 fee_router = APIRouter(
@@ -119,7 +119,7 @@ async def create_fee(
 async def delete_fee(
     fee_id: int,
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())]
+    current_user: Annotated[User, Depends(require_admin())]
 ):
     """Delete a student fee record by ID (Admin only)."""
     try:
