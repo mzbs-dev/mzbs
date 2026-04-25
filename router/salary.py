@@ -8,9 +8,9 @@ from schemas.salary_model import (
     Salary, SalaryCreate, SalaryResponse, SalaryUpdate,
     TeacherSalary, TeacherSalaryCreate, TeacherSalaryResponse, TeacherSalaryUpdate,
     SalaryLedger, SalaryLedgerCreate, SalaryLedgerResponse, SalaryLedgerUpdate,
-    SalaryPayment, SalaryPaymentCreate, SalaryPaymentResponse,
-    Allowance, AllowanceCreate, AllowanceResponse,
-    Deduction, DeductionCreate, DeductionResponse
+    SalaryPayment, SalaryPaymentCreate, SalaryPaymentResponse, SalaryPaymentUpdate,
+    Allowance, AllowanceCreate, AllowanceResponse, AllowanceUpdate,
+    Deduction, DeductionCreate, DeductionResponse, DeductionUpdate
 )
 from schemas.teacher_names_model import TeacherNames
 from user.user_crud import require_admin_accountant, require_admin
@@ -76,6 +76,65 @@ def ensure_salary_ledger_exists(
     db.refresh(new_ledger)
 
     return new_ledger
+
+
+def recalculate_ledger_totals(
+    db: Session,
+    teacher_id: int,
+    month: int,
+    year: int
+) -> SalaryLedger:
+    """
+    Recalculate and update the totals for a salary ledger based on actual allowances,
+    deductions, and payments for the given teacher/month/year.
+    """
+    # Get or create the ledger
+    ledger = ensure_salary_ledger_exists(db, teacher_id, month, year)
+
+    # Calculate total allowances
+    total_allowances = db.exec(
+        select(Allowance.amount)
+        .where(
+            Allowance.teacher_id == teacher_id,
+            Allowance.month == month,
+            Allowance.year == year
+        )
+    ).all()
+    allowance_total = sum(amount for (amount,) in total_allowances)
+
+    # Calculate total deductions
+    total_deductions = db.exec(
+        select(Deduction.amount)
+        .where(
+            Deduction.teacher_id == teacher_id,
+            Deduction.month == month,
+            Deduction.year == year
+        )
+    ).all()
+    deduction_total = sum(amount for (amount,) in total_deductions)
+
+    # Calculate total payments
+    total_payments = db.exec(
+        select(SalaryPayment.amount)
+        .where(
+            SalaryPayment.teacher_id == teacher_id,
+            SalaryPayment.ledger_id == ledger.id
+        )
+    ).all()
+    total_paid = sum(amount for (amount,) in total_payments)
+
+    # Update ledger with recalculated totals
+    ledger.allowance_total = allowance_total
+    ledger.deduction_total = deduction_total
+    ledger.total_paid = total_paid
+    ledger.net_salary = ledger.base_salary + allowance_total - deduction_total
+    ledger.remaining = ledger.net_salary - total_paid
+
+    db.add(ledger)
+    db.commit()
+    db.refresh(ledger)
+
+    return ledger
 
 
 salary_router = APIRouter(
@@ -427,6 +486,59 @@ def get_teacher_salary_history(
         )
 
 
+@salary_router.put("/teacher-salary/{salary_id}", response_model=TeacherSalaryResponse)
+def update_teacher_salary(
+    salary_id: int,
+    salary_data: TeacherSalaryUpdate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_admin())]
+):
+    """Update a teacher salary record. Admin only."""
+    try:
+        salary = db.exec(
+            select(TeacherSalary)
+            .where(TeacherSalary.id == salary_id)
+        ).first()
+        
+        if not salary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Teacher salary record with ID {salary_id} not found"
+            )
+        
+        # Update fields if provided
+        if salary_data.base_salary is not None:
+            salary.base_salary = salary_data.base_salary
+        if salary_data.effective_from is not None:
+            salary.effective_from = salary_data.effective_from
+        
+        db.add(salary)
+        db.commit()
+        db.refresh(salary)
+        
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == salary.teacher_id)
+        ).first()
+        
+        return TeacherSalaryResponse(
+            id=salary.id,
+            teacher_id=salary.teacher_id,
+            teacher_name=teacher.teacher_name if teacher else None,
+            base_salary=salary.base_salary,
+            effective_from=salary.effective_from,
+            created_at=salary.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating teacher salary: {str(e)}"
+        )
+
+
 @salary_router.delete("/teacher-salary/{salary_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_teacher_salary(
     salary_id: int,
@@ -470,15 +582,14 @@ def get_all_salary_ledgers(
 ):
     """Get all salary ledger records."""
     try:
-        ledgers = db.exec(select(SalaryLedger)).all()
+        # Use JOIN to fetch ledgers with teacher names in a single query (avoids N+1 problem)
+        ledgers = db.exec(
+            select(SalaryLedger, TeacherNames)
+            .join(TeacherNames, SalaryLedger.teacher_id == TeacherNames.teacher_name_id)
+        ).all()
 
         response = []
-        for ledger in ledgers:
-            teacher = db.exec(
-                select(TeacherNames)
-                .where(TeacherNames.teacher_name_id == ledger.teacher_id)
-            ).first()
-
+        for ledger, teacher in ledgers:
             response.append(
                 SalaryLedgerResponse(
                     id=ledger.id,
@@ -845,6 +956,146 @@ def get_ledger_payments(
         )
 
 
+@salary_router.get("/payment/all", response_model=List[SalaryPaymentResponse])
+def get_all_payments(
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_admin_accountant())]
+):
+    """Get all salary payments."""
+    try:
+        payments = db.exec(
+            select(SalaryPayment)
+            .order_by(SalaryPayment.payment_date.desc())
+        ).all()
+
+        response = []
+        for payment in payments:
+            teacher = db.exec(
+                select(TeacherNames)
+                .where(TeacherNames.teacher_name_id == payment.teacher_id)
+            ).first()
+
+            response.append(
+                SalaryPaymentResponse(
+                    id=payment.id,
+                    teacher_id=payment.teacher_id,
+                    teacher_name=teacher.teacher_name if teacher else None,
+                    ledger_id=payment.ledger_id,
+                    amount=payment.amount,
+                    payment_date=payment.payment_date,
+                    created_at=payment.created_at
+                )
+            )
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching all payments: {str(e)}"
+        )
+
+
+@salary_router.delete("/payment/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_salary_payment(
+    payment_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_admin())]
+):
+    """Delete a salary payment. Admin only."""
+    try:
+        payment = db.exec(
+            select(SalaryPayment)
+            .where(SalaryPayment.id == payment_id)
+        ).first()
+
+        if not payment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Salary payment with ID {payment_id} not found"
+            )
+
+        # Store ledger info for recalculation before deletion
+        ledger = db.exec(
+            select(SalaryLedger)
+            .where(SalaryLedger.id == payment.ledger_id)
+        ).first()
+
+        db.delete(payment)
+        db.commit()
+
+        # Recalculate ledger totals after payment deletion
+        if ledger:
+            recalculate_ledger_totals(db, ledger.teacher_id, ledger.month, ledger.year)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting salary payment: {str(e)}"
+        )
+
+
+@salary_router.put("/payment/{payment_id}", response_model=SalaryPaymentResponse)
+def update_salary_payment(
+    payment_id: int,
+    payment_data: SalaryPaymentUpdate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_admin_accountant())]
+):
+    """Update a salary payment record."""
+    try:
+        payment = db.exec(
+            select(SalaryPayment)
+            .where(SalaryPayment.id == payment_id)
+        ).first()
+
+        if not payment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Salary payment with ID {payment_id} not found"
+            )
+
+        if payment_data.amount is not None:
+            payment.amount = payment_data.amount
+        if payment_data.payment_date is not None:
+            payment.payment_date = payment_data.payment_date
+
+        db.add(payment)
+        db.commit()
+        db.refresh(payment)
+
+        # Recalculate ledger totals after payment update
+        ledger = db.exec(
+            select(SalaryLedger)
+            .where(SalaryLedger.id == payment.ledger_id)
+        ).first()
+        if ledger:
+            recalculate_ledger_totals(db, ledger.teacher_id, ledger.month, ledger.year)
+
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == payment.teacher_id)
+        ).first()
+
+        return SalaryPaymentResponse(
+            id=payment.id,
+            teacher_id=payment.teacher_id,
+            teacher_name=teacher.teacher_name if teacher else None,
+            ledger_id=payment.ledger_id,
+            amount=payment.amount,
+            payment_date=payment.payment_date,
+            created_at=payment.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating salary payment: {str(e)}"
+        )
+
+
 # ============================================================================
 # ALLOWANCE MANAGEMENT
 # ============================================================================
@@ -957,6 +1208,141 @@ def get_teacher_allowances(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching teacher allowances: {str(e)}"
+        )
+
+
+@salary_router.get("/allowance/all", response_model=List[AllowanceResponse])
+def get_all_allowances(
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_admin_accountant())]
+):
+    """Get all allowances."""
+    try:
+        allowances = db.exec(
+            select(Allowance)
+            .order_by(Allowance.year.desc(), Allowance.month.desc())
+        ).all()
+
+        response = []
+        for allowance in allowances:
+            teacher = db.exec(
+                select(TeacherNames)
+                .where(TeacherNames.teacher_name_id == allowance.teacher_id)
+            ).first()
+
+            response.append(
+                AllowanceResponse(
+                    id=allowance.id,
+                    teacher_id=allowance.teacher_id,
+                    teacher_name=teacher.teacher_name if teacher else None,
+                    month=allowance.month,
+                    year=allowance.year,
+                    amount=allowance.amount,
+                    reason=allowance.reason,
+                    created_at=allowance.created_at
+                )
+            )
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching all allowances: {str(e)}"
+        )
+
+
+@salary_router.delete("/allowance/{allowance_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_allowance(
+    allowance_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_admin())]
+):
+    """Delete an allowance record. Admin only."""
+    try:
+        allowance = db.exec(
+            select(Allowance)
+            .where(Allowance.id == allowance_id)
+        ).first()
+
+        if not allowance:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Allowance with ID {allowance_id} not found"
+            )
+
+        # Store values for ledger recalculation before deletion
+        teacher_id = allowance.teacher_id
+        month = allowance.month
+        year = allowance.year
+
+        db.delete(allowance)
+        db.commit()
+
+        # Recalculate ledger totals after allowance deletion
+        recalculate_ledger_totals(db, teacher_id, month, year)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting allowance: {str(e)}"
+        )
+
+
+@salary_router.put("/allowance/{allowance_id}", response_model=AllowanceResponse)
+def update_allowance(
+    allowance_id: int,
+    allowance_data: AllowanceUpdate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_admin_accountant())]
+):
+    """Update an allowance record."""
+    try:
+        allowance = db.exec(
+            select(Allowance)
+            .where(Allowance.id == allowance_id)
+        ).first()
+
+        if not allowance:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Allowance with ID {allowance_id} not found"
+            )
+
+        if allowance_data.amount is not None:
+            allowance.amount = allowance_data.amount
+        if allowance_data.reason is not None:
+            allowance.reason = allowance_data.reason
+
+        db.add(allowance)
+        db.commit()
+        db.refresh(allowance)
+
+        # Recalculate ledger totals after allowance update
+        recalculate_ledger_totals(db, allowance.teacher_id, allowance.month, allowance.year)
+
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == allowance.teacher_id)
+        ).first()
+
+        return AllowanceResponse(
+            id=allowance.id,
+            teacher_id=allowance.teacher_id,
+            teacher_name=teacher.teacher_name if teacher else None,
+            month=allowance.month,
+            year=allowance.year,
+            amount=allowance.amount,
+            reason=allowance.reason,
+            created_at=allowance.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating allowance: {str(e)}"
         )
 
 
@@ -1075,4 +1461,143 @@ def get_teacher_deductions(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching teacher deductions: {str(e)}"
+        )
+
+
+@salary_router.get("/deduction/all", response_model=List[DeductionResponse])
+def get_all_deductions(
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_admin_accountant())]
+):
+    """Get all deductions."""
+    try:
+        deductions = db.exec(
+            select(Deduction)
+            .order_by(Deduction.year.desc(), Deduction.month.desc())
+        ).all()
+
+        response = []
+        for deduction in deductions:
+            teacher = db.exec(
+                select(TeacherNames)
+                .where(TeacherNames.teacher_name_id == deduction.teacher_id)
+            ).first()
+
+            response.append(
+                DeductionResponse(
+                    id=deduction.id,
+                    teacher_id=deduction.teacher_id,
+                    teacher_name=teacher.teacher_name if teacher else None,
+                    month=deduction.month,
+                    year=deduction.year,
+                    amount=deduction.amount,
+                    type=deduction.type,
+                    reason=deduction.reason,
+                    created_at=deduction.created_at
+                )
+            )
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching all deductions: {str(e)}"
+        )
+
+
+@salary_router.delete("/deduction/{deduction_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_deduction(
+    deduction_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_admin())]
+):
+    """Delete a deduction record. Admin only."""
+    try:
+        deduction = db.exec(
+            select(Deduction)
+            .where(Deduction.id == deduction_id)
+        ).first()
+
+        if not deduction:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Deduction with ID {deduction_id} not found"
+            )
+
+        # Store values for ledger recalculation before deletion
+        teacher_id = deduction.teacher_id
+        month = deduction.month
+        year = deduction.year
+
+        db.delete(deduction)
+        db.commit()
+
+        # Recalculate ledger totals after deduction deletion
+        recalculate_ledger_totals(db, teacher_id, month, year)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting deduction: {str(e)}"
+        )
+
+
+@salary_router.put("/deduction/{deduction_id}", response_model=DeductionResponse)
+def update_deduction(
+    deduction_id: int,
+    deduction_data: DeductionUpdate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_admin_accountant())]
+):
+    """Update a deduction record."""
+    try:
+        deduction = db.exec(
+            select(Deduction)
+            .where(Deduction.id == deduction_id)
+        ).first()
+
+        if not deduction:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Deduction with ID {deduction_id} not found"
+            )
+
+        if deduction_data.amount is not None:
+            deduction.amount = deduction_data.amount
+        if deduction_data.type is not None:
+            deduction.type = deduction_data.type
+        if deduction_data.reason is not None:
+            deduction.reason = deduction_data.reason
+
+        db.add(deduction)
+        db.commit()
+        db.refresh(deduction)
+
+        # Recalculate ledger totals after deduction update
+        recalculate_ledger_totals(db, deduction.teacher_id, deduction.month, deduction.year)
+
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == deduction.teacher_id)
+        ).first()
+
+        return DeductionResponse(
+            id=deduction.id,
+            teacher_id=deduction.teacher_id,
+            teacher_name=teacher.teacher_name if teacher else None,
+            month=deduction.month,
+            year=deduction.year,
+            amount=deduction.amount,
+            type=deduction.type,
+            reason=deduction.reason,
+            created_at=deduction.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating deduction: {str(e)}"
         )

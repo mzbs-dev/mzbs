@@ -134,9 +134,15 @@ const menuList: MenuItem[] = [
       },
       {
         id: 35,
-        name: "View Salary",
+        name: "Salary Logs",
         icon: GoDotFill,
         path: "/dashboard/salary/view",
+      },
+      {
+        id: 32.1,
+        name: "View Salary",
+        icon: GoDotFill,
+        path: "/dashboard/salary/index",
       },
     ],
   },

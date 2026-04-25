@@ -312,6 +312,16 @@ export namespace SalaryAPI {
     }
   };
 
+  export const getAllSalaryPayments = async (): Promise<SalaryPaymentResponse[]> => {
+    try {
+      const response = await axiosInstance.get<SalaryPaymentResponse[]>("/salary/payment/all");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching all salary payments:", error);
+      throw error;
+    }
+  };
+
   // Allowance Management
   export const createAllowance = async (data: AllowanceCreate): Promise<AllowanceResponse> => {
     try {
@@ -342,6 +352,16 @@ export namespace SalaryAPI {
     }
   };
 
+  export const getAllAllowances = async (): Promise<AllowanceResponse[]> => {
+    try {
+      const response = await axiosInstance.get<AllowanceResponse[]>("/salary/allowance/all");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching all allowances:", error);
+      throw error;
+    }
+  };
+
   // Deduction Management
   export const createDeduction = async (data: DeductionCreate): Promise<DeductionResponse> => {
     try {
@@ -368,6 +388,102 @@ export namespace SalaryAPI {
       return response.data;
     } catch (error) {
       console.error(`Error fetching deductions for teacher ${teacherId}:`, error);
+      throw error;
+    }
+  };
+
+  export const getAllDeductions = async (): Promise<DeductionResponse[]> => {
+    try {
+      const response = await axiosInstance.get<DeductionResponse[]>("/salary/deduction/all");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching all deductions:", error);
+      throw error;
+    }
+  };
+
+  // Delete Methods
+  export const deleteSalaryPayment = async (paymentId: number): Promise<void> => {
+    try {
+      await axiosInstance.delete(`/salary/payment/${paymentId}`);
+    } catch (error) {
+      console.error(`Error deleting salary payment ${paymentId}:`, error);
+      throw error;
+    }
+  };
+
+  export const updateSalaryPayment = async (
+    paymentId: number,
+    data: Partial<SalaryPaymentResponse>
+  ): Promise<SalaryPaymentResponse> => {
+    try {
+      const response = await axiosInstance.put<SalaryPaymentResponse>(
+        `/salary/payment/${paymentId}`,
+        {
+          amount: data.amount,
+          payment_date: data.payment_date,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating salary payment ${paymentId}:`, error);
+      throw error;
+    }
+  };
+
+  export const deleteAllowance = async (allowanceId: number): Promise<void> => {
+    try {
+      await axiosInstance.delete(`/salary/allowance/${allowanceId}`);
+    } catch (error) {
+      console.error(`Error deleting allowance ${allowanceId}:`, error);
+      throw error;
+    }
+  };
+
+  export const updateAllowance = async (
+    allowanceId: number,
+    data: Partial<AllowanceResponse>
+  ): Promise<AllowanceResponse> => {
+    try {
+      const response = await axiosInstance.put<AllowanceResponse>(
+        `/salary/allowance/${allowanceId}`,
+        {
+          amount: data.amount,
+          reason: data.reason,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating allowance ${allowanceId}:`, error);
+      throw error;
+    }
+  };
+
+  export const deleteDeduction = async (deductionId: number): Promise<void> => {
+    try {
+      await axiosInstance.delete(`/salary/deduction/${deductionId}`);
+    } catch (error) {
+      console.error(`Error deleting deduction ${deductionId}:`, error);
+      throw error;
+    }
+  };
+
+  export const updateDeduction = async (
+    deductionId: number,
+    data: Partial<DeductionResponse>
+  ): Promise<DeductionResponse> => {
+    try {
+      const response = await axiosInstance.put<DeductionResponse>(
+        `/salary/deduction/${deductionId}`,
+        {
+          amount: data.amount,
+          type: data.type,
+          reason: data.reason,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating deduction ${deductionId}:`, error);
       throw error;
     }
   };

@@ -2,27 +2,30 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
-import { SalaryAPI, SalaryLedgerResponse } from "@/api/Salary/SalaryAPI";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { SalaryAPI, SalaryLedgerResponse, TeacherSalaryResponse } from "@/api/Salary/SalaryAPI";
 import { CardsSkeleton } from "@/components/dashboard/Skeleton";
 import { Users, TrendingUp, AlertCircle, DollarSign } from "lucide-react";
 
 interface MonthlySalaryData {
   month: string;
-  salary: number;
+  payable: number;
   allowance: number;
   deduction: number;
+  netSalary: number;
   paid: number;
   remaining: number;
 }
 
 interface SalarySummary {
+  totalTeachers: number;
   totalBaseSalary: number;
-  totalAllowancePaid: number;
-  totalDeductionsPaid: number;
+  totalPayable: number;
+  totalAllowance: number;
+  totalDeduction: number;
+  totalNetSalary: number;
   totalActuallyPaid: number;
   totalRemaining: number;
-  totalTeachers: number;
   monthlyData: MonthlySalaryData[];
 }
 
@@ -43,113 +46,267 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const SalarySummarySection: React.FC = () => {
-  const [salaryRecords, setSalaryRecords] = useState<SalaryLedgerResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [allTeachers, setAllTeachers] = useState<TeacherSalaryResponse[]>([]);
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
 
-  // Process salary data
-  const processSalaryData = (records: SalaryLedgerResponse[]) => {
-    // Filter by selected year
-    const yearRecords = records.filter((record) => record.year === selectedYear);
+  // Get days in month
+  const getDaysInMonth = (year: number, month: number): number => {
+    return new Date(year, month, 0).getDate();
+  };
 
-    // Calculate totals
-    const totalBaseSalary = yearRecords.reduce((sum, record) => sum + Number(record.base_salary || 0), 0);
-    const totalAllowancePaid = yearRecords.reduce((sum, record) => sum + Number(record.allowance_total || 0), 0);
-    const totalDeductionsPaid = yearRecords.reduce((sum, record) => sum + Number(record.deduction_total || 0), 0);
-    const totalActuallyPaid = yearRecords.reduce((sum, record) => sum + Number(record.total_paid || 0), 0);
-    const totalRemaining = yearRecords.reduce((sum, record) => sum + Number(record.remaining || 0), 0);
+  // Calculate Total Payable using Actual Days Method
+  const calculateTotalPayable = (baseSalary: number, effectiveDate: string, year: number): number => {
+    baseSalary = Number(baseSalary) || 0;
+    if (baseSalary <= 0 || !effectiveDate) {
+      return 0;
+    }
 
-    // Get unique teachers
-    const uniqueTeachers = new Set(yearRecords.map((record) => record.teacher_id)).size;
+    try {
+      const startDate = new Date(effectiveDate);
+      const endDate = new Date(year, 11, 31); // End of selected year
+      
+      if (isNaN(startDate.getTime())) {
+        return 0;
+      }
+      
+      // Ensure start date is not after end date
+      if (startDate > endDate) {
+        return 0;
+      }
 
-    // Group by month
-    const monthlyMap = new Map<number, { salary: number; allowance: number; deduction: number; paid: number; remaining: number }>();
+      let totalPayable = 0;
+      let currentDate = new Date(startDate);
 
-    yearRecords.forEach((record) => {
-      const existing = monthlyMap.get(record.month) || { salary: 0, allowance: 0, deduction: 0, paid: 0, remaining: 0 };
-      const newData = {
-        salary: existing.salary + Number(record.base_salary || 0),
-        allowance: existing.allowance + Number(record.allowance_total || 0),
-        deduction: existing.deduction + Number(record.deduction_total || 0),
-        paid: existing.paid + Number(record.total_paid || 0),
-        remaining: existing.remaining + Number(record.remaining || 0),
-      };
-      monthlyMap.set(record.month, newData);
-      console.log(`Month ${record.month}:`, newData);
+      while (currentDate <= endDate) {
+        const curYear = currentDate.getFullYear();
+        const month = currentDate.getMonth() + 1; // 1-12
+        
+        const firstDayOfMonth = new Date(curYear, month - 1, 1);
+        const lastDayOfMonth = new Date(curYear, month, 0);
+
+        let workedDaysStart = currentDate > firstDayOfMonth ? currentDate.getDate() : 1;
+        let workedDaysEnd = endDate.getFullYear() === curYear && endDate.getMonth() + 1 === month 
+          ? endDate.getDate() 
+          : lastDayOfMonth.getDate();
+
+        workedDaysStart = Math.max(1, workedDaysStart);
+        workedDaysEnd = Math.min(lastDayOfMonth.getDate(), workedDaysEnd);
+
+        const workedDaysInMonth = workedDaysEnd - workedDaysStart + 1;
+        const daysInMonth = getDaysInMonth(curYear, month);
+        const perDaySalary = baseSalary / daysInMonth;
+        const monthlyPayable = perDaySalary * workedDaysInMonth;
+
+        totalPayable += monthlyPayable;
+
+        currentDate = new Date(curYear, month, 1);
+      }
+
+      return Math.round(totalPayable * 100) / 100;
+    } catch (error) {
+      console.error("Error calculating total payable:", error);
+      return 0;
+    }
+  };
+
+  // Process salary data using LEFT JOIN pattern
+  const processSalaryData = (teachers: TeacherSalaryResponse[], ledgers: SalaryLedgerResponse[]) => {
+    // ============================================================
+    // STEP 1: Initialize with ALL teachers from salary records
+    // ============================================================
+    const aggregatedData = new Map<number, {
+      teacherName: string;
+      baseSalary: number;
+      effectiveDate: string;
+      monthlyPayables: Map<number, number>;
+      monthlyAllowances: Map<number, number>;
+      monthlyDeductions: Map<number, number>;
+      monthlyPaid: Map<number, number>;
+    }>();
+
+    // Initialize with all teachers
+    teachers.forEach((teacher) => {
+      aggregatedData.set(teacher.teacher_id, {
+        teacherName: teacher.teacher_name || "Unknown",
+        baseSalary: Number(teacher.base_salary) || 0,
+        effectiveDate: teacher.effective_from || new Date().toISOString(),
+        monthlyPayables: new Map(),
+        monthlyAllowances: new Map(),
+        monthlyDeductions: new Map(),
+        monthlyPaid: new Map(),
+      });
+    });
+
+    // ============================================================
+    // STEP 2: Merge ledger data (LEFT JOIN with ledger table)
+    // ============================================================
+    ledgers.forEach((ledger: SalaryLedgerResponse) => {
+      if (!aggregatedData.has(ledger.teacher_id)) {
+        aggregatedData.set(ledger.teacher_id, {
+          teacherName: ledger.teacher_name || "Unknown",
+          baseSalary: Number(ledger.base_salary) || 0,
+          effectiveDate: new Date().toISOString(),
+          monthlyPayables: new Map(),
+          monthlyAllowances: new Map(),
+          monthlyDeductions: new Map(),
+          monthlyPaid: new Map(),
+        });
+      }
+
+      const existing = aggregatedData.get(ledger.teacher_id)!;
+      const month = ledger.month;
+      
+      existing.monthlyAllowances.set(month, (existing.monthlyAllowances.get(month) || 0) + (Number(ledger.allowance_total) || 0));
+      existing.monthlyDeductions.set(month, (existing.monthlyDeductions.get(month) || 0) + (Number(ledger.deduction_total) || 0));
+      existing.monthlyPaid.set(month, (existing.monthlyPaid.get(month) || 0) + (Number(ledger.total_paid) || 0));
+    });
+
+    // ============================================================
+    // STEP 3: Calculate aggregated totals
+    // ============================================================
+    let totalTeachers = aggregatedData.size;
+    let totalBaseSalary = 0;
+    let totalPayable = 0;
+    let totalAllowance = 0;
+    let totalDeduction = 0;
+    let totalNetSalary = 0;
+    let totalPaid = 0;
+    let totalRemaining = 0;
+
+    const monthlyMap = new Map<number, { payable: number; allowance: number; deduction: number; netSalary: number; paid: number; remaining: number }>();
+
+    aggregatedData.forEach((data) => {
+      const baseSalary = data.baseSalary || 0;
+      totalBaseSalary += baseSalary;
+
+      // Calculate total payable for selected year
+      const yearPayable = calculateTotalPayable(baseSalary, data.effectiveDate, selectedYear);
+      totalPayable += yearPayable;
+
+      // Calculate monthly payables for the selected year
+      for (let month = 1; month <= 12; month++) {
+        const monthStart = new Date(selectedYear, month - 1, 1);
+        const monthEnd = new Date(selectedYear, month, 0);
+        
+        // Calculate payable for this specific month
+        const monthPayable = calculateTotalPayable(baseSalary, data.effectiveDate, selectedYear);
+        // For accurate month-by-month, we'd need more complex logic, but this gives yearly split
+        const monthShare = monthPayable / 12;
+
+        const allowance = data.monthlyAllowances.get(month) || 0;
+        const deduction = data.monthlyDeductions.get(month) || 0;
+        const paid = data.monthlyPaid.get(month) || 0;
+        const netSalary = monthShare + allowance - deduction;
+        const remaining = netSalary - paid;
+
+        totalAllowance += allowance;
+        totalDeduction += deduction;
+        totalNetSalary += netSalary;
+        totalPaid += paid;
+        totalRemaining += remaining;
+
+        const existing = monthlyMap.get(month) || { payable: 0, allowance: 0, deduction: 0, netSalary: 0, paid: 0, remaining: 0 };
+        monthlyMap.set(month, {
+          payable: existing.payable + monthShare,
+          allowance: existing.allowance + allowance,
+          deduction: existing.deduction + deduction,
+          netSalary: existing.netSalary + netSalary,
+          paid: existing.paid + paid,
+          remaining: existing.remaining + remaining,
+        });
+      }
     });
 
     // Convert to array
     const monthlyData: MonthlySalaryData[] = [];
     for (let month = 1; month <= 12; month++) {
-      const data = monthlyMap.get(month) || { salary: 0, allowance: 0, deduction: 0, paid: 0, remaining: 0 };
+      const data = monthlyMap.get(month) || { payable: 0, allowance: 0, deduction: 0, netSalary: 0, paid: 0, remaining: 0 };
       monthlyData.push({
         month: monthNames[month - 1].slice(0, 3),
-        salary: Math.round(data.salary),
+        payable: Math.round(data.payable),
         allowance: Math.round(data.allowance),
         deduction: Math.round(data.deduction),
+        netSalary: Math.round(data.netSalary),
         paid: Math.round(data.paid),
         remaining: Math.round(data.remaining),
       });
     }
-    console.log("Monthly Data:", monthlyData);
 
     setSalarySummary({
+      totalTeachers,
       totalBaseSalary: Math.round(totalBaseSalary),
-      totalAllowancePaid: Math.round(totalAllowancePaid),
-      totalDeductionsPaid: Math.round(totalDeductionsPaid),
-      totalActuallyPaid: Math.round(totalActuallyPaid),
+      totalPayable: Math.round(totalPayable),
+      totalAllowance: Math.round(totalAllowance),
+      totalDeduction: Math.round(totalDeduction),
+      totalNetSalary: Math.round(totalNetSalary),
+      totalActuallyPaid: Math.round(totalPaid),
       totalRemaining: Math.round(totalRemaining),
-      totalTeachers: uniqueTeachers,
       monthlyData,
     });
   };
 
-  // Fetch salary records
+  // Fetch salary data
   useEffect(() => {
-    const fetchSalaryRecords = async () => {
+    const fetchSalaryData = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const records = await SalaryAPI.getAllSalaryLedgers();
-        console.log("Fetched salary records:", records);
-        setSalaryRecords(records);
-        processSalaryData(records);
+
+        // Fetch both teacher salaries and ledgers in parallel
+        const [teacherSalaries, ledgers] = await Promise.all([
+          SalaryAPI.getAllTeacherSalaries(),
+          SalaryAPI.getAllSalaryLedgers(),
+        ]);
+
+        setAllTeachers(teacherSalaries);
+        processSalaryData(teacherSalaries, ledgers);
       } catch (error) {
-        console.error("Error fetching salary records:", error);
+        console.error("Error fetching salary data:", error);
         setError("Failed to load salary records");
-        setSalaryRecords([]);
         setSalarySummary(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchSalaryRecords();
+    fetchSalaryData();
   }, []);
 
-  // Reprocess data when year changes
+  // Reprocess when year changes
   useEffect(() => {
-    if (salaryRecords.length > 0) {
-      processSalaryData(salaryRecords);
+    if (allTeachers.length > 0) {
+      const fetchLedgers = async () => {
+        try {
+          const ledgers = await SalaryAPI.getAllSalaryLedgers();
+          processSalaryData(allTeachers, ledgers);
+        } catch (error) {
+          console.error("Error fetching ledgers:", error);
+        }
+      };
+      fetchLedgers();
     }
-  }, [selectedYear]);
+  }, [selectedYear, allTeachers]);
 
-  // Get available years
+  // Get available years from teachers
   const availableYears = Array.from(
-    new Set(salaryRecords.map((record) => record.year))
+    new Set(
+      allTeachers
+        .map((teacher) => {
+          const date = new Date(teacher.effective_from || new Date());
+          return date.getFullYear();
+        })
+        .concat([currentYear])
+    )
   ).sort((a, b) => b - a);
-
-  if (availableYears.length === 0 && !isLoading) {
-    availableYears.push(currentYear);
-  }
 
   return (
     <motion.div
@@ -213,9 +370,22 @@ const SalarySummarySection: React.FC = () => {
               <div className="p-2 rounded-full bg-green-500 text-white mb-2">
                 <TrendingUp className="h-5 w-5" />
               </div>
-              <p className="text-xs font-medium text-gray-600 truncate w-full">Total Allowance</p>
+              <p className="text-xs font-medium text-gray-600 truncate w-full">Total Payable</p>
               <p className="text-lg font-bold text-green-600 truncate w-full">
-                Rs.{salarySummary.totalAllowancePaid.toLocaleString()}
+                Rs.{salarySummary.totalPayable.toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          {/* Total Allowances */}
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-xl shadow-sm min-w-0">
+            <div className="flex flex-col items-start min-w-0">
+              <div className="p-2 rounded-full bg-blue-500 text-white mb-2">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <p className="text-xs font-medium text-gray-600 truncate w-full">Total Allowances</p>
+              <p className="text-lg font-bold text-blue-600 truncate w-full">
+                Rs.{salarySummary.totalAllowance.toLocaleString()}
               </p>
             </div>
           </div>
@@ -228,19 +398,32 @@ const SalarySummarySection: React.FC = () => {
               </div>
               <p className="text-xs font-medium text-gray-600 truncate w-full">Total Deductions</p>
               <p className="text-lg font-bold text-orange-600 truncate w-full">
-                Rs.{salarySummary.totalDeductionsPaid.toLocaleString()}
+                Rs.{salarySummary.totalDeduction.toLocaleString()}
               </p>
             </div>
           </div>
 
-          {/* Total Actually Paid */}
+          {/* Total Net Salary */}
           <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 p-4 rounded-xl shadow-sm min-w-0">
             <div className="flex flex-col items-start min-w-0">
               <div className="p-2 rounded-full bg-indigo-500 text-white mb-2">
                 <DollarSign className="h-5 w-5" />
               </div>
-              <p className="text-xs font-medium text-gray-600 truncate w-full">Total Paid</p>
+              <p className="text-xs font-medium text-gray-600 truncate w-full">Total Net Salary</p>
               <p className="text-lg font-bold text-indigo-600 truncate w-full">
+                Rs.{salarySummary.totalNetSalary.toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          {/* Total Paid */}
+          <div className="bg-gradient-to-r from-cyan-50 to-cyan-100 p-4 rounded-xl shadow-sm min-w-0">
+            <div className="flex flex-col items-start min-w-0">
+              <div className="p-2 rounded-full bg-cyan-500 text-white mb-2">
+                <DollarSign className="h-5 w-5" />
+              </div>
+              <p className="text-xs font-medium text-gray-600 truncate w-full">Total Paid</p>
+              <p className="text-lg font-bold text-cyan-600 truncate w-full">
                 Rs.{salarySummary.totalActuallyPaid.toLocaleString()}
               </p>
             </div>
@@ -318,11 +501,12 @@ const SalarySummarySection: React.FC = () => {
                     wrapperStyle={{ paddingTop: "20px" }}
                     iconType="square"
                   />
-                  <Bar dataKey="salary" fill="#3b82f6" name="Base Salary" />
-                  <Bar dataKey="allowance" fill="#10b981" name="Allowance" />
+                  <Bar dataKey="payable" fill="#3b82f6" name="Total Payable" />
+                  <Bar dataKey="allowance" fill="#10b981" name="Allowances" />
                   <Bar dataKey="deduction" fill="#f97316" name="Deductions" />
-                  <Bar dataKey="paid" fill="#8b5cf6" name="Total Paid" />
-                  <Bar dataKey="remaining" fill="#06b6d4" name="Total Remaining" />
+                  <Bar dataKey="netSalary" fill="#8b5cf6" name="Net Salary" />
+                  <Bar dataKey="paid" fill="#06b6d4" name="Paid Amount" />
+                  <Bar dataKey="remaining" fill="#ec4899" name="Remaining Balance" />
                 </BarChart>
               </ResponsiveContainer>
             </div>

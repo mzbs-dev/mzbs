@@ -1,10 +1,10 @@
-import SalaryLogs from '@/components/Salary/SalaryLogs'
+import ViewSalary from '@/components/Salary/ViewSalary'
 import React from 'react'
 
 const page = () => {
   return (
     <div>
-        <SalaryLogs />
+        <ViewSalary />
     </div>
   )
 }

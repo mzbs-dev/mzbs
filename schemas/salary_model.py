@@ -125,6 +125,11 @@ class SalaryPaymentCreate(SQLModel):
     payment_date: str
 
 
+class SalaryPaymentUpdate(SQLModel):
+    amount: Optional[Decimal] = None
+    payment_date: Optional[str] = None
+
+
 class SalaryPaymentResponse(SalaryPaymentBase, SQLModel):
     teacher_name: Optional[str] = None
 
@@ -155,6 +160,11 @@ class AllowanceCreate(SQLModel):
     month: int
     year: int
     amount: Decimal
+    reason: Optional[str] = None
+
+
+class AllowanceUpdate(SQLModel):
+    amount: Optional[Decimal] = None
     reason: Optional[str] = None
 
 
@@ -190,6 +200,12 @@ class DeductionCreate(SQLModel):
     year: int
     amount: Decimal
     type: str
+    reason: Optional[str] = None
+
+
+class DeductionUpdate(SQLModel):
+    amount: Optional[Decimal] = None
+    type: Optional[str] = None
     reason: Optional[str] = None
 
 
