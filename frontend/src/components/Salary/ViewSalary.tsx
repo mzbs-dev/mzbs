@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
-import { Search, Download, Eye, RefreshCw } from "lucide-react";
+import { Search, Printer, Eye, RefreshCw } from "lucide-react";
 import { SalaryAPI, SalaryLedgerResponse, TeacherSalaryResponse } from "@/api/Salary/SalaryAPI";
 
 interface TeacherSalarySummary {
@@ -228,53 +228,70 @@ const ViewSalary = () => {
     setFilteredSummaries(filtered);
   }, [searchTerm, summaries]);
 
-  const handleExport = () => {
+  const handlePrint = () => {
     try {
-      const headers = [
-        "Serial No",
-        "Teacher Name",
-        "Base Salary",
-        "Effective Date",
-        "Total Payable",
-        "Allowance",
-        "Deduction",
-        "Net Salary",
-        "Paid Amount",
-        "Remaining Balance",
-      ];
+      const rows = filteredSummaries.map((summary, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${summary.teacherName}</td>
+          <td>Rs. ${Math.round(summary.baseSalary).toLocaleString("en-US")}</td>
+          <td>${summary.effectiveDate}</td>
+          <td>Rs. ${Math.round(summary.totalPayable).toLocaleString("en-US")}</td>
+          <td>Rs. ${Math.round(summary.totalAllowance).toLocaleString("en-US")}</td>
+          <td>Rs. ${Math.round(summary.totalDeduction).toLocaleString("en-US")}</td>
+          <td>Rs. ${Math.round(summary.netSalary).toLocaleString("en-US")}</td>
+          <td>Rs. ${Math.round(summary.totalPaid).toLocaleString("en-US")}</td>
+          <td>Rs. ${Math.round(summary.remainingBalance).toLocaleString("en-US")}</td>
+        </tr>
+      `).join("");
 
-      const rows = filteredSummaries.map((summary, index) => [
-        index + 1,
-        summary.teacherName,
-        Math.round(summary.baseSalary),
-        summary.effectiveDate,
-        Math.round(summary.totalPayable),
-        Math.round(summary.totalAllowance),
-        Math.round(summary.totalDeduction),
-        Math.round(summary.netSalary),
-        Math.round(summary.totalPaid),
-        Math.round(summary.remainingBalance),
-      ]);
+      const html = `
+        <html>
+          <head>
+            <title>View Salary Print</title>
+            <style>
+              body { font-family: Arial, sans-serif; color: #111; }
+              table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background: #f5f5f5; }
+            </style>
+          </head>
+          <body>
+            <h1>View Salary Report</h1>
+            <p>Generated on ${new Date().toLocaleString()}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Teacher Name</th>
+                  <th>Base Salary</th>
+                  <th>Effective Date</th>
+                  <th>Total Payable</th>
+                  <th>Allowance</th>
+                  <th>Deduction</th>
+                  <th>Net Salary</th>
+                  <th>Paid Amount</th>
+                  <th>Remaining Balance</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </body>
+        </html>
+      `;
 
-      const csvContent = [
-        headers.join(","),
-        ...rows.map((row) => row.join(",")),
-      ].join("\n");
-
-      const blob = new Blob([csvContent], { type: "text/csv" });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `salary_view_${new Date().toISOString().split("T")[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast.success("Salary data exported successfully!");
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error("Unable to open print window");
+        return;
+      }
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
     } catch (error) {
-      console.error("Error exporting records:", error);
-      toast.error("Failed to export salary data");
+      console.error("Error printing records:", error);
+      toast.error("Failed to print salary data");
     }
   };
 
@@ -338,12 +355,12 @@ const ViewSalary = () => {
                 {isRefreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
               <Button
-                onClick={handleExport}
+                onClick={handlePrint}
                 disabled={filteredSummaries.length === 0}
                 className="flex items-center gap-2 whitespace-nowrap"
               >
-                <Download className="w-4 h-4" />
-                Export
+                <Printer className="w-4 h-4" />
+                Print
               </Button>
             </div>
           </div>

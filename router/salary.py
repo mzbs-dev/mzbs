@@ -99,7 +99,7 @@ def recalculate_ledger_totals(
             Allowance.year == year
         )
     ).all()
-    allowance_total = sum(amount for (amount,) in total_allowances)
+    allowance_total = sum(total_allowances)
 
     # Calculate total deductions
     total_deductions = db.exec(
@@ -110,7 +110,7 @@ def recalculate_ledger_totals(
             Deduction.year == year
         )
     ).all()
-    deduction_total = sum(amount for (amount,) in total_deductions)
+    deduction_total = sum(total_deductions)
 
     # Calculate total payments
     total_payments = db.exec(
@@ -120,7 +120,7 @@ def recalculate_ledger_totals(
             SalaryPayment.ledger_id == ledger.id
         )
     ).all()
-    total_paid = sum(amount for (amount,) in total_payments)
+    total_paid = sum(total_payments)
 
     # Update ledger with recalculated totals
     ledger.allowance_total = allowance_total

@@ -136,7 +136,7 @@ const menuList: MenuItem[] = [
         id: 35,
         name: "Salary Logs",
         icon: GoDotFill,
-        path: "/dashboard/salary/view",
+        path: "/dashboard/salary/logs",
       },
       {
         id: 32.1,

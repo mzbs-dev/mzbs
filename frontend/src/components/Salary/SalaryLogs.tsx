@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
-import { Search, Download, Eye, Edit, Trash2 } from "lucide-react";
+import { Search, Printer, Eye, Edit, Trash2, RefreshCw } from "lucide-react";
 import { SalaryAPI, SalaryPaymentResponse, AllowanceResponse, DeductionResponse, SalaryLedgerResponse } from "@/api/Salary/SalaryAPI";
 import { useRole } from "@/context/RoleContext";
 
@@ -50,6 +50,7 @@ const SalaryLogs = () => {
   const [editPaymentDate, setEditPaymentDate] = useState<string>("");
   const [editDeductionType, setEditDeductionType] = useState<string>("");
 
+  // FIX: selectedMonth stores 1-based month value (1=Jan, 12=Dec) or null for "All"
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
@@ -58,163 +59,138 @@ const SalaryLogs = () => {
     "July", "August", "September", "October", "November", "December"
   ];
 
-  // Fetch and merge all transaction data
+  // FIX: fetchTransactions extracted as useCallback so it can be called
+  // from the refresh button and after delete/edit without a full page reload
   const fetchTransactions = useCallback(async () => {
-      try {
-        setIsLoading(true);
-        
-        // Fetch all salary ledgers first to get base information
-        const ledgers = await SalaryAPI.getAllSalaryLedgers();
-        
-        // Create a map of ledger data by teacher/month/year
-        const ledgerMap = new Map<string, SalaryLedgerResponse>();
-        ledgers.forEach(ledger => {
-          const key = `${ledger.teacher_id}-${ledger.month}-${ledger.year}`;
-          ledgerMap.set(key, ledger);
-        });
+    try {
+      setIsLoading(true);
 
-        // Fetch all transactions
-        const [payments, allowances, deductions] = await Promise.all([
-          SalaryAPI.getAllSalaryPayments(),
-          SalaryAPI.getAllAllowances(),
-          SalaryAPI.getAllDeductions()
-        ]);
+      // Fetch all salary ledgers first to get base information
+      const ledgers = await SalaryAPI.getAllSalaryLedgers();
 
-        const mergedTransactions: SalaryTransaction[] = [];
-        const processedLedgers = new Set<string>();
+      // Create a map of ledger data by teacher/month/year for O(1) lookup
+      const ledgerMap = new Map<string, SalaryLedgerResponse>();
+      ledgers.forEach(ledger => {
+        const key = `${ledger.teacher_id}-${ledger.month}-${ledger.year}`;
+        ledgerMap.set(key, ledger);
+      });
 
-        // Process each payment
-        payments.forEach(payment => {
-          const key = `${payment.teacher_id}-${payment.ledger_id}`;
-          const ledgerData = ledgers.find(l => l.id === payment.ledger_id);
-          
-          if (ledgerData) {
-            const ledgerKey = `${payment.teacher_id}-${ledgerData.month}-${ledgerData.year}`;
-            processedLedgers.add(ledgerKey);
+      // Fetch all three transaction types in parallel
+      const [payments, allowances, deductions] = await Promise.all([
+        SalaryAPI.getAllSalaryPayments(),
+        SalaryAPI.getAllAllowances(),
+        SalaryAPI.getAllDeductions()
+      ]);
 
-            mergedTransactions.push({
-              id: `payment-${payment.id}`,
-              teacherId: payment.teacher_id,
-              teacherName: payment.teacher_name || "Unknown",
-              month: ledgerData.month,
-              year: ledgerData.year,
-              baseSalary: ledgerData.base_salary,
-              allowanceTotal: ledgerData.allowance_total,
-              deductionTotal: ledgerData.deduction_total,
-              netSalary: ledgerData.net_salary,
-              totalPaid: ledgerData.total_paid,
-              remaining: ledgerData.remaining,
-              transactionType: 'payment',
-              transactionAmount: payment.amount,
-              paymentDate: payment.payment_date,
-              createdAt: payment.created_at
-            });
-          }
-        });
+      const mergedTransactions: SalaryTransaction[] = [];
 
-        // Process each allowance
-        // Note: Allowances are always created with a corresponding ledger via ensure_salary_ledger_exists()
-        // in the backend, so ledgerData should always exist. This check prevents potential display issues.
-        allowances.forEach(allowance => {
-          const ledgerKey = `${allowance.teacher_id}-${allowance.month}-${allowance.year}`;
-          const ledgerData = ledgerMap.get(ledgerKey);
-          
-          if (ledgerData) {
-            processedLedgers.add(ledgerKey);
+      // Process payments — look up ledger by ledger_id
+      payments.forEach(payment => {
+        const ledgerData = ledgers.find(l => l.id === payment.ledger_id);
+        if (ledgerData) {
+          mergedTransactions.push({
+            id: `payment-${payment.id}`,
+            teacherId: payment.teacher_id,
+            teacherName: payment.teacher_name || "Unknown",
+            month: ledgerData.month,
+            year: ledgerData.year,
+            baseSalary: ledgerData.base_salary,
+            allowanceTotal: ledgerData.allowance_total,
+            deductionTotal: ledgerData.deduction_total,
+            netSalary: ledgerData.net_salary,
+            totalPaid: ledgerData.total_paid,
+            remaining: ledgerData.remaining,
+            transactionType: 'payment',
+            transactionAmount: payment.amount,
+            paymentDate: payment.payment_date,
+            createdAt: payment.created_at
+          });
+        }
+      });
 
-            mergedTransactions.push({
-              id: `allowance-${allowance.id}`,
-              teacherId: allowance.teacher_id,
-              teacherName: allowance.teacher_name || "Unknown",
-              month: allowance.month,
-              year: allowance.year,
-              baseSalary: ledgerData.base_salary,
-              allowanceTotal: ledgerData.allowance_total,
-              deductionTotal: ledgerData.deduction_total,
-              netSalary: ledgerData.net_salary,
-              totalPaid: ledgerData.total_paid,
-              remaining: ledgerData.remaining,
-              transactionType: 'allowance',
-              transactionAmount: allowance.amount,
-              transactionReason: allowance.reason,
-              createdAt: allowance.created_at
-            });
-          }
-        });
+      // Process allowances — look up ledger by teacher/month/year key
+      // Note: Allowances always have a ledger via ensure_salary_ledger_exists() on the backend
+      allowances.forEach(allowance => {
+        const ledgerKey = `${allowance.teacher_id}-${allowance.month}-${allowance.year}`;
+        const ledgerData = ledgerMap.get(ledgerKey);
+        if (ledgerData) {
+          mergedTransactions.push({
+            id: `allowance-${allowance.id}`,
+            teacherId: allowance.teacher_id,
+            teacherName: allowance.teacher_name || "Unknown",
+            month: allowance.month,
+            year: allowance.year,
+            baseSalary: ledgerData.base_salary,
+            allowanceTotal: ledgerData.allowance_total,
+            deductionTotal: ledgerData.deduction_total,
+            netSalary: ledgerData.net_salary,
+            totalPaid: ledgerData.total_paid,
+            remaining: ledgerData.remaining,
+            transactionType: 'allowance',
+            transactionAmount: allowance.amount,
+            transactionReason: allowance.reason,
+            createdAt: allowance.created_at
+          });
+        }
+      });
 
-        // Process each deduction
-        deductions.forEach(deduction => {
-          const ledgerKey = `${deduction.teacher_id}-${deduction.month}-${deduction.year}`;
-          const ledgerData = ledgerMap.get(ledgerKey);
-          
-          if (ledgerData) {
-            processedLedgers.add(ledgerKey);
+      // Process deductions — look up ledger by teacher/month/year key
+      deductions.forEach(deduction => {
+        const ledgerKey = `${deduction.teacher_id}-${deduction.month}-${deduction.year}`;
+        const ledgerData = ledgerMap.get(ledgerKey);
+        if (ledgerData) {
+          mergedTransactions.push({
+            id: `deduction-${deduction.id}`,
+            teacherId: deduction.teacher_id,
+            teacherName: deduction.teacher_name || "Unknown",
+            month: deduction.month,
+            year: deduction.year,
+            baseSalary: ledgerData.base_salary,
+            allowanceTotal: ledgerData.allowance_total,
+            deductionTotal: ledgerData.deduction_total,
+            netSalary: ledgerData.net_salary,
+            totalPaid: ledgerData.total_paid,
+            remaining: ledgerData.remaining,
+            transactionType: 'deduction',
+            transactionAmount: deduction.amount,
+            deductionType: deduction.type,
+            transactionReason: deduction.reason,
+            createdAt: deduction.created_at
+          });
+        }
+      });
 
-            mergedTransactions.push({
-              id: `deduction-${deduction.id}`,
-              teacherId: deduction.teacher_id,
-              teacherName: deduction.teacher_name || "Unknown",
-              month: deduction.month,
-              year: deduction.year,
-              baseSalary: ledgerData.base_salary,
-              allowanceTotal: ledgerData.allowance_total,
-              deductionTotal: ledgerData.deduction_total,
-              netSalary: ledgerData.net_salary,
-              totalPaid: ledgerData.total_paid,
-              remaining: ledgerData.remaining,
-              transactionType: 'deduction',
-              transactionAmount: deduction.amount,
-              deductionType: deduction.type,
-              transactionReason: deduction.reason,
-              createdAt: deduction.created_at
-            });
-          }
-        });
+      // FIX: Removed the "ledger-only" block that was pushing empty ledger rows
+      // with transactionType: 'payment' — this was polluting the payment tab
+      // with rows that had no transactionAmount, causing display issues.
 
-        // Add ledgers that don't have any transactions
-        ledgers.forEach(ledger => {
-          const ledgerKey = `${ledger.teacher_id}-${ledger.month}-${ledger.year}`;
-          if (!processedLedgers.has(ledgerKey)) {
-            mergedTransactions.push({
-              id: `ledger-${ledger.id}`,
-              teacherId: ledger.teacher_id,
-              teacherName: ledger.teacher_name || "Unknown",
-              month: ledger.month,
-              year: ledger.year,
-              baseSalary: ledger.base_salary,
-              allowanceTotal: ledger.allowance_total,
-              deductionTotal: ledger.deduction_total,
-              netSalary: ledger.net_salary,
-              totalPaid: ledger.total_paid,
-              remaining: ledger.remaining,
-              transactionType: 'payment',
-              createdAt: ledger.created_at
-            });
-          }
-        });
+      // Sort by date (most recent first)
+      mergedTransactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-        // Sort by date (most recent first)
-        mergedTransactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-        setTransactions(mergedTransactions);
-        setFilteredTransactions(mergedTransactions);
-      } catch (error) {
-        console.error("Error fetching transactions:", error);
-        toast.error("Failed to load salary transactions");
-        setTransactions([]);
-        setFilteredTransactions([]);
-      } finally {
-        setIsLoading(false);
-      }
+      setTransactions(mergedTransactions);
+      setFilteredTransactions(mergedTransactions);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      toast.error("Failed to load salary transactions");
+      setTransactions([]);
+      setFilteredTransactions([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  // Filter transactions based on search and time filters
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
+
+  // Filter transactions based on search, tab, month, and year
   useEffect(() => {
     let filtered = transactions.filter((transaction) =>
       transaction.teacherName?.toLowerCase().includes(searchTerm.toLowerCase()) &&
       transaction.transactionType === activeTab
     );
 
+    // FIX: selectedMonth is now 1-based so no +1 needed
     if (selectedMonth !== null) {
       filtered = filtered.filter((transaction) => transaction.month === selectedMonth);
     }
@@ -229,9 +205,7 @@ const SalaryLogs = () => {
   const getAvailableYears = (): number[] => {
     if (transactions.length === 0) return [new Date().getFullYear()];
     const years = new Set<number>();
-    transactions.forEach((tx) => {
-      years.add(tx.year);
-    });
+    transactions.forEach((tx) => years.add(tx.year));
     return Array.from(years).sort((a, b) => a - b);
   };
 
@@ -268,7 +242,7 @@ const SalaryLogs = () => {
 
       setShowDeleteConfirm(false);
       setSelectedTransaction(null);
-      // Refresh the transactions list
+      // FIX: Re-fetch data in-place instead of full page reload
       await fetchTransactions();
     } catch (error) {
       console.error('Delete error:', error);
@@ -306,7 +280,7 @@ const SalaryLogs = () => {
 
       setShowEditModal(false);
       setSelectedTransaction(null);
-      // Refresh the transactions list
+      // FIX: Re-fetch data in-place instead of full page reload
       await fetchTransactions();
     } catch (error) {
       console.error('Update error:', error);
@@ -316,79 +290,104 @@ const SalaryLogs = () => {
     }
   };
 
-  const handleExport = () => {
-    try {
-      const headers = [
-        "Serial No",
-        "Teacher Name",
-        "Month",
-        "Year",
-        "Base Salary",
-        "Allowance",
-        "Deduction",
-        "Net Salary",
-        "Total Paid",
-        "Remaining",
-        "Transaction Type",
-        "Amount",
-      ];
+  // FIX: Export replaced with Print
+  const handlePrint = () => {
+    const tabLabel =
+      activeTab === 'payment' ? 'Paid Salary Log' :
+      activeTab === 'allowance' ? 'Paid Allowance Log' :
+      'Deducted Amount Log';
 
-      const rows = filteredTransactions.map((tx, index) => [
-        index + 1,
-        tx.teacherName,
-        MONTHS[tx.month - 1],
-        tx.year,
-        Math.round(tx.baseSalary),
-        Math.round(tx.allowanceTotal),
-        Math.round(tx.deductionTotal),
-        Math.round(tx.netSalary),
-        Math.round(tx.totalPaid),
-        Math.round(tx.remaining),
-        tx.transactionType.charAt(0).toUpperCase() + tx.transactionType.slice(1),
-        tx.transactionAmount ? Math.round(tx.transactionAmount) : "-",
-      ]);
+    const monthLabel = selectedMonth !== null ? MONTHS[selectedMonth - 1] : 'All Months';
+    const periodLabel = `${monthLabel} ${selectedYear}`;
 
-      const csvContent = [
-        headers.join(","),
-        ...rows.map((row) => row.join(",")),
-      ].join("\n");
+    const rows = filteredTransactions.map((tx, index) => {
+      if (activeTab === 'payment') {
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${tx.teacherName}</td>
+            <td>${tx.paymentDate ? new Date(tx.paymentDate).toLocaleDateString('en-PK') : '-'}</td>
+            <td>Rs. ${Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td>
+            <td>Rs. ${Math.round(tx.netSalary).toLocaleString("en-US")}</td>
+            <td>Rs. ${Math.round(tx.remaining).toLocaleString("en-US")}</td>
+          </tr>`;
+      } else if (activeTab === 'allowance') {
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${tx.teacherName}</td>
+            <td>${MONTHS[tx.month - 1]} ${tx.year}</td>
+            <td>Rs. ${Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td>
+            <td>${tx.transactionReason || '-'}</td>
+          </tr>`;
+      } else {
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${tx.teacherName}</td>
+            <td>${MONTHS[tx.month - 1]} ${tx.year}</td>
+            <td>Rs. ${Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td>
+            <td>${tx.deductionType || '-'}</td>
+            <td>${tx.transactionReason || '-'}</td>
+          </tr>`;
+      }
+    }).join('');
 
-      const blob = new Blob([csvContent], { type: "text/csv" });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `salary_logs_${new Date().toISOString().split("T")[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+    const headers =
+      activeTab === 'payment'
+        ? '<th>#</th><th>Teacher</th><th>Payment Date</th><th>Amount Paid</th><th>Net Salary</th><th>Remaining</th>'
+        : activeTab === 'allowance'
+        ? '<th>#</th><th>Teacher</th><th>Period</th><th>Allowance Amount</th><th>Reason</th>'
+        : '<th>#</th><th>Teacher</th><th>Period</th><th>Deduction Amount</th><th>Type</th><th>Reason</th>';
 
-      toast.success("Salary logs exported successfully!");
-    } catch (error) {
-      console.error("Error exporting records:", error);
-      toast.error("Failed to export salary logs");
-    }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${tabLabel} — ${periodLabel}</title>
+          <style>
+            body { font-family: Arial, sans-serif; font-size: 13px; padding: 24px; color: #111; }
+            h2 { margin-bottom: 4px; }
+            p { margin: 0 0 16px; color: #555; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
+            th { background: #f5f5f5; font-weight: 600; }
+            tr:nth-child(even) td { background: #fafafa; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <h2>${tabLabel}</h2>
+          <p>Period: ${periodLabel} &nbsp;|&nbsp; Total records: ${filteredTransactions.length} &nbsp;|&nbsp; Printed: ${new Date().toLocaleDateString('en-PK')}</p>
+          <table>
+            <thead><tr>${headers}</tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
   };
 
   const getTransactionTypeColor = (type: string) => {
     switch (type) {
-      case 'payment':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
-      case 'allowance':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
-      case 'deduction':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'payment': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+      case 'allowance': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+      case 'deduction': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   return (
     <div className="w-full">
       <Header value="Salary Logs" />
-      
+
       <div className="p-4 sm:p-6 space-y-6">
-        {/* Search and Export Section */}
+        {/* Search, Refresh and Print Section */}
         <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-6">
             <div className="flex-1 w-full">
@@ -403,26 +402,39 @@ const SalaryLogs = () => {
                 />
               </div>
             </div>
-            <Button
-              onClick={handleExport}
-              disabled={filteredTransactions.length === 0}
-              className="flex items-center gap-2 whitespace-nowrap"
-            >
-              <Download className="w-4 h-4" />
-              Export
-            </Button>
+            <div className="flex gap-2">
+              {/* Refresh Button */}
+              <Button
+                onClick={fetchTransactions}
+                disabled={isLoading}
+                variant="outline"
+                className="flex items-center gap-2 whitespace-nowrap"
+                title="Refresh data"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+              {/* Print Button */}
+              <Button
+                onClick={handlePrint}
+                disabled={filteredTransactions.length === 0}
+                className="flex items-center gap-2 whitespace-nowrap"
+              >
+                <Printer className="w-4 h-4" />
+                Print
+              </Button>
+            </div>
           </div>
 
           {/* Time Filters */}
           <div className="space-y-4 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                {/* FIX: options now store 1-based month value (idx + 1) */}
                 <select
                   value={selectedMonth !== null ? selectedMonth : ""}
                   onChange={(e) =>
-                    setSelectedMonth(
-                      e.target.value === "" ? null : parseInt(e.target.value)
-                    )
+                    setSelectedMonth(e.target.value === "" ? null : parseInt(e.target.value))
                   }
                   className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white"
                 >
@@ -496,67 +508,36 @@ const SalaryLogs = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                    Serial No
-                  </th>
-                  <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                    Teacher Name
-                  </th>
+                  <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Serial No</th>
+                  <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Teacher Name</th>
 
-                  {/* Payment Tab Columns */}
                   {activeTab === 'payment' && (
                     <>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                        Payment Date
-                      </th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                        Payment Amount
-                      </th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Payment Date</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Payment Amount</th>
                     </>
                   )}
 
-                  {/* Allowance Tab Columns */}
                   {activeTab === 'allowance' && (
                     <>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                        Month
-                      </th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                        Year
-                      </th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                        Allowance Amount
-                      </th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                        Reason
-                      </th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Month</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Year</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Allowance Amount</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Reason</th>
                     </>
                   )}
 
-                  {/* Deduction Tab Columns */}
                   {activeTab === 'deduction' && (
                     <>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                        Month
-                      </th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                        Year
-                      </th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                        Deduction Amount
-                      </th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                        Type
-                      </th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                        Reason
-                      </th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Month</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Year</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Deduction Amount</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Type</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Reason</th>
                     </>
                   )}
 
-                  <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
-                    Actions
-                  </th>
+                  <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -565,61 +546,40 @@ const SalaryLogs = () => {
                     key={tx.id}
                     className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-neutral-800"
                   >
-                    <td className="py-3 px-2 text-gray-900 dark:text-gray-100">
-                      {index + 1}
-                    </td>
-                    <td className="py-3 px-2 text-gray-900 dark:text-gray-100 font-medium">
-                      {tx.teacherName}
-                    </td>
+                    <td className="py-3 px-2 text-gray-900 dark:text-gray-100">{index + 1}</td>
+                    <td className="py-3 px-2 text-gray-900 dark:text-gray-100 font-medium">{tx.teacherName}</td>
 
-                    {/* Payment Tab Row */}
                     {activeTab === 'payment' && (
                       <>
                         <td className="py-3 px-2 text-gray-900 dark:text-gray-100">
-                          {tx.paymentDate ? new Date(tx.paymentDate).toLocaleDateString('en-US') : '-'}
+                          {tx.paymentDate ? new Date(tx.paymentDate).toLocaleDateString('en-PK') : '-'}
                         </td>
-                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100 font-medium">
+                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100 font-medium text-green-600 dark:text-green-400">
                           Rs. {Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}
                         </td>
                       </>
                     )}
 
-                    {/* Allowance Tab Row */}
                     {activeTab === 'allowance' && (
                       <>
-                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100">
-                          {MONTHS[tx.month - 1]}
-                        </td>
-                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100">
-                          {tx.year}
-                        </td>
-                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100 font-medium text-blue-600 dark:text-blue-400">
+                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100">{MONTHS[tx.month - 1]}</td>
+                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100">{tx.year}</td>
+                        <td className="py-3 px-2 font-medium text-blue-600 dark:text-blue-400">
                           Rs. {Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}
                         </td>
-                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100 text-xs">
-                          {tx.transactionReason || '-'}
-                        </td>
+                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100 text-xs">{tx.transactionReason || '-'}</td>
                       </>
                     )}
 
-                    {/* Deduction Tab Row */}
                     {activeTab === 'deduction' && (
                       <>
-                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100">
-                          {MONTHS[tx.month - 1]}
-                        </td>
-                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100">
-                          {tx.year}
-                        </td>
-                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100 font-medium text-red-600 dark:text-red-400">
+                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100">{MONTHS[tx.month - 1]}</td>
+                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100">{tx.year}</td>
+                        <td className="py-3 px-2 font-medium text-red-600 dark:text-red-400">
                           Rs. {Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}
                         </td>
-                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100 text-xs">
-                          {tx.deductionType || '-'}
-                        </td>
-                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100 text-xs">
-                          {tx.transactionReason || '-'}
-                        </td>
+                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100 text-xs">{tx.deductionType || '-'}</td>
+                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100 text-xs">{tx.transactionReason || '-'}</td>
                       </>
                     )}
 
@@ -628,16 +588,13 @@ const SalaryLogs = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            setSelectedTransaction(tx);
-                            setShowDetails(true);
-                          }}
+                          onClick={() => { setSelectedTransaction(tx); setShowDetails(true); }}
                           className="p-2"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        
+
                         {(isAdmin || role === "ACCOUNTANT") && (
                           <Button
                             variant="outline"
@@ -649,7 +606,7 @@ const SalaryLogs = () => {
                             <Edit className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                           </Button>
                         )}
-                        
+
                         {isAdmin && (
                           <Button
                             variant="outline"
@@ -669,7 +626,7 @@ const SalaryLogs = () => {
             </table>
           ) : (
             <div className="text-center py-8 text-gray-600 dark:text-gray-400">
-              {searchTerm ? "No salary logs match your search" : "No salary logs found"}
+              {isLoading ? "Loading salary logs..." : searchTerm ? "No salary logs match your search" : `No ${activeTab} records found for the selected period`}
             </div>
           )}
         </div>
@@ -678,9 +635,7 @@ const SalaryLogs = () => {
         {showDetails && selectedTransaction && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white dark:bg-neutral-900 rounded-lg p-6 max-w-md w-full">
-              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                Salary Log Details
-              </h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Salary Log Details</h3>
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Teacher Name</p>
@@ -739,12 +694,7 @@ const SalaryLogs = () => {
                   </div>
                 </div>
               </div>
-              <Button
-                onClick={() => setShowDetails(false)}
-                className="w-full mt-6"
-              >
-                Close
-              </Button>
+              <Button onClick={() => setShowDetails(false)} className="w-full mt-6">Close</Button>
             </div>
           </div>
         )}
@@ -759,15 +709,9 @@ const SalaryLogs = () => {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm text-gray-600 dark:text-gray-400">Teacher Name</label>
-                  <Input
-                    type="text"
-                    value={selectedTransaction.teacherName}
-                    disabled
-                    className="mt-1"
-                  />
+                  <Input type="text" value={selectedTransaction.teacherName} disabled className="mt-1" />
                 </div>
 
-                {/* Payment Tab */}
                 {selectedTransaction.transactionType === 'payment' && (
                   <>
                     <div>
@@ -791,7 +735,6 @@ const SalaryLogs = () => {
                   </>
                 )}
 
-                {/* Allowance Tab */}
                 {selectedTransaction.transactionType === 'allowance' && (
                   <>
                     <div>
@@ -816,7 +759,6 @@ const SalaryLogs = () => {
                   </>
                 )}
 
-                {/* Deduction Tab */}
                 {selectedTransaction.transactionType === 'deduction' && (
                   <>
                     <div>
@@ -852,19 +794,10 @@ const SalaryLogs = () => {
                 )}
               </div>
               <div className="flex gap-3 mt-6">
-                <Button
-                  onClick={() => setShowEditModal(false)}
-                  variant="outline"
-                  className="flex-1"
-                  disabled={isSaving}
-                >
+                <Button onClick={() => setShowEditModal(false)} variant="outline" className="flex-1" disabled={isSaving}>
                   Cancel
                 </Button>
-                <Button
-                  onClick={saveEdit}
-                  className="flex-1"
-                  disabled={isSaving}
-                >
+                <Button onClick={saveEdit} className="flex-1" disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
@@ -888,17 +821,10 @@ const SalaryLogs = () => {
                 </p>
               </div>
               <div className="flex gap-3">
-                <Button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  variant="outline"
-                  className="flex-1"
-                >
+                <Button onClick={() => setShowDeleteConfirm(false)} variant="outline" className="flex-1">
                   Cancel
                 </Button>
-                <Button
-                  onClick={confirmDelete}
-                  className="flex-1 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
-                >
+                <Button onClick={confirmDelete} className="flex-1 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800">
                   Delete
                 </Button>
               </div>
