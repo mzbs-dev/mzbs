@@ -351,7 +351,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        <nav className="flex-1">
+        <nav className="flex-1 overflow-y-auto">
           {visibleMenuItems.map((item) => (
             <div key={item.id}>
               {item.hasSubmenu ? (
