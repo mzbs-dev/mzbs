@@ -375,6 +375,9 @@ const ManageSalary = () => {
                   {errors.payment_date.message}
                 </p>
               )}
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Payment will be recorded for the current month ({new Date().toLocaleString('default', { month: 'long', year: 'numeric' })})
+              </p>
             </div>
 
             {/* Button */}

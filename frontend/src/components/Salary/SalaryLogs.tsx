@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/dashboard/Header";
@@ -59,8 +59,7 @@ const SalaryLogs = () => {
   ];
 
   // Fetch and merge all transaction data
-  useEffect(() => {
-    const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
       try {
         setIsLoading(true);
         
@@ -114,6 +113,8 @@ const SalaryLogs = () => {
         });
 
         // Process each allowance
+        // Note: Allowances are always created with a corresponding ledger via ensure_salary_ledger_exists()
+        // in the backend, so ledgerData should always exist. This check prevents potential display issues.
         allowances.forEach(allowance => {
           const ledgerKey = `${allowance.teacher_id}-${allowance.month}-${allowance.year}`;
           const ledgerData = ledgerMap.get(ledgerKey);
@@ -205,9 +206,6 @@ const SalaryLogs = () => {
       } finally {
         setIsLoading(false);
       }
-    };
-
-    fetchTransactions();
   }, []);
 
   // Filter transactions based on search and time filters
@@ -218,7 +216,7 @@ const SalaryLogs = () => {
     );
 
     if (selectedMonth !== null) {
-      filtered = filtered.filter((transaction) => transaction.month === selectedMonth + 1);
+      filtered = filtered.filter((transaction) => transaction.month === selectedMonth);
     }
 
     if (selectedYear) {
@@ -271,7 +269,7 @@ const SalaryLogs = () => {
       setShowDeleteConfirm(false);
       setSelectedTransaction(null);
       // Refresh the transactions list
-      window.location.reload();
+      await fetchTransactions();
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Failed to delete transaction');
@@ -309,7 +307,7 @@ const SalaryLogs = () => {
       setShowEditModal(false);
       setSelectedTransaction(null);
       // Refresh the transactions list
-      window.location.reload();
+      await fetchTransactions();
     } catch (error) {
       console.error('Update error:', error);
       toast.error('Failed to update transaction');
@@ -430,7 +428,7 @@ const SalaryLogs = () => {
                 >
                   <option value="">All Months</option>
                   {MONTHS.map((month, idx) => (
-                    <option key={idx} value={idx}>
+                    <option key={idx} value={idx + 1}>
                       {month}
                     </option>
                   ))}

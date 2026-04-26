@@ -1,25 +1,6 @@
 import axiosInstance from "@/api/axiosInterceptorInstance";
 
 // ============================================================================
-// LEGACY INTERFACES (Keep for backward compatibility)
-// ============================================================================
-
-export interface SalaryResponse {
-  salary_id: number;
-  teacher_id: number;
-  teacher_name: string;
-  monthly_salary: number;
-  effective_date: string;
-  created_at: string;
-}
-
-export interface SalaryCreate {
-  teacher_id: number;
-  monthly_salary: number;
-  effective_date: string;
-}
-
-// ============================================================================
 // NEW PAYROLL SYSTEM INTERFACES
 // ============================================================================
 
@@ -111,67 +92,6 @@ export interface DeductionCreate {
 }
 
 export namespace SalaryAPI {
-  export const getAll = async (): Promise<SalaryResponse[]> => {
-    try {
-      const response = await axiosInstance.get<SalaryResponse[]>("/salary/all");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching salaries:", error);
-      throw error;
-    }
-  };
-
-  export const create = async (data: SalaryCreate): Promise<SalaryResponse> => {
-    try {
-      const response = await axiosInstance.post<SalaryResponse>("/salary/add", {
-        teacher_id: data.teacher_id,
-        monthly_salary: data.monthly_salary,
-        effective_date: data.effective_date,
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error creating salary:", error);
-      throw error;
-    }
-  };
-
-  export const getById = async (id: number): Promise<SalaryResponse> => {
-    try {
-      const response = await axiosInstance.get<SalaryResponse>(
-        `/salary/${id}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching salary ${id}:`, error);
-      throw error;
-    }
-  };
-
-  export const update = async (
-    id: number,
-    data: Partial<SalaryCreate>
-  ): Promise<SalaryResponse> => {
-    try {
-      const response = await axiosInstance.put<SalaryResponse>(
-        `/salary/${id}`,
-        data
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating salary ${id}:`, error);
-      throw error;
-    }
-  };
-
-  export const delete_salary = async (id: number): Promise<void> => {
-    try {
-      await axiosInstance.delete(`/salary/${id}`);
-    } catch (error) {
-      console.error(`Error deleting salary ${id}:`, error);
-      throw error;
-    }
-  };
-
   // ============================================================================
   // NEW PAYROLL SYSTEM API METHODS
   // ============================================================================
@@ -193,6 +113,22 @@ export namespace SalaryAPI {
       return response.data;
     } catch (error) {
       console.error("Error creating teacher salary:", error);
+      throw error;
+    }
+  };
+
+  export const updateTeacherSalary = async (
+    salaryId: number,
+    data: Partial<TeacherSalaryCreate>
+  ): Promise<TeacherSalaryResponse> => {
+    try {
+      const response = await axiosInstance.put<TeacherSalaryResponse>(
+        `/salary/teacher-salary/${salaryId}`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating teacher salary ${salaryId}:`, error);
       throw error;
     }
   };
@@ -227,31 +163,12 @@ export namespace SalaryAPI {
     }
   };
 
-  export const createSalaryLedger = async (data: any): Promise<SalaryLedgerResponse> => {
+  export const createSalaryLedger = async (data: { teacher_id: number; month: number; year: number }): Promise<SalaryLedgerResponse> => {
     try {
       const response = await axiosInstance.post<SalaryLedgerResponse>("/salary/ledger/add", data);
       return response.data;
     } catch (error) {
       console.error("Error creating salary ledger:", error);
-      throw error;
-    }
-  };
-
-  export const getTeacherSalaryLedgers = async (
-    teacherId: number,
-    month?: number,
-    year?: number
-  ): Promise<SalaryLedgerResponse[]> => {
-    try {
-      const params = new URLSearchParams();
-      if (month) params.append('month', month.toString());
-      if (year) params.append('year', year.toString());
-
-      const url = `/salary/ledger/teacher/${teacherId}${params.toString() ? '?' + params.toString() : ''}`;
-      const response = await axiosInstance.get<SalaryLedgerResponse[]>(url);
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching teacher salary ledgers for ${teacherId}:`, error);
       throw error;
     }
   };

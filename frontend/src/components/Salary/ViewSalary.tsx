@@ -7,7 +7,6 @@ import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
 import { Search, Download, Eye, RefreshCw } from "lucide-react";
 import { SalaryAPI, SalaryLedgerResponse, TeacherSalaryResponse } from "@/api/Salary/SalaryAPI";
-import { salaryEventBus } from "@/utils/salaryEvents";
 
 interface TeacherSalarySummary {
   teacherId: number;
@@ -220,16 +219,10 @@ const ViewSalary = () => {
     fetchSalaryData();
   }, [fetchSalaryData]);
 
-  // Subscribe to salary events for auto-refresh
-  useEffect(() => {
-    const unsubscribe = salaryEventBus.subscribe(fetchSalaryData);
-    return unsubscribe;
-  }, [fetchSalaryData]);
-
   // Filter summaries based on search
   useEffect(() => {
     let filtered = summaries.filter((summary) =>
-      summary.teacherName?.toLowerCase().includes(searchTerm.toLowerCase())
+      (summary.teacherName || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     setFilteredSummaries(filtered);
@@ -441,7 +434,7 @@ const ViewSalary = () => {
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Total Payable</th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Allowance</th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Deduction</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Net Salary</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Net Salary<br /><span className="text-xs font-normal text-gray-500 dark:text-gray-400">(Cumulative)</span></th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Paid</th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Remaining</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>

@@ -132,6 +132,7 @@ class SalaryPaymentUpdate(SQLModel):
 
 class SalaryPaymentResponse(SalaryPaymentBase, SQLModel):
     teacher_name: Optional[str] = None
+    amount: Optional[Decimal] = None
 
 
 # ============================================================================
@@ -170,6 +171,7 @@ class AllowanceUpdate(SQLModel):
 
 class AllowanceResponse(AllowanceBase, SQLModel):
     teacher_name: Optional[str] = None
+    amount: Optional[Decimal] = None
 
 
 # ============================================================================
@@ -208,43 +210,7 @@ class DeductionUpdate(SQLModel):
     type: Optional[str] = None
     reason: Optional[str] = None
 
-
 class DeductionResponse(DeductionBase, SQLModel):
-    teacher_name: Optional[str] = None
-
-
-# ============================================================================
-# LEGACY TABLES (Keep for backward compatibility during migration)
-# ============================================================================
-
-class SalaryBase(SQLModel):
-    salary_id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
-
-
-class Salary(SalaryBase, table=True):
-    """Legacy table - kept for backward compatibility during migration"""
-    teacher_id: int = Field(foreign_key="teachernames.teacher_name_id", nullable=False)
-    monthly_salary: Decimal = Field(nullable=False)
-    effective_date: str = Field(nullable=False)
-
-    # Relationship to TeacherNames
-    teacher: Optional["TeacherNames"] = Relationship(back_populates="salaries")  # type: ignore
-
-
-class SalaryCreate(SQLModel):
-    teacher_id: int
-    monthly_salary: Decimal
-    effective_date: str
-
-
-class SalaryUpdate(SQLModel):
-    monthly_salary: Optional[Decimal] = None
-    effective_date: Optional[str] = None
-
-
-class SalaryResponse(SalaryBase, SQLModel):
-    teacher_id: int
-    teacher_name: Optional[str] = None
-    monthly_salary: Decimal
-    effective_date: str
+    amount: Optional[Decimal] = None
+    teacher_name: Optional[str] = None  
+    

@@ -121,14 +121,12 @@ const SetSalary = () => {
       }
 
       if (isEditing && editingId) {
-        // Update existing salary - Note: We don't have update endpoint yet, so we'll create new
-        toast.info("Creating new salary record (updates not yet implemented)");
-        await SalaryAPI.createTeacherSalary({
-          teacher_id: parseInt(data.teacher_id),
+        // Update existing salary
+        await SalaryAPI.updateTeacherSalary(editingId, {
           base_salary: parseFloat(data.base_salary),
           effective_from: data.effective_from,
         });
-        toast.success("New salary record created successfully!");
+        toast.success("Salary updated successfully!");
         setIsEditing(false);
         setEditingId(null);
       } else {

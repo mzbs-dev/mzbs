@@ -21,9 +21,6 @@ class TeacherNames(TeacherNamesBase, table=True):
     attendances: list["Attendance"] = Relationship(
         back_populates="attendance_teacher")
 
-    # Legacy Salary Relationship (keep for backward compatibility)
-    salaries: list["Salary"] = Relationship(back_populates="teacher")
-
     # New Payroll System Relationships
     teacher_salaries: list["TeacherSalary"] = Relationship(back_populates="teacher")
     salary_ledgers: list["SalaryLedger"] = Relationship(back_populates="teacher")
