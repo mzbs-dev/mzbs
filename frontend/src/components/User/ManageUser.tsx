@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { UserAPI, UserResponse, UserCreate, UserUpdate } from "@/api/User/UserAPI";
 import { useRole } from "@/context/RoleContext";
-import { UserPlus, Edit2, Trash2, RefreshCw } from "lucide-react";
+import { UserPlus, Edit2, Trash2, RefreshCw, Eye, EyeOff } from "lucide-react";
 
 interface ManageUserForm {
   username: string;
@@ -28,6 +28,8 @@ const ManageUser = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   const {
     register: registerCreate,
@@ -118,6 +120,7 @@ const ManageUser = () => {
     setValueEdit("email", user.email);
     setValueEdit("password", ""); // Don't show current password
     setValueEdit("role", user.role);
+    setShowEditPassword(false);
     setShowEditModal(true);
   };
 
@@ -232,7 +235,7 @@ const ManageUser = () => {
                       {user.username}
                     </td>
                     <td className="py-3 px-2 text-gray-600 dark:text-gray-400">
-                      ********
+                      <span>********</span>
                     </td>
                     <td className="py-3 px-2">
                       <select
@@ -329,14 +332,25 @@ const ManageUser = () => {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
                   Password
                 </label>
-                <Input
-                  type="password"
-                  {...registerCreate("password", {
-                    required: "Password is required",
-                    minLength: { value: 6, message: "Password must be at least 6 characters" },
-                  })}
-                  placeholder="Enter password"
-                />
+                <div className="relative">
+                  <Input
+                    type={showCreatePassword ? "text" : "password"}
+                    {...registerCreate("password", {
+                      required: "Password is required",
+                      minLength: { value: 6, message: "Password must be at least 6 characters" },
+                    })}
+                    placeholder="Enter password"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCreatePassword((value) => !value)}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    aria-label={showCreatePassword ? "Hide password" : "Show password"}
+                  >
+                    {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 {errorsCreate.password && (
                   <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                     {errorsCreate.password.message}
@@ -373,6 +387,7 @@ const ManageUser = () => {
                   variant="outline"
                   onClick={() => {
                     setShowCreateModal(false);
+                    setShowCreatePassword(false);
                     resetCreate();
                   }}
                   className="flex-1"
@@ -440,13 +455,24 @@ const ManageUser = () => {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
                   New Password (leave empty to keep current)
                 </label>
-                <Input
-                  type="password"
-                  {...registerEdit("password", {
-                    minLength: { value: 6, message: "Password must be at least 6 characters" },
-                  })}
-                  placeholder="Enter new password"
-                />
+                <div className="relative">
+                  <Input
+                    type={showEditPassword ? "text" : "password"}
+                    {...registerEdit("password", {
+                      minLength: { value: 6, message: "Password must be at least 6 characters" },
+                    })}
+                    placeholder="Enter new password"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword((value) => !value)}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    aria-label={showEditPassword ? "Hide password" : "Show password"}
+                  >
+                    {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 {errorsEdit.password && (
                   <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                     {errorsEdit.password.message}
@@ -484,6 +510,7 @@ const ManageUser = () => {
                   onClick={() => {
                     setShowEditModal(false);
                     setEditingUser(null);
+                    setShowEditPassword(false);
                     resetEdit();
                   }}
                   className="flex-1"
