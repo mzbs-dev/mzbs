@@ -37,7 +37,15 @@ async def get_all_fees(
     
     response_list = []
     for fee in fees:
-        student = await get_student_by_id(db, fee.student_id)
+        # If student_id is NULL, it means the student was deleted but paid fee is kept
+        if fee.student_id is None:
+            student_name = "Unknown [Deleted]"
+            father_name = "N/A"
+        else:
+            student = await get_student_by_id(db, fee.student_id)
+            student_name = student.student_name if student else None
+            father_name = student.father_name if student else None
+        
         class_name = db.exec(
             select(ClassNames)
             .where(ClassNames.class_name_id == fee.class_id)
@@ -46,8 +54,8 @@ async def get_all_fees(
         response = FeeResponse(
             fee_id=fee.fee_id,
             created_at=fee.created_at,
-            student_name=student.student_name if student else None,
-            father_name=student.father_name if student else None,
+            student_name=student_name,
+            father_name=father_name,
             class_name=class_name.class_name if class_name else None,
             fee_amount=fee.fee_amount,
             fee_month=fee.fee_month,

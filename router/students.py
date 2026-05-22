@@ -12,7 +12,7 @@ from datetime import datetime
 from db import get_session
 from schemas.students_model import Students, StudentsCreate, StudentsResponse, StudentsUpdate, DeletedStudent, SoftDeleteRequest
 from schemas.attendance_model import Attendance
-from schemas.fee_model import Fee
+from schemas.fee_model import Fee, FeeStatus
 from schemas.admission_model import Admission
 from user.user_crud import require_admin_principal
 from user.user_models import User
@@ -145,11 +145,13 @@ def delete_student(
         for record in attendance_records:
             session.delete(record)
 
-        # Delete fee records
-        fee_records = session.exec(
-            select(Fee).where(Fee.student_id == student_id)
+        # Delete fee records (only unpaid, paid fees: student_id becomes NULL automatically via DB cascade)
+        unpaid_fee_records = session.exec(
+            select(Fee).where(
+                (Fee.student_id == student_id) & (Fee.fee_status == FeeStatus.UNPAID)
+            )
         ).all()
-        for record in fee_records:
+        for record in unpaid_fee_records:
             session.delete(record)
 
         # Delete admission records
