@@ -43,7 +43,7 @@ class Students(StudentsBase, table=True):
 
 class StudentsCreate(SQLModel):
     student_name: str
-    student_date_of_birth: datetime = Field(sa_column=Column(DateTime))
+    student_date_of_birth: datetime
     student_gender: str
     class_name: str
     student_city: str
@@ -60,7 +60,7 @@ class StudentsCreate(SQLModel):
 class StudentsResponse(StudentsBase):
     student_id: int  # type: ignore
     student_name: str
-    student_date_of_birth: datetime = Field(sa_column=Column(DateTime))
+    student_date_of_birth: datetime
     student_gender: str
     student_age: str
     student_education: str
@@ -76,7 +76,7 @@ class StudentsResponse(StudentsBase):
 
 class StudentsUpdate(SQLModel):
     student_name: Optional[str] = None
-    student_date_of_birth: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
+    student_date_of_birth: Optional[datetime] = Field(default=None)
     student_gender: Optional[str] = None
     student_age: Optional[str] = None
     student_education: Optional[str] = None
@@ -99,7 +99,7 @@ class DeletedStudent(SQLModel, table=True):
     original_student_id: int
     student_name: str
     class_name: str
-    student_date_of_birth: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))
+    student_date_of_birth: Optional[datetime] = Field(default=None)
     student_gender: Optional[str] = None
     student_age: Optional[str] = None
     student_education: Optional[str] = None

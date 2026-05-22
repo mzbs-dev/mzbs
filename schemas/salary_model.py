@@ -19,12 +19,6 @@ class TeacherSalaryBase(SQLModel):
     effective_from: str = Field(nullable=False)  # YYYY-MM-DD format
     effective_till: Optional[str] = Field(default=None, nullable=True)  # NULL = currently active
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
-    
-    class Config:
-        # Allow automatic conversion from date to string
-        json_encoders = {
-            datetime: lambda v: v.isoformat() if v else None,
-        }
 
 
 class TeacherSalary(TeacherSalaryBase, table=True):
@@ -45,7 +39,12 @@ class TeacherSalaryUpdate(SQLModel):
     effective_from: Optional[str] = None
 
 
-class TeacherSalaryResponse(TeacherSalaryBase, SQLModel):
+class TeacherSalaryResponse(SQLModel):
+    id: int
+    teacher_id: int
+    base_salary: Decimal
+    effective_from: str
+    created_at: datetime
     teacher_name: Optional[str] = None
     effective_till: Optional[str] = None
 
@@ -101,7 +100,18 @@ class SalaryLedgerUpdate(SQLModel):
     remaining: Optional[Decimal] = None
 
 
-class SalaryLedgerResponse(SalaryLedgerBase, SQLModel):
+class SalaryLedgerResponse(SQLModel):
+    id: int
+    teacher_id: int
+    month: int
+    year: int
+    base_salary: Decimal
+    allowance_total: Decimal
+    deduction_total: Decimal
+    net_salary: Decimal
+    total_paid: Decimal
+    remaining: Decimal
+    created_at: datetime
     teacher_name: Optional[str] = None
 
 
@@ -138,9 +148,14 @@ class SalaryPaymentUpdate(SQLModel):
     payment_date: Optional[str] = None
 
 
-class SalaryPaymentResponse(SalaryPaymentBase, SQLModel):
+class SalaryPaymentResponse(SQLModel):
+    id: int
+    teacher_id: int
+    ledger_id: int
+    amount: Decimal
+    payment_date: str
+    created_at: datetime
     teacher_name: Optional[str] = None
-    amount: Optional[Decimal] = None
 
 
 # ============================================================================

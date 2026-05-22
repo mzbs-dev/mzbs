@@ -13,11 +13,9 @@ class FeeStatus(str, enum.Enum):
     PAID = "Paid"
     UNPAID = "Unpaid"
 
-class FeeBase(SQLModel):
+class Fee(SQLModel, table=True):
     fee_id: int = Field(primary_key=True)
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
-
-class Fee(FeeBase, table=True):
     student_id: int = Field(foreign_key="students.student_id", nullable=False)
     class_id: int = Field(foreign_key="classnames.class_name_id", nullable=False)
     fee_amount: Decimal = Field(nullable=False)
@@ -38,7 +36,9 @@ class FeeCreate(SQLModel):
     fee_year: str  # Changed from int to str
     # fee_status: FeeStatus = FeeStatus.UNPAID
 
-class FeeResponse(FeeBase, SQLModel):
+class FeeResponse(SQLModel):
+    fee_id: int
+    created_at: datetime
     student_name: Optional[str] = None
     father_name: Optional[str] = None
     class_name: Optional[str] = None

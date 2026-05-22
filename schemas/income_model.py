@@ -6,7 +6,7 @@ from schemas.income_cat_names_model import IncomeCatNames
 
 class IncomeBase(SQLModel):
     id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))  # Use datetime instead of string
+    created_at: Optional[datetime] = Field(default=None)
 
 class Income(IncomeBase, table=True):
     recipt_number: Optional[int] = None

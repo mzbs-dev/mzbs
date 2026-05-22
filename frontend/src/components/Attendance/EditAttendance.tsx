@@ -14,50 +14,73 @@ import { AttendanceAPI as API } from "@/api/Attendance/AttendanceAPI";
 import { FaRegEdit } from "react-icons/fa";
 import { MarkAttUpdate } from "@/models/markattendace/markattendance";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface EditAttendanceProps {
   attendanceId: number;
-  onUpdate: () => void; // Add callback for refresh
+  onUpdate: () => void;
 }
 
 interface APIResponse {
   status: number;
-  data: {
-    message?: string;
-  };
+  data: { message?: string };
 }
 
+// FIX 6: form shape now includes the radio field so RHF owns its value
+interface EditForm {
+  attendanceStatus: "present" | "absent" | "late" | "leave";
+}
+
+const ATTENDANCE_VALUE_MAP: Record<EditForm["attendanceStatus"], number> = {
+  present: 1,
+  absent:  2,
+  late:    3,
+  leave:   4,
+};
+
+const RADIO_OPTIONS: {
+  value: EditForm["attendanceStatus"];
+  label: string;
+  color: string;
+}[] = [
+  { value: "present", label: "Present", color: "text-emerald-600" },
+  { value: "absent",  label: "Absent",  color: "text-red-600"     },
+  { value: "late",    label: "Late",    color: "text-amber-500"   },
+  { value: "leave",   label: "Leave",   color: "text-orange-500"  },
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 const EditAttendance = ({ attendanceId, onUpdate }: EditAttendanceProps) => {
-  const { handleSubmit, reset } = useForm<MarkAttUpdate>();
-  
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<EditForm>();
+
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const handleOpen = () => {
+    reset(); // clear previous selection each time dialog opens
+    setOpen(true);
+  };
 
+  const handleClose = () => {
+    reset();
+    setOpen(false);
+  };
 
-  const handleFormSubmit = async (data: {
-    attendance_date?: string;
-    attendance_time_id?: number;
-    class_name_id?: number;
-    teacher_name_id?: number;
-    student_id?: number;
-    attendance_value_id?: number;
-  }) => {
+  // FIX 6: data.attendanceStatus comes directly from RHF — no DOM query needed
+  const onSubmit = async (data: EditForm) => {
     setLoading(true);
-    console.log(data);
     try {
-      const attendanceValue = document.querySelector(
-        'input[name="attendanceStatus"]:checked'
-      ) as HTMLInputElement;
-
       const updateData: MarkAttUpdate = {
         attendance_id: attendanceId,
-        attendance_value_id: getAttendanceValueId(attendanceValue.value),
+        attendance_value_id: ATTENDANCE_VALUE_MAP[data.attendanceStatus],
         updated_at: new Date(),
       };
-
-      if (!updateData.attendance_id) {
-        throw new Error("attendance_id is required for update");
-      }
 
       const response = (await API.Update(
         updateData.attendance_id,
@@ -65,18 +88,16 @@ const EditAttendance = ({ attendanceId, onUpdate }: EditAttendanceProps) => {
       )) as APIResponse;
 
       if (response.status === 200) {
-        setOpen(false);
-        reset();
+        handleClose();
         toast.success("Attendance Updated Successfully!", {
           position: "bottom-center",
           duration: 3000,
         });
-        onUpdate(); // Call refresh callback
+        onUpdate();
       } else {
         throw new Error(response.data.message || "Failed to update attendance");
       }
     } catch (error: unknown) {
-      console.error("Error updating attendance:", error);
       toast.error((error as Error).message || "Failed to update attendance", {
         position: "bottom-center",
         duration: 3000,
@@ -86,29 +107,14 @@ const EditAttendance = ({ attendanceId, onUpdate }: EditAttendanceProps) => {
     }
   };
 
-  const getAttendanceValueId = (value: string): number => {
-    switch (value) {
-      case "present":
-        return 1;
-      case "absent":
-        return 2;
-      case "late":
-        return 3;
-      case "leave":
-        return 4;
-      default:
-        return 1;
-    }
-  };
-
   return (
     <>
       <FaRegEdit
-        onClick={() => setOpen(true)}
-        className="w-4 h-4 cursor-pointer hover:text-blue-500"
+        onClick={handleOpen}
+        className="w-4 h-4 cursor-pointer hover:text-blue-500 transition-colors"
       />
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) handleClose(); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-xl text-center font-semibold">
@@ -117,55 +123,34 @@ const EditAttendance = ({ attendanceId, onUpdate }: EditAttendanceProps) => {
             <hr className="border-t border-gray-300" />
           </DialogHeader>
 
-          <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-            <div className="flex justify-center items-center space-x-4 mt-2">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="attendanceStatus"
-                  className="form-radio h-4 w-4 text-blue-600"
-                  value="present"
-                />
-                <span className="ml-2">Present</span>
-              </label>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="attendanceStatus"
-                  className="form-radio h-4 w-4 text-red-600"
-                  value="absent"
-                />
-                <span className="ml-2">Absent</span>
-              </label>
-
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="attendanceStatus"
-                  className="form-radio h-4 w-4 text-yellow-600"
-                  value="late"
-                />
-                <span className="ml-2">Late</span>
-              </label>
-
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="attendanceStatus"
-                  className="form-radio h-4 w-4 text-orange-600"
-                  value="leave"
-                />
-                <span className="ml-2">Leave</span>
-              </label>
+            {/* FIX 6: radio inputs registered with RHF — required validation included */}
+            <div className="flex justify-center items-center flex-wrap gap-4 mt-2">
+              {RADIO_OPTIONS.map(({ value, label, color }) => (
+                <label key={value} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value={value}
+                    className={`form-radio h-4 w-4 ${color}`}
+                    {...register("attendanceStatus", {
+                      required: "Please select an attendance status",
+                    })}
+                  />
+                  <span className={`text-sm font-medium ${color}`}>{label}</span>
+                </label>
+              ))}
             </div>
 
+            {/* Validation error shown below the radio group */}
+            {errors.attendanceStatus && (
+              <p className="text-red-500 text-xs text-center">
+                {errors.attendanceStatus.message}
+              </p>
+            )}
+
             <div className="flex justify-end gap-4 mt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
+              <Button type="button" variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
               <Button type="submit" disabled={loading}>

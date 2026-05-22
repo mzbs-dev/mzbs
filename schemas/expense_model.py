@@ -6,7 +6,7 @@ from schemas.expense_cat_names_model import ExpenseCatNames  # Import ExpenseCat
 
 class ExpenseBase(SQLModel):
     id: Optional[int] = Field(default=None, primary_key=True)  # Remove autoincrement
-    created_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime))  # Use datetime instead of string
+    created_at: Optional[datetime] = Field(default=None)
 
 class Expense(ExpenseBase, table=True):
     recipt_number: Optional[int] = None

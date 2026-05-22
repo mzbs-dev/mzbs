@@ -1,4 +1,4 @@
-ack"""
+"""
 Salary Service - Historical Salary Management
 Handles salary period calculations, timeline management, and prorated payables.
 """

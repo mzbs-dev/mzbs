@@ -29,13 +29,13 @@ class Admission(AdmissionBase, table=True):
 class AdmissionCreate(SQLModel):
     student_id: int
     required_class: str
-    admission_date: datetime = Field(sa_column=Column(DateTime))
+    admission_date: datetime
 
 
 class AdmissionResponse(SQLModel):
     admission_id: int
     student_id: int
-    admission_date: datetime = Field(sa_column=Column(DateTime))
+    admission_date: datetime
     required_class: str
 
 
@@ -57,9 +57,10 @@ class Termination(TerminationBase, table=True):
 
 
 class TerminationResponse(SQLModel):
+    termination_id: int
     total_stay: float
     termination_reason: str
-    termination_date: datetime = Field(sa_column=Column(DateTime))
+    termination_date: datetime
     admission_id: int
     attendance_count: int
 

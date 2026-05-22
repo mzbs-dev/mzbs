@@ -55,8 +55,7 @@ class AttendanceCreate(SQLModel):
     attendance_value_id: int
 
 class AttendanceUpdate(SQLModel):
-    attendance_date: Optional[datetime] = Field(
-        default=None, sa_column=Column(DateTime))
+    attendance_date: Optional[datetime] = None
     attendance_time_id: Optional[int] = None
     class_name_id: Optional[int] = None
     teacher_name_id: Optional[int] = None

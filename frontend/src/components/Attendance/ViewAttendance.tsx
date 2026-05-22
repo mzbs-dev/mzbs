@@ -1,6 +1,6 @@
 "use client";
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   AlertCircle,
   Check,
@@ -109,11 +109,13 @@ const AttendanceTable: React.FC = () => {
   const {
     register,
     setValue: setFormValue,
+    getValues,              // FIX 1: needed to read current filter state on refresh
     formState: { errors },
     handleSubmit,
   } = useForm<FilteredAttendance>();
   const { printRecords } = usePrint();
   const [isLoading, setIsLoading] = useState(false);
+  const [dropdownsLoading, setDropdownsLoading] = useState(true); // FIX 2: separate loading state for dropdowns
   const [classTimeList, setClassTimeList] = useState<SelectComponentOption[]>(
     []
   );
@@ -126,7 +128,13 @@ const AttendanceTable: React.FC = () => {
   const [attendanceRecords, setAttendanceRecords] = useState<
     AttendanceRecord[]
   >([]);
-  const [formRefresh, setFormRefresh] = useState(true);
+  const [statusList, setStatusList] = useState<SelectComponentOption[]>([
+    { id: 0, title: "All" },
+    { id: 1, title: "Present" },
+    { id: 2, title: "Absent" },
+    { id: 3, title: "Late" },
+    { id: 4, title: "Leave" },
+  ]); // FIX 4: add status filter options
   const [studentsList, setStudentsList] = useState<SelectComponentOption[]>([]);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
@@ -135,152 +143,227 @@ const AttendanceTable: React.FC = () => {
     pageSize: 15,
   });
 
-  const handleAttendanceUpdate = async () => {
-    setFormRefresh((prev) => !prev);
-    // Re-fetch attendance data with current filters
-    const formData = {
-      attendance_date: "",
-      attendance_time_id: 0,
-      class_name_id: 0,
-      teacher_name_id: 0,
-      student_id: Number(value) || 0,
-      father_name: "",
-      attendance_value_id: 0,
-    };
-    await HandleSubmitForStudentGet(formData);
-  };
+  // ── Fetch Records ────────────────────────────────────────────────────────────
+  // Define HandleSubmitForStudentGet first so handleAttendanceUpdate can reference it
+  const HandleSubmitForStudentGet = useCallback(
+    async (formData: FilteredAttendance) => {
+      setAttendanceRecords([]);
+      setPagination({ pageIndex: 0, pageSize: 15 }); // Reset pagination when fetching new records
+      try {
+        setIsLoading(true);
+        const filter: FilteredAttendance = {
+          attendance_date: formData.attendance_date || "",
+          attendance_time_id: Number(formData.attendance_time_id) || 0,
+          class_name_id: Number(formData.class_name_id) || 0,
+          teacher_name_id: Number(formData.teacher_name_id) || 0,
+          student_id: Number(formData.student_id) || 0,
+          father_name: formData.father_name || "",
+          attendance_value_id: Number(formData.attendance_value_id) || 0,
+        };
 
-  // Move columns definition here, after handleAttendanceUpdate
-  const columns: ColumnDef<AttendanceRecord>[] = [
-    {
-      accessorKey: "sr_no",
-      header: "Sr.No",
-      cell: ({ row }) => {
-        return <span className="font-medium">{row.index + 1}</span>;
-      },
-    },
-    {
-      accessorKey: "attendance_id",
-      header: "ID",
-      cell: ({ row }) => {
-        const id = row.getValue("attendance_id") as number;
-        return (
-          <span className="font-medium">#{id.toString().padStart(4, "0")}</span>
-        );
-      },
-    },
-    {
-      accessorKey: "attendance_date",
-      header: "Date",
-      cell: ({ row }) => {
-        const date = row.getValue("attendance_date") as string;
-        return new Date(date).toLocaleDateString();
-      },
-    },
-    {
-      accessorKey: "attendance_time",
-      header: "Time",
-    },
-    {
-      accessorKey: "attendance_class",
-      header: "Class",
-    },
-    {
-      accessorKey: "attendance_teacher",
-      header: "Teacher",
-    },
-    {
-      accessorKey: "attendance_student",
-      header: "Student",
-    },
-    {
-      accessorKey: "attendance_std_fname",
-      header: "Father Name",
-    },
-    {
-      accessorKey: "attendance_value",
-      header: "Status",
-      cell: ({ row }) => {
-        const value = (
-          row.getValue("attendance_value") as string
-        ).toLowerCase();
-        return (
-          <div className="flex justify-center">
-            {value === "present" ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                Present
-              </span>
-            ) : value === "absent" ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
-                Absent
-              </span>
-            ) : value === "late" ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
-                Late
-              </span>
-            ) : value === "leave" ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
-                Leave
-              </span>
-            ) : (
-              <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-400 border border-gray-200 dark:bg-slate-700 dark:text-slate-500 dark:border-slate-600">
-                —
-              </span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => (
-        <div className="no-print flex justify-center items-center gap-2">
-          <EditAttendance
-            attendanceId={row.original.attendance_id}
-            onUpdate={handleAttendanceUpdate}
-          />
-          <DelConfirmMsg
-            rowId={row.original.attendance_id}
-            OnDelete={(confirmed) => {
-              if (confirmed) {
-                handleDeleteAttendance(row.original.attendance_id);
-              }
-            }}
-          />
-        </div>
-      ),
-    },
-  ];
+        const response = await API.GetbyFilter(filter);
 
-  useEffect(() => {
-    // Load dropdown data here
-    GetClassName();
-    GetClassTime();
-    GetTeacherName();
-    GetStudents();
-  }, [formRefresh]); // Add formRefresh dependency
-
-  const handleDeleteAttendance = async (attendanceId: number) => {
-    try {
-      const response = await API.Delete(attendanceId);
-      if (response.status === 200) {
-        toast.success("Attendance deleted successfully", {
-          position: "bottom-center",
-          duration: 5000,
-        });
-        handleAttendanceUpdate();
-      } else {
-        toast.error("Failed to delete attendance");
+        if (response.status === 200) {
+          const records = response.data as unknown as AttendanceRecord[];
+          if (records && Array.isArray(records) && records.length > 0) {
+            toast.success(`Found ${records.length} records`, {
+              position: "bottom-center",
+              duration: 3000,
+            });
+            setAttendanceRecords(records);
+          } else {
+            toast.info("No records match the selected criteria", {
+              position: "bottom-center",
+              duration: 3000,
+            });
+            setAttendanceRecords([]);
+          }
+        } else {
+          toast.error(`Error: ${response.status} - ${response.statusText}`);
+        }
+      } catch (error: unknown) {
+        if (error && typeof error === "object" && "response" in error) {
+          const apiError = error as APIError;
+          const errorMessage = apiError.response?.data?.message || "Failed to fetch records";
+          console.error("API Error:", errorMessage);
+          toast.error(errorMessage, {
+            position: "bottom-center",
+            duration: 3000,
+          });
+        } else if (error instanceof Error) {
+          console.error("Error:", error.message);
+          toast.error("An unexpected error occurred. Please try again.", {
+            position: "bottom-center",
+            duration: 3000,
+          });
+        } else {
+          console.error("Unknown error:", error);
+          toast.error("An unexpected error occurred. Please try again.", {
+            position: "bottom-center",
+            duration: 3000,
+          });
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error deleting attendance:", error);
-    }
-  };
+    },
+    [] // eslint-disable-line react-hooks/exhaustive-deps
+    // (setIsLoading/setAttendanceRecords/setPagination are stable setState
+    //  setters; API is a module-level import — neither will change between renders)
+  );
+
+  // FIX 1: read live form values instead of hardcoded zeros.
+  // useCallback so the reference passed to <EditAttendance onUpdate={}> is
+  // stable and doesn't cause the actions column to re-mount on every render.
+  const handleAttendanceUpdate = useCallback(async () => {
+    const currentFilters = getValues();
+    // Restore student_id from combobox state (not registered in RHF)
+    currentFilters.student_id = Number(value) || 0;
+    await HandleSubmitForStudentGet(currentFilters);
+  }, [getValues, value, HandleSubmitForStudentGet]);
+
+  const handleDeleteAttendance = useCallback(
+    async (attendanceId: number) => {
+      try {
+        const response = await API.Delete(attendanceId);
+        if (response.status === 200) {
+          toast.success("Attendance deleted successfully", {
+            position: "bottom-center",
+            duration: 5000,
+          });
+          handleAttendanceUpdate();
+        } else {
+          toast.error("Failed to delete attendance");
+        }
+      } catch (error) {
+        console.error("Error deleting attendance:", error);
+      }
+    },
+    [handleAttendanceUpdate]
+  );
+
+  // ── Columns ──────────────────────────────────────────────────────────────────
+  // useMemo: TanStack Table treats a new columns array as a schema change and
+  // resets internal state. Only recompute when pagination or the action
+  // callbacks actually change.
+
+  const columns: ColumnDef<AttendanceRecord>[] = useMemo(
+    () => [
+      {
+        accessorKey: "sr_no",
+        header: "Sr.No",
+        // FIX 5: global row number across pages
+        cell: ({ row }) => (
+          <span className="font-medium">
+            {pagination.pageIndex * pagination.pageSize + row.index + 1}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "attendance_id",
+        header: "ID",
+        cell: ({ row }) => {
+          const id = row.getValue("attendance_id") as number;
+          return (
+            <span className="font-medium">#{id.toString().padStart(4, "0")}</span>
+          );
+        },
+      },
+      {
+        accessorKey: "attendance_date",
+        header: "Date",
+        cell: ({ row }) => {
+          const date = row.getValue("attendance_date") as string;
+          return new Date(date).toLocaleDateString();
+        },
+      },
+      {
+        accessorKey: "attendance_time",
+        header: "Time",
+      },
+      {
+        accessorKey: "attendance_class",
+        header: "Class",
+      },
+      {
+        accessorKey: "attendance_teacher",
+        header: "Teacher",
+      },
+      {
+        accessorKey: "attendance_student",
+        header: "Student",
+      },
+      {
+        accessorKey: "attendance_std_fname",
+        header: "Father Name",
+      },
+      {
+        accessorKey: "attendance_value",
+        header: "Status",
+        cell: ({ row }) => {
+          const value = (
+            row.getValue("attendance_value") as string
+          ).toLowerCase();
+          return (
+            <div className="flex justify-center">
+              {value === "present" ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                  Present
+                </span>
+              ) : value === "absent" ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+                  Absent
+                </span>
+              ) : value === "late" ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                  Late
+                </span>
+              ) : value === "leave" ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
+                  Leave
+                </span>
+              ) : (
+                <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-400 border border-gray-200 dark:bg-slate-700 dark:text-slate-500 dark:border-slate-600">
+                  —
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="no-print flex justify-center items-center gap-2">
+            <EditAttendance
+              attendanceId={row.original.attendance_id}
+              onUpdate={handleAttendanceUpdate}
+            />
+            <DelConfirmMsg
+              rowId={row.original.attendance_id}
+              OnDelete={(confirmed) => {
+                if (confirmed) {
+                  handleDeleteAttendance(row.original.attendance_id);
+                }
+              }}
+            />
+          </div>
+        ),
+      },
+    ],
+    [pagination.pageIndex, pagination.pageSize, handleAttendanceUpdate, handleDeleteAttendance]
+  );
+
+  // FIX 2: dropdowns load exactly once on mount — no dependency on formRefresh
+  useEffect(() => {
+    Promise.all([GetClassName(), GetClassTime(), GetTeacherName(), GetStudents()])
+      .finally(() => setDropdownsLoading(false));
+  }, []);
 
   const GetStudents = async () => {
     setIsLoading(true);
@@ -308,13 +391,14 @@ const AttendanceTable: React.FC = () => {
     try {
       setIsLoading(true);
       const response = (await API2.Get()) as { data: ClassNameResponse[] };
-      response.data.unshift({
-        class_name_id: 0,
-        class_name: "All",
-      });
-      if (response.data && Array.isArray(response.data)) {
+      // FIX 3: create new array instead of mutating response.data
+      const allClasses = [
+        { class_name_id: 0, class_name: "All" },
+        ...response.data,
+      ];
+      if (allClasses && Array.isArray(allClasses)) {
         setClassNameList(
-          response.data.map((item: ClassNameResponse) => ({
+          allClasses.map((item: ClassNameResponse) => ({
             id: item.class_name_id,
             title: item.class_name,
           }))
@@ -332,13 +416,14 @@ const AttendanceTable: React.FC = () => {
       const response = (await API13.Get()) as {
         data: AttendanceTimeResponse[];
       };
-      response.data.unshift({
-        attendance_time_id: 0,
-        attendance_time: "All",
-      });
-      if (response.data && Array.isArray(response.data)) {
+      // FIX 3: create new array instead of mutating response.data
+      const allTimes = [
+        { attendance_time_id: 0, attendance_time: "All" },
+        ...response.data,
+      ];
+      if (allTimes && Array.isArray(allTimes)) {
         setClassTimeList(
-          response.data.map((item: AttendanceTimeResponse) => ({
+          allTimes.map((item: AttendanceTimeResponse) => ({
             id: item.attendance_time_id,
             title: item.attendance_time,
           }))
@@ -356,13 +441,14 @@ const AttendanceTable: React.FC = () => {
       const response = (await API4.Get()) as unknown as {
         data: TeacherResponse[];
       };
-      response.data.unshift({
-        teacher_name_id: 0,
-        teacher_name: "All",
-      });
-      if (response.data && Array.isArray(response.data)) {
+      // FIX 3: create new array instead of mutating response.data
+      const allTeachers = [
+        { teacher_name_id: 0, teacher_name: "All" },
+        ...response.data,
+      ];
+      if (allTeachers && Array.isArray(allTeachers)) {
         setTeacherNameList(
-          response.data.map((item: TeacherResponse) => ({
+          allTeachers.map((item: TeacherResponse) => ({
             id: item.teacher_name_id,
             title: item.teacher_name,
           }))
@@ -373,68 +459,6 @@ const AttendanceTable: React.FC = () => {
     }
 
     setIsLoading(false);
-  };
-
-  const HandleSubmitForStudentGet = async (formData: FilteredAttendance) => {
-    setAttendanceRecords([]);
-    setPagination({ pageIndex: 0, pageSize: 15 }); // Reset pagination when fetching new records
-    try {
-      setIsLoading(true);
-      const filter: FilteredAttendance = {
-        attendance_date: formData.attendance_date || "",
-        attendance_time_id: Number(formData.attendance_time_id) || 0,
-        class_name_id: Number(formData.class_name_id) || 0,
-        teacher_name_id: Number(formData.teacher_name_id) || 0,
-        student_id: Number(formData.student_id) || 0,
-        father_name: formData.father_name || "",
-        attendance_value_id: Number(formData.attendance_value_id) || 0,
-      };
-
-      const response = await API.GetbyFilter(filter);
-
-      if (response.status === 200) {
-        const records = response.data as unknown as AttendanceRecord[];
-        if (records && Array.isArray(records) && records.length > 0) {
-          toast.success(`Found ${records.length} records`, {
-            position: "bottom-center",
-            duration: 3000,
-          });
-          setAttendanceRecords(records);
-        } else {
-          toast.info("No records match the selected criteria", {
-            position: "bottom-center",
-            duration: 3000,
-          });
-          setAttendanceRecords([]);
-        }
-      } else {
-        toast.error(`Error: ${response.status} - ${response.statusText}`);
-      }
-    } catch (error: unknown) {
-      if (error && typeof error === "object" && "response" in error) {
-        const apiError = error as APIError;
-        const errorMessage = apiError.response?.data?.message || "Failed to fetch records";
-        console.error("API Error:", errorMessage);
-        toast.error(errorMessage, {
-          position: "bottom-center",
-          duration: 3000,
-        });
-      } else if (error instanceof Error) {
-        console.error("Error:", error.message);
-        toast.error("An unexpected error occurred. Please try again.", {
-          position: "bottom-center",
-          duration: 3000,
-        });
-      } else {
-        console.error("Unknown error:", error);
-        toast.error("An unexpected error occurred. Please try again.", {
-          position: "bottom-center",
-          duration: 3000,
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // const indexOfLastRecord = currentPage * recordsPerPage;
@@ -495,17 +519,17 @@ const AttendanceTable: React.FC = () => {
                 Responsive grid:
                 - Mobile:  2 columns
                 - Tablet:  3 columns
-                - Desktop: 6 columns in one row
+                - Desktop: 7 columns in one row
               */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
                     Date
                   </label>
-                  <Input
+                  <input
                     type="date"
-                    className="h-10 text-sm border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 text-gray-900 dark:text-gray-100 rounded-lg w-full transition-colors"
+                    className="h-10 text-sm border border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 text-gray-900 dark:text-gray-100 rounded-lg w-full transition-colors px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     {...register("attendance_date", {})}
                   />
                   <p className="text-red-500 text-xs">
@@ -555,6 +579,21 @@ const AttendanceTable: React.FC = () => {
                   />
                   <p className="text-red-500 text-xs">
                     {errors.teacher_name_id?.message}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
+                    Status
+                  </label>
+                  <Select
+                    options={statusList}
+                    {...register("attendance_value_id", { valueAsNumber: true })}
+                    DisplayItem="title"
+                    className="h-10 text-sm rounded-lg w-full"
+                  />
+                  <p className="text-red-500 text-xs">
+                    {errors.attendance_value_id?.message}
                   </p>
                 </div>
 
@@ -633,8 +672,8 @@ const AttendanceTable: React.FC = () => {
                   </Popover>
                 </div>
 
-                {/* Search Button — spans 2 cols on mobile to stay on same row as Student */}
-                <div className="flex items-end col-span-2 sm:col-span-1">
+                {/* Search Button — spans 2 cols on mobile */}
+                <div className="flex items-end col-span-2 sm:col-span-2 lg:col-span-1">
                   <Button
                     type="submit"
                     className="w-full h-10 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 dark:bg-blue-700 dark:hover:bg-blue-600 text-white font-bold text-sm rounded-lg transition-colors shadow-sm"
