@@ -1,7 +1,7 @@
 
 from datetime import datetime
 from sqlmodel import Relationship, SQLModel, Field, Column
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, JSON
 from typing import List, Optional
 
 
@@ -113,6 +113,8 @@ class DeletedStudent(SQLModel, table=True):
     reason: str
     deleted_by: int
     deleted_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime))
+    # ✅ Stores attendance summary snapshot at deletion time
+    attendance_summary: Optional[dict] = Field(default=None, sa_column=Column(JSON))
 
 
 class DeletedStudentResponse(SQLModel):
@@ -126,6 +128,8 @@ class DeletedStudentResponse(SQLModel):
     deleted_by: int
     deleted_by_name: Optional[str] = None
     deleted_at: datetime
+    # ✅ Attendance summary snapshot
+    attendance_summary: Optional[dict] = None
 
     class Config:
         from_attributes = True

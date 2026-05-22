@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from router.class_names import read_classname
 from schemas.class_names_model import ClassNames
 from sqlmodel import Session, select
+from sqlalchemy.orm import joinedload
 from typing import List, Optional
 from typing import Annotated
 from user.user_models import User, UserRole
@@ -10,6 +11,9 @@ from datetime import datetime
 
 from db import get_session
 from schemas.students_model import Students, StudentsCreate, StudentsResponse, StudentsUpdate, DeletedStudent, SoftDeleteRequest
+from schemas.attendance_model import Attendance
+from schemas.fee_model import Fee
+from schemas.admission_model import Admission
 from user.user_crud import require_admin_principal
 from user.user_models import User
 
@@ -79,42 +83,93 @@ def delete_student(
     """
     Soft-delete a student:
     - Copies student data + deletion metadata into deleted_students table
+    - Computes and stores attendance summary snapshot
     - Removes from active students table
     """
-    # 1. Fetch active student
-    db_student = session.exec(
-        select(Students).where(Students.student_id == student_id)
-    ).first()
-    if not db_student:
-        raise HTTPException(status_code=404, detail="Student not found")
+    try:
+        # 1. Fetch active student
+        db_student = session.exec(
+            select(Students).where(Students.student_id == student_id)
+        ).first()
+        if not db_student:
+            raise HTTPException(status_code=404, detail="Student not found")
 
-    # 2. Archive to deleted_students
-    deleted_record = DeletedStudent(
-        original_student_id=db_student.student_id,
-        student_name=db_student.student_name,
-        student_date_of_birth=db_student.student_date_of_birth,
-        student_gender=db_student.student_gender,
-        student_age=db_student.student_age,
-        student_education=db_student.student_education,
-        class_name=db_student.class_name,
-        student_city=db_student.student_city,
-        student_address=db_student.student_address,
-        father_name=db_student.father_name,
-        father_occupation=db_student.father_occupation,
-        father_cnic=db_student.father_cnic,
-        father_cast_name=db_student.father_cast_name,
-        father_contact=db_student.father_contact,
-        reason=payload.reason,
-        deleted_by=payload.deleted_by,
-        deleted_at=datetime.utcnow(),
-    )
-    session.add(deleted_record)
+        # ✅ 2. Compute attendance summary before anything is deleted
+        attendance_records = session.exec(
+            select(Attendance).where(Attendance.student_id == student_id)
+        ).all()
 
-    # 3. Remove from active students
-    session.delete(db_student)
-    session.commit()
+        summary = {}
+        for record in attendance_records:
+            # Safely get the attendance value — use direct field access
+            try:
+                if record.attendance_value:
+                    status = record.attendance_value.attendance_value
+                else:
+                    status = "Unknown"
+            except Exception:
+                status = "Unknown"
+            summary[status] = summary.get(status, 0) + 1
 
-    return {"message": f"Student '{db_student.student_name}' soft-deleted successfully."}
+        attendance_summary = {
+            "total_records": len(attendance_records),
+            "breakdown": summary,  # e.g. {"Present": 40, "Absent": 5, "Leave": 2}
+            "snapshot_date": datetime.utcnow().isoformat()
+        }
+
+        # 3. Archive to deleted_students (with summary)
+        deleted_record = DeletedStudent(
+            original_student_id=db_student.student_id,
+            student_name=db_student.student_name,
+            student_date_of_birth=db_student.student_date_of_birth,
+            student_gender=db_student.student_gender,
+            student_age=db_student.student_age,
+            student_education=db_student.student_education,
+            class_name=db_student.class_name,
+            student_city=db_student.student_city,
+            student_address=db_student.student_address,
+            father_name=db_student.father_name,
+            father_occupation=db_student.father_occupation,
+            father_cnic=db_student.father_cnic,
+            father_cast_name=db_student.father_cast_name,
+            father_contact=db_student.father_contact,
+            reason=payload.reason,
+            deleted_by=payload.deleted_by,
+            deleted_at=datetime.utcnow(),
+            attendance_summary=attendance_summary,  # ✅
+        )
+        session.add(deleted_record)
+
+        # 4. Delete all FK dependencies before deleting student
+        # Delete attendance records
+        for record in attendance_records:
+            session.delete(record)
+
+        # Delete fee records
+        fee_records = session.exec(
+            select(Fee).where(Fee.student_id == student_id)
+        ).all()
+        for record in fee_records:
+            session.delete(record)
+
+        # Delete admission records
+        admission_records = session.exec(
+            select(Admission).where(Admission.student_id == student_id)
+        ).all()
+        for record in admission_records:
+            session.delete(record)
+
+        # 5. Remove from active students
+        session.delete(db_student)
+        session.commit()
+
+        return {"message": f"Student '{db_student.student_name}' soft-deleted successfully."}
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @students_router.get("/all_students/", response_model=List[StudentsResponse])
