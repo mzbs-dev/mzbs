@@ -2,17 +2,25 @@
 
 import { useState } from 'react';
 import { StudentAPI } from '@/api/Student/StudentsAPI';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Eye } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
+import DeletedStudentDetailModal from './DeletedStudentDetailModal';
 
 interface DeletedStudent {
   student_id: number;
+  original_student_id: number;
   student_name: string;
   class_name: string;
+  father_name?: string;
   reason: string;
   deleted_by: number;
   deleted_by_name?: string;
   deleted_at: string;
+  attendance_summary?: {
+    total_records: number;
+    breakdown: Record<string, number>;
+    snapshot_date: string;
+  };
 }
 
 interface DeletedStudentsTableProps {
@@ -29,6 +37,7 @@ export default function DeletedStudentsTable({
   const [restoringId, setRestoringId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [viewingStudent, setViewingStudent] = useState<DeletedStudent | null>(null);
 
   const handleRestore = async (deletedRecordId: number, name: string) => {
     const confirmed = window.confirm(`Restore "${name}" back to active students?`);
@@ -105,6 +114,17 @@ export default function DeletedStudentsTable({
                 </td>
                 <td className="py-4 px-4 text-sm">
                   <div className="flex gap-2 items-center">
+                    
+                    {/* Eye icon */}
+                    <button
+                      onClick={() => setViewingStudent(student)}
+                      title="View student details"
+                      className="text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      <Eye size={16} />
+                    </button>
+
+                    {/* Restore — unchanged */}
                     <button
                       onClick={() => handleRestore(student.student_id, student.student_name)}
                       disabled={restoringId === student.student_id || deletingId === student.student_id}
@@ -112,6 +132,8 @@ export default function DeletedStudentsTable({
                     >
                       {restoringId === student.student_id ? 'Restoring...' : 'Restore'}
                     </button>
+
+                    {/* Trash — unchanged */}
                     {isAdmin && (
                       <button
                         onClick={() => handlePermanentlyDelete(student.student_id, student.student_name)}
@@ -126,6 +148,7 @@ export default function DeletedStudentsTable({
                         )}
                       </button>
                     )}
+
                   </div>
                 </td>
               </tr>
@@ -133,6 +156,13 @@ export default function DeletedStudentsTable({
           </tbody>
 
         </table>
+      )}
+      
+      {viewingStudent && (
+        <DeletedStudentDetailModal
+          student={viewingStudent}
+          onClose={() => setViewingStudent(null)}
+        />
       )}
     </div>
   );

@@ -117,6 +117,30 @@ def delete_student(
             "snapshot_date": datetime.utcnow().isoformat()
         }
 
+        # ✅ 2.5. Snapshot paid fees (before deleting unpaid fees)
+        all_fees = session.exec(
+            select(Fee).where(Fee.student_id == student_id)
+        ).all()
+
+        paid_fees_snapshot = [
+            {
+                "fee_id": f.fee_id,
+                "fee_month": f.fee_month,
+                "fee_year": f.fee_year,
+                "fee_amount": str(f.fee_amount),
+                "fee_status": f.fee_status,
+            }
+            for f in all_fees if f.fee_status == FeeStatus.PAID
+        ]
+
+        fee_summary = {
+            "total_fees": len(all_fees),
+            "paid_count": len(paid_fees_snapshot),
+            "unpaid_count": len([f for f in all_fees if f.fee_status == FeeStatus.UNPAID]),
+            "paid_records": paid_fees_snapshot,
+            "snapshot_date": datetime.utcnow().isoformat()
+        }
+
         # 3. Archive to deleted_students (with summary)
         deleted_record = DeletedStudent(
             original_student_id=db_student.student_id,
@@ -137,21 +161,23 @@ def delete_student(
             deleted_by=payload.deleted_by,
             deleted_at=datetime.utcnow(),
             attendance_summary=attendance_summary,  # ✅
+            fee_summary=fee_summary,  # ✅ NEW
         )
         session.add(deleted_record)
 
-        # 4. Delete all FK dependencies before deleting student
-        # Delete attendance records
-        for record in attendance_records:
-            session.delete(record)
+        # 4. Stamp original_student_id on ALL fee rows before cascade
+        # (we already captured `all_fees` earlier for the fee snapshot)
+        for f in all_fees:
+            f.original_student_id = student_id
+            session.add(f)
 
-        # Delete fee records (only unpaid, paid fees: student_id becomes NULL automatically via DB cascade)
-        unpaid_fee_records = session.exec(
-            select(Fee).where(
-                (Fee.student_id == student_id) & (Fee.fee_status == FeeStatus.UNPAID)
-            )
-        ).all()
-        for record in unpaid_fee_records:
+        # 5. Delete UNPAID fees only
+        for f in all_fees:
+            if f.fee_status == FeeStatus.UNPAID:
+                session.delete(f)
+
+        # 6. Delete attendance records
+        for record in attendance_records:
             session.delete(record)
 
         # Delete admission records
@@ -161,7 +187,7 @@ def delete_student(
         for record in admission_records:
             session.delete(record)
 
-        # 5. Remove from active students
+        # 7. Delete student (paid fees auto-set student_id = NULL via ON DELETE SET NULL)
         session.delete(db_student)
         session.commit()
 

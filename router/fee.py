@@ -568,7 +568,48 @@ async def filter_fees(
                                 fee_amount=fee.fee_amount,
                                 is_deleted=True
                             ))
+        # ─── Handle orphaned paid fees (deleted students with student_id = NULL) ────
+        # These are paid fees where the student was deleted but the fee record remains
+        orphaned_fees = db.exec(
+            select(Fee).where(
+                Fee.student_id.is_(None),
+                Fee.original_student_id.isnot(None),
+                Fee.fee_status == FeeStatus.PAID
+            )
+        ).all()
 
+        for fee in orphaned_fees:
+            # Check if this fee matches the current filters
+            should_include = True
+            
+            if fee_year and str(fee.fee_year) != str(fee_year):
+                should_include = False
+            
+            if fee_month and fee.fee_month != fee_month:
+                should_include = False
+
+            if class_id and fee.class_id != class_id:
+                should_include = False
+
+            if fee_status and fee_status != "All" and fee.fee_status != fee_status:
+                should_include = False
+
+            if should_include:
+                # Look up deleted student info
+                deleted = deleted_student_map.get(fee.original_student_id)
+                
+                filtered_response.append(FilterPaidUnpaid(
+                    fee_id=fee.fee_id,
+                    student_id=fee.original_student_id,
+                    student_name=f"{deleted.student_name} ⚠ Deleted" if deleted else "Deleted Student",
+                    father_name=deleted.father_name or "N/A" if deleted else "N/A",
+                    class_name=deleted.class_name if deleted else cached_class_name(fee.class_id),
+                    fee_status=fee.fee_status,
+                    fee_month=fee.fee_month,
+                    fee_year=fee.fee_year,
+                    fee_amount=fee.fee_amount,
+                    is_deleted=True
+                ))
         # ── Sort by class name ────────────────────────────────────────────────
         filtered_response.sort(key=lambda x: x.class_name)
         

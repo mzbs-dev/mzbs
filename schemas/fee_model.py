@@ -17,6 +17,7 @@ class Fee(SQLModel, table=True):
     fee_id: int = Field(primary_key=True)
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
     student_id: Optional[int] = Field(default=None, foreign_key="students.student_id")  # ← nullable now
+    original_student_id: Optional[int] = Field(default=None)                            # ← NEW
     class_id: int = Field(foreign_key="classnames.class_name_id", nullable=False)
     fee_amount: Decimal = Field(nullable=False)
     fee_month: str = Field(nullable=False)
