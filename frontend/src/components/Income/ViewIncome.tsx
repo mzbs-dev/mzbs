@@ -50,6 +50,18 @@ interface ApiResponse<T> {
   message?: string;
 }
 
+const sortByDateDesc = <T extends { date: string }>(records: T[]) =>
+  [...records].sort(
+    (left, right) => new Date(right.date).getTime() - new Date(left.date).getTime()
+  );
+
+const getIncomeCategoryIdByName = (
+  categories: IncomeCategory[],
+  categoryName: string
+) =>
+  categories.find((category) => category.income_cat_name === categoryName)
+    ?.income_cat_name_id;
+
 const ViewIncome = () => {
   const {
     register,
@@ -103,9 +115,8 @@ const ViewIncome = () => {
   const getAllIncome = async () => {
     setIsLoading(true);
     try {
-      // The frontend API wrapper doesn't expose GetAllIncome, use GetIncomeData with 0 (component treats 0 as "All")
-      const res = (await API.GetIncomeData(0)) as ApiResponse<IncomeDataItem[]>;
-      setIncomeData(res.data);
+      const res = (await API.GetAllIncomeData()) as ApiResponse<IncomeDataItem[]>;
+      setIncomeData(sortByDateDesc(res.data));
     } catch (error) {
       console.error("Error fetching all income data:", error);
       setIncomeData([]);
@@ -123,7 +134,7 @@ const ViewIncome = () => {
     setIsLoading(true);
     try {
       const res = (await API.GetIncomeData(CategoryId)) as ApiResponse<IncomeDataItem[]>;
-      setIncomeData(res.data);
+      setIncomeData(sortByDateDesc(res.data));
     } catch (error) {
       console.error("Error fetching income data:", error);
       setIncomeData([]);
@@ -141,7 +152,7 @@ const ViewIncome = () => {
     try {
       await API.DeleteIncome(incomeId);
       // Refresh the data
-      getIncome(0);
+      getAllIncome();
     } catch (error) {
       console.error("Error deleting income:", error);
       alert("Failed to delete income record");
@@ -151,11 +162,12 @@ const ViewIncome = () => {
   };
 
   const handleEditClick = (income: IncomeDataItem) => {
+    const matchedCategoryId = getIncomeCategoryIdByName(incomeCategory, income.category);
     setEditingIncome(income);
     setEditFormData({
       recipt_number: String(income.id),
       date: income.date.split("T")[0], // Format: YYYY-MM-DD
-      category_id: "", // Will need to track category_id separately
+      category_id: matchedCategoryId ? String(matchedCategoryId) : "",
       source: income.source,
       description: income.description || "",
       contact: income.contact || "",
@@ -175,6 +187,9 @@ const ViewIncome = () => {
         description: editFormData.description || null,
         contact: editFormData.contact || null,
         amount: parseFloat(editFormData.amount),
+        ...(editFormData.category_id
+          ? { category_id: Number(editFormData.category_id) }
+          : {}),
       };
 
       await API.UpdateIncome(editingIncome.id, updateData);
@@ -256,7 +271,6 @@ const ViewIncome = () => {
               <Table>
                 <TableHeader className="bg-primary dark:bg-secondary hover:bg-none">
                   <TableRow>
-                    <TableHead className="text-gray-100">ID</TableHead>
                     <TableHead className="text-gray-100">Date</TableHead>
                     <TableHead className="text-gray-100">Category</TableHead>
                     <TableHead className="text-gray-100">Source</TableHead>
@@ -271,7 +285,6 @@ const ViewIncome = () => {
                 <TableBody>
                   {incomeData.map((item) => (
                     <TableRow className="h-[1rem]" key={item.id}>
-                      <TableCell>{item.id}</TableCell>
                       <TableCell>{formatDateToDDMMYY(item.date)}</TableCell>
                       <TableCell>{item.category}</TableCell>
                       <TableCell>{item.source}</TableCell>
@@ -326,6 +339,27 @@ const ViewIncome = () => {
                     setEditFormData({ ...editFormData, date: e.target.value })
                   }
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Category</label>
+                <select
+                  value={editFormData.category_id}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, category_id: e.target.value })
+                  }
+                  className="w-full border rounded-md px-3 py-2 bg-white dark:bg-background dark:text-gray-300"
+                >
+                  <option value="">Select Category</option>
+                  {incomeCategory.map((category) => (
+                    <option
+                      key={category.income_cat_name_id}
+                      value={category.income_cat_name_id}
+                    >
+                      {category.income_cat_name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-1">

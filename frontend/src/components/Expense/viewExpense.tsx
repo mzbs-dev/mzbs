@@ -44,12 +44,25 @@ interface ApiResponse<T> {
 // Interface for expense data items
 interface ExpenseDataItem {
   id: number;
+  recipt_number?: number | null;
   date: string;
   category: string;
   to_whom: string;
   description: string;
   amount: number;
 }
+
+const sortByDateDesc = <T extends { date: string }>(records: T[]) =>
+  [...records].sort(
+    (left, right) => new Date(right.date).getTime() - new Date(left.date).getTime()
+  );
+
+const getExpenseCategoryIdByName = (
+  categories: ExpenseCategory[],
+  categoryName: string
+) =>
+  categories.find((category) => category.expense_cat_name === categoryName)
+    ?.expense_cat_name_id;
 
 const ViewExpense = () => {
   const {
@@ -99,23 +112,12 @@ const ViewExpense = () => {
   const getAllExpense = async () => {
     setIsLoading(true);
     try {
-      // Try wrapper first (existing behavior)
-      const res = (await API.GetExpenseData(0)) as ApiResponse<ExpenseDataItem[]>;
+      const res = (await API.GetAllExpenseData()) as ApiResponse<ExpenseDataItem[]>;
       if (res && Array.isArray(res.data) && res.data.length > 0) {
-        setExpenseData(res.data);
+        setExpenseData(sortByDateDesc(res.data));
         return;
       }
 
-      // Fallback: call backend endpoint directly to verify wrapper behavior
-      const fallbackUrl = `/expenses/filter_expense?category_id=0`;
-      const fallbackRes = await fetch(fallbackUrl, { credentials: "include" });
-      if (!fallbackRes.ok) {
-        console.error("Fallback request failed:", fallbackRes.status, await fallbackRes.text());
-        setExpenseData([]);
-        return;
-      }
-      const fallbackJson = await fallbackRes.json();
-      setExpenseData(Array.isArray(fallbackJson) ? fallbackJson : []);
     } catch (error) {
       console.error("Error fetching all Expense data:", error);
       setExpenseData([]);
@@ -131,23 +133,11 @@ const ViewExpense = () => {
     }
     setIsLoading(true);
     try {
-      // Try wrapper first
       const res = (await API.GetExpenseData(CategoryId)) as ApiResponse<ExpenseDataItem[]>;
       if (res && Array.isArray(res.data)) {
-        setExpenseData(res.data);
+        setExpenseData(sortByDateDesc(res.data));
         return;
       }
-
-      // Fallback to direct fetch with query param
-      const fallbackUrl = `/expenses/filter_expense?category_id=${CategoryId}`;
-      const fallbackRes = await fetch(fallbackUrl, { credentials: "include" });
-      if (!fallbackRes.ok) {
-        console.error("Fallback request failed:", fallbackRes.status, await fallbackRes.text());
-        setExpenseData([]);
-        return;
-      }
-      const fallbackJson = await fallbackRes.json();
-      setExpenseData(Array.isArray(fallbackJson) ? fallbackJson : []);
     } catch (error) {
       console.error("Error fetching Expense data:", error);
       setExpenseData([]);
@@ -165,7 +155,7 @@ const ViewExpense = () => {
     try {
       await API.DeleteExpense(expenseId);
       // Refresh the data
-      getExpense(0);
+      getAllExpense();
     } catch (error) {
       console.error("Error deleting expense:", error);
       alert("Failed to delete expense record");
@@ -175,11 +165,12 @@ const ViewExpense = () => {
   };
 
   const handleEditClick = (expense: ExpenseDataItem) => {
+    const matchedCategoryId = getExpenseCategoryIdByName(expenseCategory, expense.category);
     setEditingExpense(expense);
     setEditFormData({
-      recipt_number: String(expense.id),
+      recipt_number: expense.recipt_number ? String(expense.recipt_number) : "",
       date: expense.date.split("T")[0],
-      category_id: "",
+      category_id: matchedCategoryId ? String(matchedCategoryId) : "",
       to_whom: expense.to_whom,
       description: expense.description || "",
       amount: String(expense.amount),
@@ -192,10 +183,16 @@ const ViewExpense = () => {
     setIsLoading(true);
     try {
       const updateData = {
+        recipt_number: editFormData.recipt_number
+          ? Number(editFormData.recipt_number)
+          : null,
         date: editFormData.date,
         to_whom: editFormData.to_whom,
         description: editFormData.description || null,
         amount: parseFloat(editFormData.amount),
+        ...(editFormData.category_id
+          ? { category_id: Number(editFormData.category_id) }
+          : {}),
       };
       await API.UpdateExpense(editingExpense.id, updateData);
       toast.success("Expense record updated successfully");
@@ -278,7 +275,7 @@ const ViewExpense = () => {
               <Table>
                 <TableHeader className="bg-primary dark:bg-secondary hover:bg-none">
                   <TableRow>
-                    <TableHead className="text-gray-100">ID</TableHead>
+                    <TableHead className="text-gray-100">Bill number</TableHead>
                     <TableHead className="text-gray-100">Date</TableHead>
                     <TableHead className="text-gray-100">Category</TableHead>
                     <TableHead className="text-gray-100">To Whom</TableHead>
@@ -292,7 +289,7 @@ const ViewExpense = () => {
                 <TableBody>
                   {expenseData.map((item) => (
                     <TableRow className="h-[1rem]" key={item.id}>
-                      <TableCell>{item.id}</TableCell>
+                      <TableCell>{item.recipt_number ?? "-"}</TableCell>
                       <TableCell>{formatDateToDDMMYY(item.date)}</TableCell>
                       <TableCell>{item.category}</TableCell>
                       <TableCell>{item.to_whom}</TableCell>
@@ -338,6 +335,21 @@ const ViewExpense = () => {
           {editingExpense && (
             <div className="space-y-4">
               <div className="space-y-1">
+                <label className="text-sm font-medium">Bill number</label>
+                <Input
+                  type="number"
+                  value={editFormData.recipt_number}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      recipt_number: e.target.value,
+                    })
+                  }
+                  placeholder="Enter bill number"
+                />
+              </div>
+
+              <div className="space-y-1">
                 <label className="text-sm font-medium">Date</label>
                 <Input
                   type="date"
@@ -346,6 +358,27 @@ const ViewExpense = () => {
                     setEditFormData({ ...editFormData, date: e.target.value })
                   }
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Category</label>
+                <select
+                  value={editFormData.category_id}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, category_id: e.target.value })
+                  }
+                  className="w-full border rounded-md px-3 py-2 bg-white dark:bg-background dark:text-gray-300"
+                >
+                  <option value="">Select Category</option>
+                  {expenseCategory.map((category) => (
+                    <option
+                      key={category.expense_cat_name_id}
+                      value={category.expense_cat_name_id}
+                    >
+                      {category.expense_cat_name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-1">

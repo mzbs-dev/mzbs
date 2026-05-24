@@ -9,6 +9,17 @@ import { AddIncomeModel, CreateIncomeCat } from "@/models/income/income";
 
 // Export as a single API object
 export const IncomeAPI = {
+  GetAllIncomeData: async () => {
+    try {
+      const response = await AxiosInstance.get("/income/all");
+      console.log("API Response:", response.data)
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
+
   GetIncomeData: async (category_id: number) => {
     try {
       const response = await AxiosInstance.get(

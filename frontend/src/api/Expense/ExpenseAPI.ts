@@ -4,6 +4,17 @@ import { AddExpenseModel, ExpenseCategory } from "@/models/expense/expense";
 
 // Export as a single API object
 export const ExpenseAPI = {
+  GetAllExpenseData: async () => {
+    try {
+      const response = await AxiosInstance.get("/expenses/expenses-all/");
+      console.log("API Response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
+
   GetExpenseData: async (category_id: number) => {
     try {
       const response = await AxiosInstance.get(
@@ -113,4 +124,4 @@ export const ExpenseAPI = {
 };
 
 // For backward compatibility, also export individual functions
-export const { GetExpenseData, AddExpense, AddExpenseCat, GetExpenseCategory, DeleteExpenseCategory } = ExpenseAPI;
+export const { GetAllExpenseData, GetExpenseData, AddExpense, AddExpenseCat, GetExpenseCategory, DeleteExpenseCategory } = ExpenseAPI;
