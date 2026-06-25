@@ -74,6 +74,7 @@ origins = [
     "http://127.0.0.1:3000",  # Localhost access with 127.0.0.1
     # "https://mzbs.vercel.app",  # Production frontend
     "https://mzbs.netlify.app" , # Netlify production frontend
+    "https://ktns.netlify.app" , # KTNS production frontend
     "https://mzbs-temp.vercel.app", # temporary deployment
 ]
 
@@ -111,7 +112,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 # Security: Add trusted hosts middleware to prevent Host header attacks
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "mzbs-temp.vercel.app", "*.vercel.app","site--mzbs--lvqlqxbx7xgh.code.run"]
+    allowed_hosts=["localhost", "127.0.0.1", "mzbs-temp.vercel.app", "mzbs.netlify.app", "ktns.netlify.app", "*.vercel.app","site--mzbs--lvqlqxbx7xgh.code.run"]
 )
 
 # Security: Restrict CORS to specific methods and headers
