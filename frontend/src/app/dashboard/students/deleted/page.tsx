@@ -42,7 +42,7 @@ export default function DeletedStudentsPage() {
       </div>
 
       {/* ── White card — matches the card below the Students List header ── */}
-      <div className="mx-4 my-4 bg-white border border-gray-200 rounded p-6">
+      <div className="mx-2 my-2 bg-white border border-gray-200 rounded p-4 sm:mx-4 sm:my-4 sm:p-6">
         <DeletedStudentsTable students={data} onRestoreSuccess={fetchDeleted} />
       </div>
 
