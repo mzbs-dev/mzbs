@@ -19,9 +19,9 @@ export const ExpenseAPI = {
   GetExpenseData: async (category_id: number, page = 1, pageSize = 10) => {
     try {
       const response = await AxiosInstance.get(
-        "/expenses/filter-by-category/0",
+        `/expenses/filter-by-category/${category_id}`,
         {
-          params: { category_id, page, page_size: pageSize },
+          params: { page, page_size: pageSize },
         }
       );
       return response;

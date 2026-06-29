@@ -114,10 +114,14 @@ def restore_student(
 
         # 5. Restore unpaid fee records, if present in the deletion snapshot
         if deleted.fee_records:
-            existing_fee_ids = {
-                fee.fee_id
-                for fee in session.exec(select(Fee.fee_id)).all()
-            }
+            # Query may return plain ints or 1-tuples depending on the DB driver.
+            # Normalize to a set of ints representing existing fee IDs.
+            existing_fee_ids = set()
+            for row in session.exec(select(Fee.fee_id)).all():
+                if isinstance(row, tuple) or isinstance(row, list):
+                    existing_fee_ids.add(row[0])
+                else:
+                    existing_fee_ids.add(row)
 
             for fee_data in deleted.fee_records:
                 fee_status = str(fee_data.get("fee_status"))

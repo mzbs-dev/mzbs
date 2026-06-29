@@ -76,7 +76,7 @@ def read_expenses(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
 ):
-    total = session.exec(select(func.count(Expense.id))).one()
+    total = session.scalar(select(func.count(Expense.id))) or 0
     expenses = session.exec(
         select(Expense)
             .order_by(Expense.date.desc(), Expense.id.desc())
@@ -89,7 +89,7 @@ def read_expenses(
             ExpenseResponse(
                 id=e.id,
                 created_at=e.created_at,
-                recipt_number=e.recipt_number,
+                recipt_number=str(e.recipt_number) if e.recipt_number is not None else None,
                 date=e.date,
                 category=e.category.expense_cat_name if e.category else None,
                 to_whom=e.to_whom,
@@ -178,7 +178,7 @@ def filter_expense_by_category(
         if category_id != 0:
             query = query.where(Expense.category_id == category_id)
 
-        total = session.exec(select(func.count()).select_from(query.subquery())).one()
+        total = session.scalar(select(func.count()).select_from(query.subquery())) or 0
         expenses = session.exec(
             query.order_by(Expense.date.desc(), Expense.id.desc())
             .offset((page - 1) * page_size)
@@ -192,7 +192,7 @@ def filter_expense_by_category(
                 ExpenseResponse(
                     id=expense.id,
                     created_at=expense.created_at or datetime.utcnow(),
-                    recipt_number=expense.recipt_number,
+                    recipt_number=str(expense.recipt_number) if expense.recipt_number is not None else None,
                     date=expense.date,
                     category=category.expense_cat_name if category else None,
                     to_whom=expense.to_whom,

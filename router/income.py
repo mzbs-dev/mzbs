@@ -29,7 +29,7 @@ def get_all_incomes(
 ):
     """Get all income records."""
     try:
-        total = session.exec(select(func.count(Income.id))).one()
+        total = session.scalar(select(func.count(Income.id))) or 0
         incomes = session.exec(
             select(Income)
             .order_by(Income.date.desc(), Income.id.desc())
@@ -43,7 +43,7 @@ def get_all_incomes(
             response.append(IncomeResponse(
                 id=income.id,
                 created_at=income.created_at or datetime.utcnow(),
-                recipt_number=income.recipt_number,
+                recipt_number=str(income.recipt_number) if income.recipt_number is not None else None,
                 date=income.date,
                 category=category.income_cat_name if category else None,
                 source=income.source,
@@ -107,7 +107,7 @@ def create_income(
     return IncomeResponse(
         id=db_income.id,  # type: ignore
         created_at=db_income.created_at,  # type: ignore
-        recipt_number=db_income.recipt_number,
+        recipt_number=str(db_income.recipt_number) if db_income.recipt_number is not None else None,
         date=db_income.date,  # type: ignore
         category=category.income_cat_name,  
         source=db_income.source,
@@ -165,7 +165,7 @@ def update_income(
     return IncomeResponse(
         id=db_income.id,  # type: ignore
         created_at=db_income.created_at,  # type: ignore
-        recipt_number=db_income.recipt_number,
+        recipt_number=str(db_income.recipt_number) if db_income.recipt_number is not None else None,
         date=db_income.date,  # type: ignore
         category=category.income_cat_name,  # Convert category to string
         source=db_income.source,
@@ -204,7 +204,7 @@ def filter_income(
         if category_id and category_id != 0:
             query = query.where(Income.category_id == category_id)
 
-        total = session.exec(select(func.count()).select_from(query.subquery())).one()
+        total = session.scalar(select(func.count()).select_from(query.subquery())) or 0
         incomes = session.exec(
             query.order_by(Income.date.desc(), Income.id.desc())
             .offset((page - 1) * page_size)
@@ -217,7 +217,7 @@ def filter_income(
             filtered_response.append(IncomeResponse(
                 id=income.id,
                 created_at=income.created_at or datetime.utcnow(),
-                recipt_number=income.recipt_number,
+                recipt_number=str(income.recipt_number) if income.recipt_number is not None else None,
                 date=income.date,
                 category=category.income_cat_name if category else None,
                 source=income.source,

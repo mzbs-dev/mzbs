@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlmodel import Column, DateTime, Relationship, SQLModel, Field  # type: ignore
+from sqlalchemy import String
 from typing import Optional
 from schemas.expense_cat_names_model import ExpenseCatNames  # Import ExpenseCatNames
 
@@ -9,7 +10,7 @@ class ExpenseBase(SQLModel):
     created_at: Optional[datetime] = Field(default=None)
 
 class Expense(ExpenseBase, table=True):
-    recipt_number: Optional[str] = None
+    recipt_number: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime))  # Default to current datetime
     date: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime))  # Updated to use datetime.now() as default
@@ -32,7 +33,7 @@ class ExpenseResponse(ExpenseBase):
     created_at: datetime
     recipt_number: Optional[str] = None
     date: datetime
-    category: str  # Ensure category is a string for response serialization
+    category: Optional[str] = None
     to_whom: str
     description: Optional[str] = None
     amount: float

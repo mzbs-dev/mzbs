@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlmodel import Column, DateTime, Relationship, SQLModel, Field # type: ignore
+from sqlalchemy import String
 from typing import Optional
 from schemas.income_cat_names_model import IncomeCatNames  
 
@@ -9,7 +10,7 @@ class IncomeBase(SQLModel):
     created_at: Optional[datetime] = Field(default=None)
 
 class Income(IncomeBase, table=True):
-    recipt_number: Optional[str] = None
+    recipt_number: Optional[str] = Field(default=None, sa_column=Column(String, nullable=True))
     date: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime))  # Updated to use datetime.now() as default
     category_id: int = Field(foreign_key="incomecatnames.income_cat_name_id")  # Add foreign key
@@ -33,7 +34,7 @@ class IncomeResponse(SQLModel):
     created_at: datetime
     recipt_number: Optional[str] = None
     date: datetime
-    category: str  # Ensure category is a string
+    category: Optional[str] = None
     source: str
     description: Optional[str] = None
     contact: Optional[str] = None
@@ -51,7 +52,7 @@ class IncomeUpdate(SQLModel):
 class IncomeFilter(SQLModel):
     id: Optional[int] = None
     created_at: Optional[str] = None
-    recipt_number: Optional[int] = None
+    recipt_number: Optional[str] = None
     date: Optional[datetime] = None
     category: Optional[str] = None
     source: Optional[str] = None
