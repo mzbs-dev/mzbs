@@ -2,13 +2,14 @@ from sqlalchemy import text
 from asyncio.log import logger
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError  # <-- Add this import
 
 from db import get_session
 from utils.cache import cache_get, cache_set, cache_invalidate
 from schemas.attendance_value_model import AttendanceValue, AttendanceValueCreate, AttendanceValueResponse
-from user.user_crud import require_admin_teacher_principal, require_authenticated
+from user.user_crud import require_admin_teacher_principal, require_admin
 from user.user_models import User
 attendancevalue_router = APIRouter(
     prefix="/attendance_value",
@@ -132,16 +133,12 @@ def delete_attendancevalue_by_id(
         )
 
 @attendancevalue_router.post("/reset_attendance_id", response_model=str)
-def reset_attendance_id(current_user: Annotated[User, Depends(require_authenticated())],session: Session = Depends(get_session)):
-    # Delete all attendance records
-    session.exec(select(AttendanceValue)).all()  # Fetch all records
-    # Adjust the table name as necessary
-    session.exec("DELETE FROM attendancevalue")
+def reset_attendance_id(current_user: Annotated[User, Depends(require_admin())], session: Session = Depends(get_session)):
+    session.exec(delete(AttendanceValue))
     session.commit()
 
-    # Reset the sequence (if using PostgreSQL)
-    # Adjust the sequence name as necessary
-    session.exec("ALTER SEQUENCE attendance_attendance_id_seq RESTART WITH 1")
+    # Reset the sequence (PostgreSQL-specific)
+    session.exec(text("ALTER SEQUENCE attendance_attendance_id_seq RESTART WITH 1"))
     session.commit()
 
     return "Attendance IDs have been reset to start from 1."

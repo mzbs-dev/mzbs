@@ -14,11 +14,9 @@ export type Section =
   | "attendance"
   | "students"
   | "teachers"
-  | "classes"
   | "fees"
   | "expenses"
   | "income"
-  | "attendance_time"
   | "salary"
   | "setup"
   | "exam"
@@ -31,11 +29,9 @@ const ROLE_PERMISSIONS: Record<UserRole, Section[]> = {
     "attendance",
     "students",
     "teachers",
-    "classes",
     "fees",
     "expenses",
     "income",
-    "attendance_time",
     "salary",
     "setup",
     "exam",
@@ -46,7 +42,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Section[]> = {
     "attendance",
     "students",
     "teachers",
-    "classes",
+    "fees",
     "exam",
     "staff",
   ],
@@ -55,7 +51,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Section[]> = {
     "attendance",
     "students",
     "teachers",
-    "classes",
+    "fees",
     "exam",
   ],
   TEACHER: ["attendance", "students", "dashboard", "exam"],

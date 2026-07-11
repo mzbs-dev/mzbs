@@ -415,6 +415,14 @@ def require_admin_fee_manager():
     """ADMIN or FEE_MANAGER can access"""
     return require_roles([UserRole.ADMIN, UserRole.FEE_MANAGER])
 
+def require_admin_chief_principal():
+    """ADMIN or CHIEF_PRINCIPAL only — matches Staff module's frontend visibility."""
+    return require_roles([UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL])
+
+def require_admin_principal_teacher():
+    """ADMIN, CHIEF_PRINCIPAL, PRINCIPAL, or TEACHER — matches Exam module's frontend visibility (excludes STAFF)."""
+    return require_roles([UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER])
+
 def require_all_roles():
     """All roles can access (ADMIN, CHIEF_PRINCIPAL, PRINCIPAL, TEACHER, STAFF, ACCOUNTANT, FEE_MANAGER, STUDENT)"""
     return require_roles([UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL,

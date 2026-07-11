@@ -25,7 +25,7 @@ from schemas.view_marks_model import (
     StudentMarkByDate,
     enrich_student_mark_rows,
 )
-from user.user_crud import require_admin, require_admin_principal, require_admin_teacher_principal
+from user.user_crud import require_admin, require_admin_principal, require_admin_principal_teacher
 from user.user_models import User
 
 exam_marks_router = APIRouter(
@@ -42,7 +42,7 @@ async def root():
 
 @exam_marks_router.post("/submit/", response_model=ExamMarksBulkSubmitResponse)
 def submit_exam_marks(
-    user: Annotated[User, Depends(require_admin_teacher_principal())],
+    user: Annotated[User, Depends(require_admin_principal_teacher())],
     payload: ExamMarksBulkSubmitRequest,
     session: Session = Depends(get_session),
 ):
@@ -117,7 +117,7 @@ def submit_exam_marks(
 
 @exam_marks_router.get("/history/", response_model=List[ExamSessionSummary])
 def read_exam_history(
-    current_user: Annotated[User, Depends(require_admin_teacher_principal())],
+    current_user: Annotated[User, Depends(require_admin_principal_teacher())],
     session: Session = Depends(get_session),
     class_name_id: int = Query(...),
 ):
@@ -149,7 +149,7 @@ def read_exam_history(
 
 @exam_marks_router.get("/session/", response_model=List[ExamMarkResponse])
 def read_exam_session(
-    current_user: Annotated[User, Depends(require_admin_teacher_principal())],
+    current_user: Annotated[User, Depends(require_admin_principal_teacher())],
     session: Session = Depends(get_session),
     exam_date: date = Query(...),
     class_name_id: int = Query(...),
@@ -173,7 +173,7 @@ def read_exam_session(
 
 @exam_marks_router.post("/update_session/", response_model=ExamMarksBulkSubmitResponse)
 def update_exam_session(
-    user: Annotated[User, Depends(require_admin_teacher_principal())],
+    user: Annotated[User, Depends(require_admin_principal_teacher())],
     payload: ExamMarksBulkSubmitRequest,
     session: Session = Depends(get_session),
 ):
@@ -273,7 +273,7 @@ def delete_exam_session(
 
 @exam_marks_router.get("/all/", response_model=List[ExamMarkResponse])
 def read_exam_marks(
-    current_user: Annotated[User, Depends(require_admin_teacher_principal())],
+    current_user: Annotated[User, Depends(require_admin_principal_teacher())],
     session: Session = Depends(get_session),
 ):
     rows = session.exec(
@@ -284,7 +284,7 @@ def read_exam_marks(
 
 @exam_marks_router.get("/by_filters/", response_model=List[ExamMarkResponse])
 def read_exam_marks_by_filters(
-    current_user: Annotated[User, Depends(require_admin_teacher_principal())],
+    current_user: Annotated[User, Depends(require_admin_principal_teacher())],
     session: Session = Depends(get_session),
     exam_date: Optional[date] = Query(None),
     class_name_id: Optional[int] = Query(None),
@@ -311,7 +311,7 @@ def read_exam_marks_by_filters(
 
 @exam_marks_router.get("/view/", response_model=ViewMarksResponse)
 def view_exam_marks(
-    current_user: Annotated[User, Depends(require_admin_teacher_principal())],
+    current_user: Annotated[User, Depends(require_admin_principal_teacher())],
     session: Session = Depends(get_session),
     class_name_id: int = Query(...),
     subject_name: str = Query(...),
@@ -382,7 +382,7 @@ def view_exam_marks(
 
 @exam_marks_router.get("/{exam_mark_id}", response_model=ExamMarkResponse)
 def read_exam_mark(
-    current_user: Annotated[User, Depends(require_admin_teacher_principal())],
+    current_user: Annotated[User, Depends(require_admin_principal_teacher())],
     exam_mark_id: int,
     session: Session = Depends(get_session),
 ):
@@ -394,7 +394,7 @@ def read_exam_mark(
 
 @exam_marks_router.patch("/{exam_mark_id}", response_model=ExamMarkResponse)
 def update_exam_mark(
-    user: Annotated[User, Depends(require_admin_teacher_principal())],
+    user: Annotated[User, Depends(require_admin_principal_teacher())],
     exam_mark_id: int,
     payload: ExamMarkUpdate,
     session: Session = Depends(get_session),
@@ -421,7 +421,7 @@ def update_exam_mark(
 
 @exam_marks_router.delete("/{exam_mark_id}", response_model=dict)
 def delete_exam_mark(
-    user: Annotated[User, Depends(require_admin_teacher_principal())],
+    user: Annotated[User, Depends(require_admin_principal_teacher())],
     exam_mark_id: int,
     session: Session = Depends(get_session),
 ):
