@@ -23,9 +23,7 @@ This document lists all required Python libraries for the MMS General project. D
 | **sqlmodel** | 0.0.19 | SQL database ORM combining SQLAlchemy + Pydantic |
 | **sqlalchemy** | 2.0.37 | SQL toolkit and Object-Relational Mapping |
 | **alembic** | 1.14.1 | Database migration tool |
-| **psycopg** | 3.2.4 | PostgreSQL adapter for Python |
-| **psycopg2** | 2.9.10 | PostgreSQL adapter (alternative) |
-| **psycopg-binary** | 3.2.4 | PostgreSQL adapter with binary support |
+| **psycopg2-binary** | 2.9.10 | PostgreSQL adapter with binary wheels for deployment compatibility |
 | **greenlet** | 3.1.1 | Lightweight concurrency for database connections |
 
 ---

@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse, urlunparse
+
 from fastapi import FastAPI
 from sqlmodel import SQLModel, create_engine, Session, select
 from utils.logging import logger
@@ -7,6 +9,29 @@ import setting
 import schemas.student_parent_credentials_model  # noqa: F401
 
 CONN_STRING: str = str(setting.DATABASE_URL)
+
+
+def _normalize_database_url(raw_url: str) -> str:
+    """Use a SQLAlchemy-compatible dialect based on the available DB driver."""
+    if not raw_url or raw_url == "None":
+        return raw_url
+
+    if raw_url.startswith("postgresql+"):
+        return raw_url
+
+    parsed = urlparse(raw_url)
+    if parsed.scheme in {"postgresql", "postgres"}:
+        try:
+            import psycopg2  # noqa: F401
+            return urlunparse(parsed._replace(scheme="postgresql+psycopg2"))
+        except Exception:
+            try:
+                import psycopg  # noqa: F401
+                return urlunparse(parsed._replace(scheme="postgresql+psycopg"))
+            except Exception:
+                return raw_url
+
+    return raw_url
 
 # Validate DATABASE_URL is configured
 if not CONN_STRING or CONN_STRING == "None":
@@ -20,9 +45,10 @@ def get_engine(CONN_STRING):
     connect_args = {
         "connect_timeout": 10,  # Connection timeout in seconds
     }
-    
+
+    normalized_url = _normalize_database_url(CONN_STRING)
     engine = create_engine(
-        CONN_STRING,
+        normalized_url,
         echo=True,
         connect_args=connect_args,
         pool_size=10,  # Number of connections to keep in pool
@@ -30,7 +56,7 @@ def get_engine(CONN_STRING):
         pool_recycle=300,  # Recycle connections after 5 minutes to avoid stale connections
         pool_pre_ping=True  # Test connections before using to ensure they're still valid
     )
-    logger.info("Engine created successfully")
+    logger.info("Engine created successfully using %s", normalized_url)
     return engine
 
 engine = get_engine(CONN_STRING=CONN_STRING)

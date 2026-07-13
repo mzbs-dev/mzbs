@@ -11,7 +11,12 @@ from schemas.admission_model import (
 from schemas.attendance_model import Attendance
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from psycopg2 import IntegrityError
+
+try:
+    from psycopg2 import IntegrityError
+except ImportError:  # pragma: no cover - fallback for psycopg v3
+    from psycopg import IntegrityError
+
 from sqlmodel import Session, select
 from typing import Annotated, List
 
