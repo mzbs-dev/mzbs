@@ -118,7 +118,16 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 # Security: Add trusted hosts middleware to prevent Host header attacks
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "mzbs-temp.vercel.app", "mzbs.netlify.app", "ktns.netlify.app", "*.vercel.app","site--mzbs--lvqlqxbx7xgh.code.run"]
+    allowed_hosts=[
+        "localhost",
+        "127.0.0.1",
+        "mzbs-temp.vercel.app",
+        "mzbs.netlify.app",
+        "ktns.netlify.app",
+        "*.vercel.app",
+        "site--mzbs--lvqlqxbx7xgh.code.run",
+        "web-production-3b441.up.railway.app",
+    ]
 )
 
 # Security: Restrict CORS to specific methods and headers
