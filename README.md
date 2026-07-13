@@ -1,7 +1,9 @@
 # Consolidated Files Documentation
 
 ## Overview
-
+> ⚠️ This branch (`multi-tenant-platform`) is under active development for
+> multi-tenant support. Do not deploy this branch's backend against the
+> production Neon database. See `docs/MULTI_TENANT_PLAN.md` for status.
 This directory contains consolidated versions of frontend and backend files from the MMS (School Management System) project.
 
 ## Files Included

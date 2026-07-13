@@ -1,51 +1,11 @@
-1. add dockerfile -> make change in cmd command
-2. add compose file -> make change name of container.
-                    -> add postgres Image.
-                    -> add volumes and networks in compose.
-3. add .env file with URL.
+mzbs-staging-school
+postgresql://neondb_owner:npg_ZXxpJWAGbO24@ep-purple-sea-aidae2qg-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 
-student_name
-student_date_of_birth
-student_gender
-class_name
-student_city
-father_name
+uv run python seed_staging.py --database-url "postgresql://neondb_owner:npg_ZXxpJWAGbO24@ep-purple-sea-aidae2qg-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+______________________________________________________________________________
+mzbs-staging-school-2
+postgresql://neondb_owner:npg_a4InZpqUGY6r@ep-muddy-sky-at4gwfof-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 
 
-For Day 3 I need the following frontend files:
-Layout & Setup
-
-frontend/src/app/layout.tsx — to add QueryClientProvider
-
-Dashboard
-
-frontend/src/components/dashboard/AdminDashboard.tsx — has the 7 concurrent useEffect hooks to fix
-
-List page components — these need hooks + pagination UI:
-
-frontend/src/components/Students/StudentTable.tsx
-frontend/src/components/Fees/ViewFees.tsx
-frontend/src/components/Attendance/ViewAttendance.tsx
-frontend/src/components/Income/ViewIncome.tsx
-frontend/src/components/Expense/viewExpense.tsx
-frontend/src/components/Salary/SalaryLogs.tsx
-
-API files — to update response shape handling (response.data.data instead of response.data):
-
-frontend/src/api/Student/StudentsAPI.tsx
-frontend/src/api/Attendance/AttendanceAPI.ts
-frontend/src/api/Salary/SalaryAPI.ts
-
-
-
-SalaryLogs.tsx
-ViewSalary.tsx
-
-router/class_names.py
-router/teacher_names.py
-router/attendance_value.py
-router/attendance_time.py
-router/income_cat_names.py
-router/expense_cat_names.py
-main.py
-db.py (just the first 50 lines — I need to see how get_session and tenant context are set up)
+uv run python seed_staging.py --database-url "postgresql://neondb_owner:npg_a4InZpqUGY6r@ep-muddy-sky-at4gwfof-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"

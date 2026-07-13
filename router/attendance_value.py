@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError  # <-- Add this import
 from db import get_session
 from utils.cache import cache_get, cache_set, cache_invalidate
 from schemas.attendance_value_model import AttendanceValue, AttendanceValueCreate, AttendanceValueResponse
-from user.user_crud import require_admin_teacher_principal, require_admin
+from user.user_crud import require_admin_teacher_principal, require_admin, require_authenticated
 from user.user_models import User
 attendancevalue_router = APIRouter(
     prefix="/attendance_value",
