@@ -79,9 +79,10 @@ origins = [
     "http://localhost:3000",  # Next.js development server
     "http://127.0.0.1:3000",  # Localhost access with 127.0.0.1
     # "https://mzbs.vercel.app",  # Production frontend
-    "https://mzbs.netlify.app" , # Netlify production frontend
-    "https://ktns.netlify.app" , # KTNS production frontend
-    "https://mzbs-temp.vercel.app", # temporary deployment
+    "https://mzbs.netlify.app",  # Netlify production frontend
+    "https://ktns.netlify.app",  # KTNS production frontend
+    "https://mzbs-staging-school.netlify.app",  # Staging frontend
+    "https://mzbs-temp.vercel.app",  # temporary deployment
 ]
 
 app = FastAPI(
@@ -124,6 +125,7 @@ app.add_middleware(
         "mzbs-temp.vercel.app",
         "mzbs.netlify.app",
         "ktns.netlify.app",
+        "mzbs-staging-school.netlify.app",
         "*.vercel.app",
         "site--mzbs--lvqlqxbx7xgh.code.run",
         "web-production-3b441.up.railway.app",
