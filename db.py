@@ -76,12 +76,12 @@ def get_control_plane_engine():
     control_plane_url = (
         os.getenv("CONTROL_PLANE_DATABASE_URL")
         or getattr(setting, "CONTROL_PLANE_DATABASE_URL", None)
-
     )
     if not control_plane_url or control_plane_url == "None":
         raise RuntimeError("CONTROL_PLANE_DATABASE_URL is required for migration runner control-plane access")
 
     normalized_url = _normalize_database_url(control_plane_url)
+    logger.info("Control-plane engine created using %s", normalized_url)
     return create_engine(
         normalized_url,
         connect_args={"connect_timeout": 10},
