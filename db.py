@@ -1,12 +1,14 @@
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from threading import Lock
+from types import SimpleNamespace
 from typing import Annotated, Dict
 from urllib.parse import urlparse, urlunparse
 
 from fastapi import Depends, FastAPI
 from sqlalchemy.engine import Engine
-from sqlmodel import SQLModel, create_engine, Session, select
+from sqlmodel import SQLModel, create_engine, Session, select, text
 from utils.logging import logger
 import setting
 
@@ -67,6 +69,35 @@ def get_engine(CONN_STRING):
     return engine
 
 engine = get_engine(CONN_STRING=CONN_STRING)
+
+
+def get_control_plane_engine():
+    """Create an engine for the separate control-plane database used by tenant lookup."""
+    control_plane_url = os.getenv("CONTROL_PLANE_DATABASE_URL") or getattr(setting, "CONTROL_PLANE_DATABASE_URL", None)
+    if not control_plane_url or control_plane_url == "None":
+        raise RuntimeError("CONTROL_PLANE_DATABASE_URL is required for migration runner control-plane access")
+
+    normalized_url = _normalize_database_url(control_plane_url)
+    return create_engine(
+        normalized_url,
+        connect_args={"connect_timeout": 10},
+        pool_size=5,
+        max_overflow=5,
+        pool_recycle=300,
+        pool_pre_ping=True,
+    )
+
+
+def get_control_plane_session() -> Session:
+    """Return a SQLModel session bound to the control-plane database."""
+    return Session(get_control_plane_engine())
+
+
+def list_tenants(session: Session) -> list[SimpleNamespace]:
+    """Return tenant records from the control-plane database in the shape the runner expects."""
+    rows = session.exec(text("SELECT tenant_id, status FROM tenants")).all()
+    return [SimpleNamespace(tenant_id=row[0], status=row[1]) for row in rows]
+
 
 # Add SessionLocal
 SessionLocal = Session
