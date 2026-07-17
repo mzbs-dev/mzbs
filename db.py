@@ -73,7 +73,11 @@ engine = get_engine(CONN_STRING=CONN_STRING)
 
 def get_control_plane_engine():
     """Create an engine for the separate control-plane database used by tenant lookup."""
-    control_plane_url = os.getenv("CONTROL_PLANE_DATABASE_URL") or getattr(setting, "CONTROL_PLANE_DATABASE_URL", None)
+    control_plane_url = (
+        os.getenv("CONTROL_PLANE_DATABASE_URL")
+        or getattr(setting, "CONTROL_PLANE_DATABASE_URL", None)
+
+    )
     if not control_plane_url or control_plane_url == "None":
         raise RuntimeError("CONTROL_PLANE_DATABASE_URL is required for migration runner control-plane access")
 

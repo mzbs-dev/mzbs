@@ -132,16 +132,16 @@ def build_rows() -> list[RolePermission]:
     return rows
 
 
-def create_tables(engine) -> None:
+def create_tables(bind) -> None:
     print("Creating role_permissions and permission_change_log tables (if not exist)...")
     SQLModel.metadata.create_all(
-        engine,
+        bind,
         tables=[RolePermission.__table__, PermissionChangeLog.__table__],
     )
     print("✓ Tables ready")
 
 
-def seed_permissions(session: Session) -> None:
+def seed_permissions(session: Session, commit: bool = True) -> None:
     print("\nSeeding role_permissions to match current hardcoded behavior...")
     existing = session.exec(select(RolePermission)).all()
     existing_keys = {(r.role, r.module, r.action) for r in existing}
@@ -158,7 +158,8 @@ def seed_permissions(session: Session) -> None:
         session.add(row)
         added += 1
 
-    session.commit()
+    if commit:
+        session.commit()
     print(f"✓ Seed complete: {added} rows added, {skipped} already existed (skipped)")
 
 
@@ -171,6 +172,19 @@ def print_summary(session: Session) -> None:
         print("⚠️  Row count mismatch — investigate before proceeding to Day 2.")
     else:
         print("✓ Row count matches expected matrix size")
+
+
+MIGRATION_ID = "0001_add_role_permissions_tables"
+
+
+def upgrade(session: Session) -> None:
+    """Entry point used by migrations/run_all_tenants.py.
+
+    This does not commit. runner_core.py's apply_migration() commits the
+    upgrade and the schema_migrations tracking row together, atomically.
+    """
+    create_tables(session.connection())
+    seed_permissions(session, commit=False)
 
 
 def main():
