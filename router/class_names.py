@@ -8,7 +8,7 @@ from db import get_session
 from utils.cache import cache_get, cache_set, cache_invalidate
 from schemas.class_names_model import ClassNames, ClassNamesCreate, ClassNamesResponse
 from schemas.attendance_model import Attendance
-from user.user_crud import require_admin, require_admin_teacher_principal, require_admin_teacher_principal_accountant, require_admin_accountant_fee_manager, require_authenticated, require_non_student
+from user.user_crud import require_permission, require_non_student
 from user.user_models import User
 
 classnames_router = APIRouter(
@@ -23,7 +23,7 @@ async def root():
     return {"message": "MMS-General service is running", "status": "Class Name Router Page running :-)"}
 
 @classnames_router.post("/add_class_name/", response_model=ClassNamesResponse)
-def create_classnames(user: Annotated[User, Depends(require_admin())],classnames: ClassNamesCreate, session: Session = Depends(get_session)):
+def create_classnames(user: Annotated[User, Depends(require_permission("setup_classes", "add"))],classnames: ClassNamesCreate, session: Session = Depends(get_session)):
     db_classnames = ClassNames(**classnames.model_dump())
     session.add(db_classnames)
 
@@ -52,6 +52,11 @@ def create_classnames(user: Annotated[User, Depends(require_admin())],classnames
     return db_classnames
 
 # # Returns all placed class names
+# NOTE: intentionally NOT converted to require_permission("setup_classes", "view").
+# This endpoint is consumed by other modules (e.g. attendance marking, student
+# admission dropdowns) that need the class list for their own workflows — it's
+# not really "viewing the Setup section." Per the Phase 1 decision, that stays
+# on require_non_student() out of scope of the new permission system.
 
 
 @classnames_router.get("/class-names-all/", response_model=List[ClassNamesResponse])
@@ -68,6 +73,7 @@ def read_classnames(
     return result
 
 # # Returns class name of any specific class-name-id
+# NOTE: same reasoning as above — left on require_non_student(), out of scope.
 
 
 @classnames_router.get("/{class_name_id}", response_model=ClassNamesResponse)
@@ -80,7 +86,7 @@ def read_classname(current_user: Annotated[User, Depends(require_non_student())]
 
 
 @classnames_router.delete("/del/{class_name}", response_model=dict)
-def delete_classnames(user: Annotated[User, Depends(require_admin())],class_name: str, session: Session = Depends(get_session)):
+def delete_classnames(user: Annotated[User, Depends(require_permission("setup_classes", "delete"))],class_name: str, session: Session = Depends(get_session)):
     classnames = session.exec(select(ClassNames).where(
         ClassNames.class_name == class_name)).first()
     # Check for related records (adjust model and field as needed)
@@ -100,7 +106,7 @@ def delete_classnames(user: Annotated[User, Depends(require_admin())],class_name
 
 @classnames_router.delete("/{class_name_id}", response_model=dict)
 def delete_classnames_by_id(
-    user: Annotated[User, Depends(require_admin())],
+    user: Annotated[User, Depends(require_permission("setup_classes", "delete"))],
     class_name_id: int, 
     session: Session = Depends(get_session)
 ):

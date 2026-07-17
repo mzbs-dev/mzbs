@@ -1,7 +1,7 @@
 # mzbs — Multi-Tenant Platform Migration Plan
 
 **Status tracker:** update this line as work progresses.
-`Current stage: Not started / Phase 0 / Phase 1 / Phase 2 / Phase 3 / Phase 4 / Phase 5 / Merged to main`
+`Current stage: Phase 0 ✅ / Phase 1 ✅ / Phase 2 (in progress) / Phase 2.5 / Phase 3 / Phase 4 / Phase 5 / Merged to main`
 
 ---
 
@@ -13,11 +13,12 @@
 4. [Phase 0 — Branch & Environment Setup](#phase-0--branch--environment-setup)
 5. [Phase 1 — Self-Service Permissions Screen](#phase-1--self-service-permissions-screen)
 6. [Phase 2 — Control Plane Database](#phase-2--control-plane-database)
-7. [Phase 3 — Tenant-Aware Login Flow + get_session() Rework](#phase-3--tenant-aware-login-flow--get_session-rework)
-8. [Phase 4 — Migrations Across Many Databases](#phase-4--migrations-across-many-databases)
-9. [Phase 5 — Super-Admin Panel](#phase-5--super-admin-panel)
-10. [Merge & Production Cutover Checklist](#merge--production-cutover-checklist)
-11. [Post-Launch Notes](#post-launch-notes)
+7. [Phase 2.5 — School Sign-Up & Approval Workflow](#phase-25--school-sign-up--approval-workflow)
+8. [Phase 3 — Tenant-Aware Login Flow + get_session() Rework](#phase-3--tenant-aware-login-flow--get_session-rework)
+9. [Phase 4 — Migrations Across Many Databases](#phase-4--migrations-across-many-databases)
+10. [Phase 5 — Super-Admin Panel & Marketing Website](#phase-5--super-admin-panel--marketing-website)
+11. [Merge & Production Cutover Checklist](#merge--production-cutover-checklist)
+12. [Post-Launch Notes](#post-launch-notes)
 
 ---
 
@@ -31,7 +32,7 @@
 
 **Modules:** Students, Attendance, Exam, Staff, Fees, Income, Expenses, Salary, Setup.
 
-**The goal driving this plan:** Convert `mzbs` into a multi-tenant platform serving roughly 10-50 schools, where:
+**The goal driving this plan:** Convert `mzbs` into a multi-tenant platform — originally scoped for roughly 10-50 schools, revised upward to a long-term target of hundreds to thousands of schools (see Decision #2) — where:
 - Each school gets its own Neon Postgres database (full data isolation)
 - Each school gets its own frontend deployment (Netlify/Vercel)
 - One shared FastAPI backend serves all schools
@@ -89,15 +90,27 @@ TEACHER's Students submenu shows "All Students" with no explicit UI block on add
 Decisions made during planning, in the order they were settled:
 
 1. **Database-per-tenant, not shared-DB-with-tenant_id.** Each school gets its own full Neon Postgres database. Chosen for strong data isolation, simpler compliance/export/deletion per school, and because it naturally isolates permission customization per school without needing tenant-scoping logic in a shared permissions table.
-2. **Expected scale: dozens of schools (10-50).** Informs that manual onboarding is acceptable for now, but migrations must be scripted (can't be done by hand at this scale).
+2. **Expected scale: originally dozens of schools (10-50); revised to hundreds-to-thousands as the long-term target (see Decision #15).** The 10-50 number still governs what's built *first* (manual onboarding, lightweight migration runner) — the higher target is why the control panel is being split into its own repo/service now rather than later, so the architecture doesn't need a disruptive rework when volume actually arrives.
 3. **Tenant identification mechanism: build-time `TENANT_ID` env var per frontend deployment,** sent explicitly on login; NOT subdomain/Origin-header based. Each school's frontend (deployed separately on Netlify/Vercel, potentially under the school's own hosting account) has one env var baked in at deploy time.
 4. **Manual onboarding is fine for now** (create Neon DB, run migrations, deploy frontend with env var, add control-plane row, by hand) — no automated self-serve onboarding panel yet. Revisit automation once past ~50-100 schools.
 5. **A Super-Admin panel is required** — the platform owner needs to see all affiliated schools and their information, separate from any school's own ADMIN role.
 6. **Permission configuration belongs to the school's own ADMIN, not the platform Super-Admin.** Super-Admin controls only the fixed universe of possible roles/module-actions (via code); School Admin toggles within that universe (via a DB-backed table + UI, built in Phase 1).
-7. **Repo strategy:** the Super-Admin/platform-admin **frontend** gets its own new repository (kept entirely separate so no platform-admin code ever ships in a school's deployed bundle). The platform-admin **backend** logic stays inside the existing `mzbs` backend repo, as a self-contained `control_plane/` module — split out into its own service only if a concrete future reason arises (independent scaling, team/compliance boundary).
-8. **Platform-admin frontend hosting:** same Netlify/Vercel account as school sites (simplest operationally), but named unambiguously (e.g. `mzbs-platform-admin`) so it's never confused with a school in a project list of 30+ sites. Dashboard-level access to this specific project should be restricted separately from school-site access once teammates are involved.
-9. **Migration tooling approach: lightweight custom runner, not Alembic** (for now). Chosen because the existing script-based migration pattern already works and dozens of schools are being onboarded soon — not the moment to also absorb a new tooling learning curve. Alembic migration is a reasonable future step if the team grows.
+7. **Repo strategy (superseded by Decision #15 below):** originally, the platform-admin backend was planned to live inside the existing `mzbs` repo as a `control_plane/` module. This was revisited once the scale target moved to hundreds/thousands of schools — see Decision #15 for the final structure.
+8. **Platform-admin frontend hosting:** same Netlify/Vercel account as school sites (simplest operationally), but named unambiguously (`mzbs-platform`, per Decision #15) so it's never confused with a school in a project list of hundreds of sites. Dashboard-level access to this specific project should be restricted separately from school-site access once teammates are involved.
+9. **Migration tooling approach: lightweight custom runner, not Alembic** (for now). Chosen because the existing script-based migration pattern already works and dozens of schools are being onboarded soon — not the moment to also absorb a new tooling learning curve. **Flagged for revisit given the scale change (Decision #15):** a hand-rolled fan-out loop that's fine for 10-50 sequential tenant connections may not hold up cleanly at hundreds/thousands (needs parallelism, better failure isolation/reporting) — cross this bridge at Phase 4, not now, but don't assume the Phase 4 design as originally written is final.
 10. **All multi-tenant work happens on a dedicated git branch** (`multi-tenant-platform`), with fully separate staging database(s), backend deployment, and frontend deployment — never touching the live school's production environment until an explicit, checklist-driven merge/cutover.
+11. **The control plane's `tenants` table is the single source of truth for everything about a school** — not just the DB connection secret, but school info, admin contact, subscription plan/expiry, status, and last-activity — so the Super-Admin panel (Phase 5) never needs to reach into a school's own database to answer basic "who is this tenant" questions.
+12. **Marketing website + control panel share one repo**, split via Next.js route groups: `(marketing)` for public pages (home, features, pricing, sign-up, etc.) and `(admin)` for the authenticated platform-admin dashboard. One domain, one deploy pipeline. Chosen over two separate deployments because it's simpler to operate at current scale and the route groups already give clean separation — splitting into two repos later, if ever needed, is a clean extraction since routes are already logically separated. Still respects Decision #7/8: this repo remains completely separate from every **school's own** frontend deployment.
+13. **School Sign-Up goes live now; automated provisioning does not.** The public sign-up form captures structured lead info and creates a `signup_requests` row for platform-admin review/approval. Approval creates a `tenants` row (status `provisioning`) but the actual Neon DB creation, migration run, frontend deploy, and admin account creation stay manual for now — consistent with Decision #4 (manual onboarding is fine below ~50-100 schools). Full hands-off automation is deferred to a future phase once volume justifies the engineering cost.
+14. **Billing stays manual for now.** `subscription_plan` and `subscription_expiry` are tracked as plain fields on the `tenants` row, updated by the platform-admin manually (e.g. after an offline invoice/payment). No payment processor (Stripe, etc.) integration yet — revisit if/when a self-serve payment flow becomes worth the added complexity (webhook handling, proration, dunning, etc.).
+15. **Finalized repo structure — three repos, not two, given the revised hundreds/thousands scale target:**
+    - `mzbs` — the existing repo. Tenant-aware shared backend + school frontend only. Knows nothing about marketing, sign-up, or billing beyond a small **read-only** `control_plane_client/tenant_lookup.py` needed to resolve `tenant_id → connection string` at login.
+    - `mzbs-control-panel` — **new, standalone FastAPI project.** Owns the control-plane database (all writes): tenant CRUD, platform-admin auth, sign-up approval, subscription/feature-flag management. Deployed and scaled independently from the school-facing backend.
+    - `mzbs-platform` — **new Next.js project.** Marketing website + Super-Admin dashboard combined via route groups (`(marketing)` / `(admin)`), per Decision #12. Calls `mzbs-control-panel`'s API, not `mzbs`'s.
+    Reasoning for the split (over Decision #7's original "control_plane/ module inside mzbs"): at 10-50 schools, avoiding an extra network hop outweighed repo separation; at hundreds/thousands, independent scaling of marketing/admin traffic, independent deploy cadence, and blast-radius isolation (a marketing site bug should never be able to affect school logins) outweigh that hop. The hop itself is avoided anyway — see Decision #16.
+16. **Cross-repo communication: shared control-plane database, not internal HTTP calls, for anything on the login-critical path.** Both `mzbs` and `mzbs-control-panel` connect directly to the same Postgres database (`mzbs-control-plane` / `mzbs-staging-control-plane`). `mzbs` only ever runs read queries against `tenants` (cached, per Phase 3's `tenant_lookup()`); `mzbs-control-panel` owns all writes. This means tenant resolution at login never depends on a second service being up or reachable. An internal authenticated endpoint from `mzbs-control-panel` into `mzbs` (e.g. "kick off migrations for tenant X after provisioning") remains a reasonable future addition but isn't needed for Phase 2/2.5/3.
+17. **Connection-secret storage: Fernet-encrypted string stored directly in the `tenants` row (confirmed, not a secrets-manager reference).** Considered switching to a secrets manager (AWS Secrets Manager, Doppler, etc.) with only a reference stored in the DB, given the scale target — decided against it for now to avoid adding a new infrastructure dependency before it's actually needed. Revisit if/when key rotation across hundreds/thousands of rows becomes a real operational pain point (Fernet key rotation currently means re-encrypting every row).
+18. **The shared Northflank backend deployment has exactly two fixed, tenant-independent env vars: `CONTROL_PLANE_DATABASE_URL` and `CONTROL_PLANE_ENCRYPTION_KEY`.** No individual school's database connection string is ever stored as a backend env var. Each school's (encrypted) connection string lives only as a row in the control-plane database (`tenants.db_connection_secret`). This is the guarantee that makes onboarding school #51, #500, or #5000 a pure data operation — insert/update one row — with **zero redeploy, zero env var edit, and zero downtime** on the shared backend. Any future change that involves adding a per-tenant value to the backend's environment (rather than to the `tenants` row) should be treated as a red flag against this decision, not a quick fix.
 
 ---
 
@@ -310,23 +323,36 @@ One file at a time, testing after each:
 
 ## Phase 2 — Control Plane Database
 
-**Goal:** Stand up the directory database that lets the backend know which school it's talking to, plus a platform-admin identity above all schools. No school's frontend/login changes yet.
+**Goal:** Stand up the directory database that lets the shared backend know which school it's talking to, plus a platform-admin identity above all schools, plus a rich enough `tenants` schema that the Super-Admin panel (Phase 5) never needs to query into an individual school's own database for basic tenant info. This phase now lives primarily in the **new `mzbs-control-panel` repo** (Decision #15) rather than inside `mzbs` — `mzbs` only gains a small read-only `control_plane_client/tenant_lookup.py` (Decision #16), added at the end of this phase so Phase 3 has something to call. No school's frontend/login changes yet.
 
-### Day 1 — Provision + schema design
+### Day 1 — New repo scaffolding + schema design
 
-- New, separate Neon project (e.g. `mzbs-control-plane` for production; already have `mzbs-staging-control-plane` for the branch per Phase 0).
+- Create the new `mzbs-control-panel` repo (FastAPI + SQLModel, mirroring `mzbs`'s conventions — same `db.py`/`main.py`/`setting.py` patterns, own `pyproject.toml`/`uv.lock`/`Procfile`).
+- New, separate Neon project for its database (e.g. `mzbs-control-plane` for production; already have `mzbs-staging-control-plane` for the branch per Phase 0). This project owns that database exclusively (all writes); `mzbs` will only ever read from it (Decision #16).
 
-**`tenants` table:**
+**`tenants` table** (expanded — this is the single source of truth for everything about a school, per Decision #11):
 
 | column | type | notes |
 |---|---|---|
 | id | int, PK | |
 | tenant_id | varchar, unique | slug used in frontend env var |
 | school_name | varchar | |
+| address | varchar | |
+| city | varchar | |
+| country | varchar | |
+| logo_url | varchar, nullable | |
 | contact_email | varchar | |
+| contact_phone | varchar | |
+| admin_name | varchar | school's own ADMIN contact, not a login credential |
+| admin_email | varchar | |
 | frontend_url | varchar | |
-| db_connection_secret | text | **encrypted**, never plaintext |
-| status | enum: active/suspended/provisioning | |
+| backend_url | varchar, nullable | only meaningful if a tenant ever gets a dedicated backend; null while all tenants share one backend |
+| db_connection_secret | text | **Fernet-encrypted**, never plaintext (Decision #17 — confirmed over a secrets-manager reference) |
+| status | enum: `provisioning` / `active` / `suspended` / `trial` / `expired` | expanded from the original active/suspended/provisioning |
+| subscription_plan | varchar | matches a fixed plan list defined in code (Phase 2.5 references the same list) |
+| subscription_expiry | date, nullable | |
+| signup_request_id | FK → signup_requests.id, nullable | set when this tenant originated from the sign-up form (Phase 2.5); null for tenants created manually |
+| last_activity_at | timestamp, nullable | updated on login for MVP; real-time activity ping is a future enhancement |
 | created_at / updated_at | timestamp | |
 
 **`platform_admins` table:**
@@ -340,11 +366,20 @@ One file at a time, testing after each:
 | created_at | timestamp |
 | last_login_at | timestamp, nullable |
 
-Deliberately excludes anything school-specific (roles, students, permissions) — this DB only knows which schools exist and who can manage the platform.
+**`tenant_feature_flags` table** (new — module-level on/off per school; distinct from Phase 1's per-role permissions, which live *inside* each school's own database):
 
-**Files:** `control_plane/db.py` (separate `get_control_plane_session()`, new `CONTROL_PLANE_DATABASE_URL` env var), `control_plane/models.py` (`Tenant`, `PlatformAdmin`), migration script for both tables.
+| column | type |
+|---|---|
+| id | int, PK |
+| tenant_id | FK → tenants.id |
+| module | varchar |
+| enabled | boolean |
 
-**End-of-day check:** confirm this project is fully separate from every school's project — separate dashboards, separate connection strings.
+Deliberately excludes anything school-*data*-specific (students, fees, attendance) — this DB only knows which schools exist, their business/billing metadata, and who can manage the platform.
+
+**Files (all in the new `mzbs-control-panel` repo):** `control_plane/db.py` (`get_control_plane_session()`, `CONTROL_PLANE_DATABASE_URL` env var), `control_plane/models.py` (`Tenant`, `PlatformAdmin`, `TenantFeatureFlag`), migration script for all three tables. (`signup_requests` is added in Phase 2.5, once this table exists to reference.)
+
+**End-of-day check:** confirm the new repo runs standalone (own venv/`uv` env, own `.env`), and that this Neon project is fully separate from every school's project — separate dashboards, separate connection strings.
 
 ### Day 2 — Encrypting the connection secret
 
@@ -373,17 +408,19 @@ Never commit it, log it, or store it in the control-plane DB itself.
 
 ### Day 3 — Backend: tenant CRUD + platform-admin auth
 
-**New file `control_plane/tenant_service.py`:** `create_tenant()`, `get_tenant_by_id()`, `list_tenants()`, `update_tenant_status()`.
+**New file `control_plane/tenant_service.py`:** `create_tenant()`, `get_tenant_by_id()`, `list_tenants()`, `update_tenant_status()`, `update_tenant_subscription()`, `set_feature_flag()`, `get_feature_flags(tenant_id)`.
 
 **New file `control_plane/platform_admin_auth.py`:** `authenticate_platform_admin()`, `get_current_platform_admin()` — using a JWT with a **distinct signing key or scope** from school-user tokens, so a school ADMIN's token can never be mistaken for a platform-admin token.
 
-**New router `control_plane/router.py`:** `POST /platform-admin/login`, `GET /platform-admin/tenants`, `POST /platform-admin/tenants`, `PATCH /platform-admin/tenants/{tenant_id}/status` — all gated by `get_current_platform_admin`. Registered in `main.py` under `/platform-admin/*`.
+**New router `control_plane/router.py`:** `POST /platform-admin/login`, `GET /platform-admin/tenants`, `POST /platform-admin/tenants`, `PATCH /platform-admin/tenants/{tenant_id}/status`, `PATCH /platform-admin/tenants/{tenant_id}/subscription`, `GET /platform-admin/tenants/{tenant_id}/feature-flags`, `PATCH /platform-admin/tenants/{tenant_id}/feature-flags/{module}` — all gated by `get_current_platform_admin`. Registered in `main.py` under `/platform-admin/*`.
 
 **End-of-day check:** create one platform-admin account manually (direct insert, no public form). Log in, confirm token issued, confirm that token is rejected by existing school-facing endpoints (e.g. `/students/all`).
 
-### Day 4 — Tenant lookup function (what Phase 3 depends on)
+### Day 4 — Tenant lookup function, in both repos (what Phase 3 depends on)
 
-**New file `control_plane/tenant_lookup.py`:**
+This function needs to exist in **both** repos, per Decision #16: `mzbs-control-panel` uses it internally (e.g. validating a tenant before an admin action); `mzbs` gets a **mirrored, read-only copy** at `control_plane_client/tenant_lookup.py`, which is what Phase 3's `get_session()` actually calls. Both point at the same Postgres database via `CONTROL_PLANE_DATABASE_URL` — no HTTP call between the two repos.
+
+**`control_plane/tenant_lookup.py`** (canonical, in `mzbs-control-panel`) / **`control_plane_client/tenant_lookup.py`** (mirrored copy, in `mzbs` — added to that repo now, even though Phase 3 is what actually wires it in):
 ```python
 _tenant_cache: dict[str, tuple[str, str]] = {}
 _cache_lock = threading.Lock()
@@ -401,43 +438,129 @@ def lookup_tenant_connection(tenant_id: str) -> str:
             status = tenant.status
             _tenant_cache[tenant_id] = (conn_str, status)
 
-    if status != "active":
+    if status not in ("active", "trial"):
         raise HTTPException(status_code=403, detail="School account is not active")
 
     return conn_str
 ```
 
-Fails closed: unknown tenant → 404, not a default. Non-active → 403, checked on every call.
+Fails closed: unknown tenant → 404, not a default. Non-active/non-trial (`suspended`, `expired`, `provisioning`) → 403, checked on every call.
 
-**Update `update_tenant_status()`** to clear the cache entry on status change:
+`mzbs`'s copy needs its own minimal `get_control_plane_session()` and `decrypt_connection_string()` (same `control_plane/crypto.py` logic, mirrored) — it needs the `CONTROL_PLANE_ENCRYPTION_KEY` and `CONTROL_PLANE_DATABASE_URL` env vars too, but **only ever runs `SELECT`s**, never writes.
+
+**Update `update_tenant_status()`** (in `mzbs-control-panel`, the only place with write access) to clear the cache entry on status change:
 ```python
 _tenant_cache.pop(tenant_id, None)
 ```
+Note: this only clears `mzbs-control-panel`'s own in-memory cache. `mzbs`'s copy has its own separate in-memory cache and will pick up the change on its own next cache expiry/restart — an acceptable staleness window (tune the cache TTL in Phase 3 if this needs to be tighter, e.g. for suspending a tenant quickly).
 
 **End-of-day checks:**
-- [ ] Real tenant_id → correct connection string
-- [ ] Nonexistent tenant_id → 404, no crash
-- [ ] Suspend via endpoint → immediate 403, no restart needed
+- [ ] Real tenant_id → correct connection string, from both repos independently
+- [ ] Nonexistent tenant_id → 404, no crash, from both repos
+- [ ] Suspend via `mzbs-control-panel`'s endpoint → immediate 403 from `mzbs-control-panel` itself; confirm `mzbs`'s copy also reflects it once its cache expires
 - [ ] Reactivate → works again
-- [ ] 20 concurrent calls for a brand-new tenant_id → no crash, no corrupted cache entry
+- [ ] `trial` and `expired` statuses behave as expected (trial passes, expired blocks)
+- [ ] 20 concurrent calls for a brand-new tenant_id → no crash, no corrupted cache entry, in either repo's copy
 
 ### Day 5 — Seed current school + full review
 
-- Insert the live school into `tenants` (production control plane, later) / staging tenants (branch, now) with real (or staging) connection strings.
+- Insert the live school into `tenants` (production control plane, later) / staging tenants (branch, now) with real (or staging) connection strings, and all the new metadata fields populated (school info, admin contact, subscription plan/expiry).
 
 **Phase 2 review checklist:**
-- [ ] Control-plane project fully separate from every school project
-- [ ] Encryption key only in env vars, absent from any committed file/log/DB
+- [ ] `mzbs-control-panel` runs standalone, independent of `mzbs` (separate deploy, separate `.env`, separate process)
+- [ ] Control-plane project (Neon DB) fully separate from every school project
+- [ ] Encryption key only in env vars, absent from any committed file/log/DB, same key value used by both repos' copies
 - [ ] `db_connection_secret` column confirmed encrypted via direct inspection
 - [ ] Platform-admin and school-user tokens cryptographically distinct, tested both directions
-- [ ] `lookup_tenant_connection()` fails closed on all tested bad-input cases
-- [ ] Suspend/reactivate takes effect without restart
+- [ ] `lookup_tenant_connection()` fails closed on all tested bad-input cases, verified from **both** repos' copies independently
+- [ ] Suspend/reactivate takes effect without restart on the `mzbs-control-panel` side; `mzbs`'s cached copy confirmed to pick it up within its own cache TTL
 - [ ] One platform-admin account exists, created manually
-- [ ] Live/staging school represented as `tenants` row #1
+- [ ] Live/staging school represented as `tenants` row #1, all metadata fields populated
+- [ ] Feature-flag CRUD works for at least one tenant/module pair
 
 ---
 
-## Phase 3 — Tenant-Aware Login Flow + get_session() Rework
+## Phase 2.5 — School Sign-Up & Approval Workflow
+
+**Goal:** Give prospective schools a public sign-up form that captures structured lead info, and give the platform-admin a review/approval queue. Provisioning stays manual after approval (per Decision #13) — this phase is about replacing ad-hoc email/phone intake with a structured, trackable pipeline, not about automating deployment yet.
+
+### Day 1 — Schema + backend
+
+**New table `signup_requests`** (control-plane DB, referenced by `tenants.signup_request_id` from Phase 2):
+
+| column | type | notes |
+|---|---|---|
+| id | int, PK | |
+| school_name | varchar | |
+| address, city, country | varchar | |
+| contact_phone, contact_email | varchar | |
+| admin_name | varchar | |
+| desired_subdomain | varchar, nullable | requested `tenant_id` slug; platform-admin confirms/adjusts on approval |
+| students_count, staff_count | int | |
+| selected_plan | varchar | matches the fixed plan list defined in code |
+| status | enum: `pending` / `approved` / `rejected` | |
+| submitted_at | timestamp | |
+| reviewed_at | timestamp, nullable | |
+| reviewed_by | FK → platform_admins.id, nullable | |
+| rejection_reason | text, nullable | |
+
+**New file `control_plane/signup_service.py`:** `create_signup_request()`, `list_signup_requests(status=...)`, `approve_signup_request()`, `reject_signup_request()`.
+
+`approve_signup_request()` behavior:
+1. Validates `desired_subdomain` isn't already taken (checks against existing `tenants.tenant_id`).
+2. Creates a `tenants` row with `status="provisioning"`, `signup_request_id` set, all school/admin/plan fields copied over.
+3. Marks the `signup_requests` row `approved`, sets `reviewed_at`/`reviewed_by`.
+4. Does **not** create a database, deploy a frontend, or create a login — those remain manual steps (Phase 0/2's existing manual playbook), now working from pre-structured data instead of an email thread.
+
+`reject_signup_request()` — marks `rejected` with a required `rejection_reason`, no tenant row created.
+
+**New router endpoints** (in `control_plane/router.py`): `POST /signup` (public, **no auth**, rate-limited), `GET /platform-admin/signups?status=pending`, `POST /platform-admin/signups/{id}/approve`, `POST /platform-admin/signups/{id}/reject`.
+
+**End-of-day check:** submit a signup via curl with no auth header → succeeds. Attempt `GET /platform-admin/signups` with no token → 401. Approve one manually-inserted signup → confirm `tenants` row created with `status=provisioning` and correct `signup_request_id` link.
+
+### Day 2 — Rate limiting + spam protection
+
+The `/signup` endpoint is the first fully public, unauthenticated write endpoint in the system — treat it with the same care as a login endpoint.
+
+- Rate limit by IP (reuse the existing `slowapi` pattern already used elsewhere in `main.py`)
+- Basic validation: reject obviously invalid emails/phones, cap free-text field lengths
+- Consider a honeypot field (hidden input that should always be empty; non-empty = bot) before reaching for a full CAPTCHA — cheaper to build, catches the majority of naive bots
+
+**End-of-day check:** scripted burst of signup submissions from one IP → rate-limited correctly. Honeypot-filled submission → silently discarded (200 response, no row created) rather than erroring, so bots don't learn to adapt.
+
+### Day 3 — Frontend: public sign-up form
+
+**New file `(marketing)/signup/page.tsx`** (in the combined marketing/control-panel repo, per Decision #12) — form fields matching the schema above, client-side validation, honeypot field styled invisible via CSS (not `display:none`, which some bots skip).
+
+**New file `api/SignupAPI.ts`:** `submitSignup(payload)`.
+
+On success: confirmation message ("We've received your registration — our team will review it and be in touch"), not a redirect to a login screen that doesn't exist yet for them.
+
+**End-of-day check:** submit through the actual UI, confirm row appears correctly in `signup_requests`.
+
+### Day 4 — Frontend: platform-admin review queue
+
+**New file `(admin)/dashboard/signups/page.tsx`** — table of `pending` signups (school name, contact, plan, submitted date), expandable row for full details, Approve/Reject buttons.
+
+**Approve flow:** confirms the `desired_subdomain` (editable before confirming, in case of collision), submits, shows the resulting `tenants` row with status `provisioning` and a clear "next steps: manual provisioning required" note linking to the Phase 0-style playbook.
+
+**Reject flow:** requires typing a reason before the button activates.
+
+**End-of-day check:** approve one real test signup end-to-end through the UI, confirm it shows up correctly on the main tenant dashboard (Phase 5) with `provisioning` status.
+
+### Day 5 — Full regression + review
+
+**Phase 2.5 review checklist:**
+- [ ] Public `/signup` works with no auth, rejected cleanly on invalid input
+- [ ] Rate limiting confirmed with a burst test
+- [ ] Honeypot field silently discards bot-like submissions
+- [ ] Platform-admin signup queue requires auth, lists only `pending` by default
+- [ ] Approve creates a correctly-linked `tenants` row with `provisioning` status
+- [ ] Reject requires a reason, creates no tenant row
+- [ ] Subdomain collision on approval is caught and surfaced, not silently overwritten
+
+---
+
 
 **Goal:** Replace the single hardcoded DB connection with dynamic per-request routing based on `tenant_id`. Highest-risk phase — touches the auth path every request goes through.
 
@@ -469,9 +592,9 @@ def get_token_payload(token: Annotated[str, Depends(get_token_from_cookie_or_hea
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 ```
 
-**Edit `db.py`:**
+**Edit `db.py`** (this repo, `mzbs` — imports from the read-only `control_plane_client` added back in Phase 2, Day 4, per Decision #16, not from the `mzbs-control-panel` repo directly):
 ```python
-from control_plane.tenant_lookup import lookup_tenant_connection
+from control_plane_client.tenant_lookup import lookup_tenant_connection
 
 _tenant_engines: dict[str, Engine] = {}
 _engine_lock = threading.Lock()
@@ -577,7 +700,7 @@ NEXT_PUBLIC_TENANT_ID=your_school_slug
 
 ## Phase 4 — Migrations Across Many Databases
 
-**Goal:** Turn manual one-off migration scripts into a system that can safely fan out a schema change across dozens of tenant databases, track what's applied where, and handle partial failures gracefully.
+**Goal:** Turn manual one-off migration scripts into a system that can safely fan out a schema change across dozens of tenant databases, track what's applied where, and handle partial failures gracefully. This runner lives in **`mzbs`** (it applies `mzbs`'s own schema migrations to each school's database) — it only needs a read-only tenant list, which it gets via the same `control_plane_client` mirrored copy from Phase 2, Day 4 (Decision #16). Note the scale change flagged in Decision #9: this design was sized for 10-50 sequential tenants — revisit for parallelism/better failure reporting before leaning on it at hundreds/thousands.
 
 ### Day 1 — Decide the approach
 
@@ -650,6 +773,7 @@ def run_for_tenant(tenant_id, conn_str, all_migrations) -> dict:
 
 def main():
     all_migrations = discover_migrations()
+    # Read-only call via control_plane_client (mirrored copy, Decision #16) — never writes here
     with get_control_plane_session() as cp_session:
         tenants = list_tenants(cp_session)
     for tenant in tenants:
@@ -720,25 +844,45 @@ Write one row per tenant per migration, every run.
 
 ---
 
-## Phase 5 — Super-Admin Panel
+## Phase 5 — Super-Admin Panel & Marketing Website
 
-**Goal:** Build the actual screen — platform-admin login, list of all affiliated schools and their info, basic lifecycle actions (create tenant, suspend/reactivate). New, separate repo per the decisions log; same Netlify/Vercel account as school sites, unambiguously named.
+**Goal:** Build the actual screen — platform-admin login, list of all affiliated schools and their info, subscription/status management, signup review (from Phase 2.5) — combined with a public marketing site, in one repo split by Next.js route groups (Decision #12). Same Netlify/Vercel account as school sites, unambiguously named.
 
-### Day 1 — New repo scaffolding + login screen
+### Day 1 — New repo scaffolding: route groups + login screen
 
-**New repo:** `mzbs-platform-admin` (Next.js + TypeScript, much smaller than the school app — no per-role sidebar complexity).
+**New repo:** `mzbs-platform` (Next.js + TypeScript). Route groups keep public marketing pages and the authenticated admin dashboard cleanly separated within one app:
 
 ```
-mzbs-platform-admin/
+mzbs-platform/
   src/
     app/
-      login/page.tsx
-      dashboard/
-        page.tsx                 (tenant list)
-        [tenant_id]/page.tsx      (tenant detail)
-        new/page.tsx              (create tenant form)
-      layout.tsx
+      (marketing)/                    ← public, no auth
+        page.tsx                      (home)
+        features/page.tsx
+        pricing/page.tsx
+        screenshots/page.tsx
+        demo/page.tsx
+        testimonials/page.tsx
+        faq/page.tsx
+        about/page.tsx
+        blog/
+          page.tsx
+          [slug]/page.tsx
+        contact/page.tsx
+        signup/page.tsx                (Phase 2.5 sign-up form)
+        layout.tsx                     (public nav/footer, "Login" links to /login)
+      (admin)/                        ← authenticated, platform-admin only
+        login/page.tsx
+        dashboard/
+          page.tsx                    (tenant list)
+          signups/page.tsx            (Phase 2.5 review queue)
+          [tenant_id]/page.tsx        (tenant detail: info, subscription, feature flags, status)
+          new/page.tsx                (manual tenant creation — still needed alongside sign-up)
+        layout.tsx                    (auth-guarded, checks platform-admin token)
+      layout.tsx                       (root)
+    middleware.ts                      (redirects unauthenticated /dashboard/* → /login)
     api/PlatformAdminAPI.ts
+    api/SignupAPI.ts
     context/PlatformAdminContext.tsx
     components/ProtectedPlatformRoute.tsx
 ```
@@ -758,11 +902,11 @@ export async function getTenants(token: string) {
 }
 ```
 
-**End-of-day check:** log in with the platform-admin account from Phase 2, confirm token issued, confirm rejected against any school-facing endpoint.
+**End-of-day check:** log in with the platform-admin account from Phase 2, confirm token issued, confirm rejected against any school-facing endpoint. Confirm marketing pages render with zero auth checks and zero calls to admin endpoints.
 
 ### Day 2 — Backend: response shaping + validation
 
-**Edit `control_plane/router.py`:**
+**Edit `control_plane/router.py`** (in `mzbs-control-panel`, per Decision #15 — this whole backend, including everything built in Phase 2 and 2.5, lives in that repo, not in `mzbs`):
 ```python
 @platform_router.get("/tenants", response_model=list[TenantResponse])
 def list_all_tenants(admin=Depends(get_current_platform_admin), session=Depends(get_control_plane_session)):
@@ -773,76 +917,94 @@ def create_new_tenant(payload: TenantCreate, admin=Depends(get_current_platform_
     existing = get_tenant_by_id(session, payload.tenant_id)
     if existing:
         raise HTTPException(status_code=400, detail=f"tenant_id '{payload.tenant_id}' already exists")
-    return create_tenant(session, payload.tenant_id, payload.school_name, payload.contact_email, payload.frontend_url, payload.raw_connection_string)
+    return create_tenant(session, payload)
 ```
 
-**`TenantResponse` deliberately excludes `db_connection_secret` entirely** — no legitimate reason for it to leave the backend after creation:
+**`TenantResponse` deliberately excludes `db_connection_secret` entirely** — no legitimate reason for it to leave the backend after creation. It does include the full metadata set from Phase 2's expanded schema:
 ```python
 class TenantResponse(BaseModel):
     tenant_id: str
     school_name: str
+    address: str
+    city: str
+    country: str
     contact_email: str
+    contact_phone: str
+    admin_name: str
+    admin_email: str
     frontend_url: str
     status: str
+    subscription_plan: str
+    subscription_expiry: date | None
+    last_activity_at: datetime | None
     created_at: datetime
 ```
 
 **End-of-day check:** call `GET /platform-admin/tenants` directly, confirm response never contains the connection secret in any form.
 
-### Day 3 — Tenant list dashboard
+### Day 3 — Tenant list dashboard + signup queue
 
-**`src/app/dashboard/page.tsx`** — fetches and renders a table: school name, status, contact, joined date, link to detail view. `ProtectedPlatformRoute.tsx` guards it, same pattern as the school app's `ProtectedRoute.tsx` but checking for a platform-admin token specifically.
+**`(admin)/dashboard/page.tsx`** — fetches and renders a table: school name, status, plan, subscription expiry, contact, joined date, last activity, link to detail view. `ProtectedPlatformRoute.tsx` guards it, same pattern as the school app's `ProtectedRoute.tsx` but checking for a platform-admin token specifically.
 
-**End-of-day check:** confirm seeded tenant(s) render correctly.
+**`(admin)/dashboard/signups/page.tsx`** — built in Phase 2.5; just wired into this repo's nav here.
 
-### Day 4 — Tenant detail + create form + status toggle
+**End-of-day check:** confirm seeded tenant(s) render correctly with all metadata fields.
 
-**`src/app/dashboard/new/page.tsx`** — form collecting `tenant_id`, `school_name`, `contact_email`, `frontend_url`, raw Neon connection string. This is the one moment the plaintext connection string is ever typed anywhere — goes over HTTPS, gets encrypted server-side, never displayed again.
+### Day 4 — Tenant detail + create form + status/subscription/feature-flag controls
 
-**`src/app/dashboard/[tenant_id]/page.tsx`** — detail view + status toggle:
+**`(admin)/dashboard/new/page.tsx`** — form collecting all `tenants` fields plus the raw Neon connection string. This is the one moment the plaintext connection string is ever typed anywhere — goes over HTTPS, gets encrypted server-side, never displayed again. Still needed alongside the Phase 2.5 sign-up flow, since some tenants will always be created manually (no sign-up).
+
+**`(admin)/dashboard/[tenant_id]/page.tsx`** — detail view with:
+- Status toggle (`active`/`suspended`/`trial`/`expired`):
 ```typescript
 async function toggleStatus(tenant_id: string, newStatus: string, token: string) {
   await api.patch(`/platform-admin/tenants/${tenant_id}/status`, { status: newStatus }, { headers: { Authorization: `Bearer ${token}` } });
 }
 ```
+- Subscription plan/expiry editor (manual billing per Decision #14 — no payment processor call, just updates the fields)
+- Feature-flag toggles per module (reads/writes `tenant_feature_flags` from Phase 2)
 
-**Note on scope:** this MVP shows control-plane metadata only (name, contact, status, join date) — not live per-school counts (e.g. student totals), since that would require live queries into each school's own database on-demand. Treat as a separate future enhancement once the base version is live and specific useful metrics are identified.
+**Note on scope:** this MVP shows control-plane metadata only (name, contact, status, plan, join date, last activity) — not live per-school counts (e.g. student totals) or deployment/DB health monitoring, since those require live queries or hosting-provider API integration. Treat as a separate future enhancement once the base version is live and specific useful metrics are identified.
 
-**End-of-day check:** create a throwaway test tenant, confirm it appears, toggle to suspended, confirm a login attempt against it now fails (cross-check with Phase 3's adversarial test).
+**End-of-day check:** create a throwaway test tenant, confirm it appears, toggle to suspended, confirm a login attempt against it now fails (cross-check with Phase 3's adversarial test). Toggle a feature flag, confirm it's reflected in a fresh `GET`.
 
 ### Day 5 — Guardrails, deployment, final review
 
 **Guardrails:**
-- No public signup form in this app, ever — platform-admin accounts created manually only
+- No public tenant-creation form — only the reviewed sign-up path (Phase 2.5) or manual creation by an authenticated platform-admin
 - Confirmation dialog before suspending a tenant
 - Log (and consider rate-limiting) every `/platform-admin/login` attempt — high-value target
+- Marketing pages (`(marketing)/*`) never call any `/platform-admin/*` endpoint except `POST /signup`
 
 **Deployment:**
-- New Netlify/Vercel project, same account, named `mzbs-platform-admin`
+- New Netlify/Vercel project, same account, named `mzbs-platform`
 - `NEXT_PUBLIC_BACKEND_URL` set to shared backend
 - No `NEXT_PUBLIC_TENANT_ID` here at all — this app has no single-tenant concept, which is what distinguishes it from every school frontend
 
 **Phase 5 checklist:**
 - [ ] Platform-admin login works; token rejection verified both directions (platform token on school routes, school token on platform routes)
-- [ ] Tenant list renders correctly with real data
+- [ ] Tenant list renders correctly with real data, including new metadata fields
+- [ ] Signup review queue (Phase 2.5) reachable from this dashboard
 - [ ] Create-tenant form works; connection string never re-displayed after creation
-- [ ] Status toggle works immediately, no restart needed
+- [ ] Status toggle, subscription edit, and feature-flag toggle all work immediately, no restart needed
 - [ ] `db_connection_secret` confirmed absent from every network response this app receives (check browser dev tools directly)
+- [ ] Marketing pages load and function with zero auth/session state
 - [ ] Deployed to its own clearly-named project, separate from every school site
 
 ---
 
 ## Merge & Production Cutover Checklist
 
-Once Phases 1-5 are built and fully tested against the staging environment from Phase 0:
+Once Phases 1-5 (including 2.5) are built and fully tested against the staging environment from Phase 0:
 
 1. **Merge the code to `main`, but don't cut the live school over yet.** Deploy with `DEFAULT_TENANT_ID` (Phase 3, Day 4) still pointed at the existing live school — behavior stays unchanged even with the new routing machinery live.
-2. **Create the real production control-plane database** (Phase 2's schema, for real this time — separate from `mzbs-staging-control-plane`).
-3. **Insert the live school into the production control plane** as `tenants` row #1, using its real connection string (encrypted per Phase 2).
+2. **Create the real production control-plane database** (Phase 2's expanded schema, for real this time — separate from `mzbs-staging-control-plane`).
+3. **Insert the live school into the production control plane** as `tenants` row #1, using its real connection string (encrypted per Phase 2) and full metadata (school info, admin contact, subscription plan/expiry).
 4. **Deploy the frontend change last**, with the real `NEXT_PUBLIC_TENANT_ID` set — this is the actual cutover moment.
 5. **Run the full Phase 3, Day 5 regression** (all adversarial tests + the 8-role matrix) against production, not just staging, before considering this done.
 6. **Keep the `DEFAULT_TENANT_ID` fallback in code for a while post-cutover** — cheap insurance if production behaves differently than staging did.
-7. **Onboard school #2 only after the live school has run stably on the new routing for a week or two** — this is the first genuine multi-tenant proof, not just the plan.
+7. **Publish the marketing site + sign-up form (Phase 2.5/5) live only after step 5 passes** — no reason to accept real sign-ups before tenant routing is proven solid in production.
+8. **Onboard school #2 only after the live school has run stably on the new routing for a week or two** — this is the first genuine multi-tenant proof, not just the plan. School #2 can come either via the sign-up form (Phase 2.5, manually provisioned after approval) or manual creation — either path exercises the same underlying `tenants` row/routing logic.
 
 **A note on tooling during this whole process:** if using a separate AI coding agent for verification, confirm it's checked out on the correct branch (staging vs. `main`) before trusting any "verified against source" finding — a mismatch here produces confidently wrong answers about what's actually been changed.
 
@@ -851,5 +1013,6 @@ Once Phases 1-5 are built and fully tested against the staging environment from 
 ## Post-Launch Notes
 
 - The follow-up item from the RBAC audit (TEACHER's Students UI potentially showing an add/edit control that always fails on submit) is still open and worth a quick look independent of this plan.
-- Once past ~50-100 schools, revisit: (a) automating tenant onboarding (Phase 2/3's mechanisms already support this — a form on top, not a rearchitect), (b) migrating the Phase 4 runner to Alembic if the team grows, (c) an idle-engine eviction tuning pass based on real usage patterns.
+- Once past ~50-100 schools, revisit: (a) **automating tenant onboarding** — Phase 2.5's approval step already produces a fully-structured `tenants` row in `provisioning` status, so automation means scripting the remaining manual steps (Neon DB creation via API, running Phase 4's migration runner, triggering a frontend deploy, creating the admin account) behind the existing "Approve" button, not a rearchitect; (b) migrating the Phase 4 runner to Alembic if the team grows; (c) an idle-engine eviction tuning pass based on real usage patterns; (d) **billing automation** — integrating a real payment processor (Stripe or similar) once manually-tracked subscription fields (Decision #14) become a bottleneck; (e) **deployment/DB health monitoring** on the Phase 5 dashboard, once specific useful metrics are identified from real operational pain points, not speculatively.
 - `get_session()` (Phase 3) remains the single most security-critical function in the codebase going forward — any future change to it deserves the same adversarial-testing rigor as Phase 3, Day 5, not just a normal code review.
+- The `/signup` endpoint (Phase 2.5) is the first fully public write path in the system — any future public endpoint added to the platform (support tickets, contact form submissions that write to a DB, etc.) should get the same rate-limiting/honeypot treatment by default, not as an afterthought.

@@ -8,8 +8,8 @@ from schemas.exam_marks_model import ExamMark
 from schemas.fee_model import Fee
 from schemas.student_profile_model import StudentProfileRequest, StudentProfileResponse
 from schemas.students_model import Students, StudentsResponse
-from user.user_crud import get_current_user
-from user.user_models import User, UserRole
+from user.user_crud import require_permission
+from user.user_models import User
 
 student_profile_router = APIRouter(
     prefix="/student_profile",
@@ -95,16 +95,20 @@ def _build_profile_response(session: Session, student_id: int) -> StudentProfile
     )
 
 
+# NOTE: this is a staff-facing endpoint (any staff role viewing a student's
+# combined profile). Student/parent self-view of their own profile goes
+# through student_portal_auth.py's separate JWT scheme, not this router —
+# that's why "students.view" (not a student-specific check) is the right
+# permission here, matching students.py's own view endpoints.
+
+
 @student_profile_router.get("/", response_model=StudentProfileResponse)
 def get_student_profile(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("students", "view"))],
     session: Annotated[Session, Depends(get_session)],
     student_id: int = Query(..., description="Student ID"),
     class_name: Optional[str] = Query(None, description="Optional class filter"),
 ):
-    if current_user.role == UserRole.STUDENT:
-        raise HTTPException(status_code=403, detail="Students cannot view other student profiles")
-
     profile = _build_profile_response(session, student_id)
     if class_name and profile.student.class_name != class_name:
         raise HTTPException(status_code=400, detail="Selected class does not match the student record")
@@ -114,9 +118,7 @@ def get_student_profile(
 @student_profile_router.post("/load/", response_model=StudentProfileResponse)
 def load_student_profile(
     payload: StudentProfileRequest,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("students", "view"))],
     session: Annotated[Session, Depends(get_session)],
 ):
-    if current_user.role == UserRole.STUDENT:
-        raise HTTPException(status_code=403, detail="Students cannot view other student profiles")
     return _build_profile_response(session, payload.student_id)

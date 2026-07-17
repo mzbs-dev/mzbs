@@ -32,6 +32,7 @@ class UserBase(SQLModel):
 class UserLogin(SQLModel):
     username: str
     password: str
+    tenant_id: Optional[str] = None
     grant_type: Optional[str] = "password"  # Default value
     scope: Optional[str] = ""
     client_id: Optional[str] = None

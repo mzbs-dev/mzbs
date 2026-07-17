@@ -1,3 +1,4 @@
+
 from asyncio.log import logger
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,7 +9,7 @@ from db import get_session
 from utils.cache import cache_get, cache_set, cache_invalidate
 from schemas.attendance_time_model import AttendanceTime, AttendanceTimeCreate, AttendanceTimeResponse
 from schemas.attendance_model import Attendance
-from user.user_crud import require_admin_teacher_principal, require_authenticated
+from user.user_crud import require_permission, require_authenticated
 from user.user_models import User
 attendance_time_router = APIRouter(
     prefix="/attendance_time",
@@ -23,7 +24,7 @@ async def root():
 
 
 @attendance_time_router.post("/add_attendance_value/", response_model=AttendanceTimeResponse)
-def create_attendance_time(user: Annotated[User, Depends(require_admin_teacher_principal)],attendance_time: AttendanceTimeCreate, session: Session = Depends(get_session)):
+def create_attendance_time(user: Annotated[User, Depends(require_permission("setup_timings", "add"))],attendance_time: AttendanceTimeCreate, session: Session = Depends(get_session)):
     db_attendance_time = AttendanceTime(**attendance_time.model_dump())
     session.add(db_attendance_time)
 
@@ -80,7 +81,7 @@ def read_attendance_time(current_user: Annotated[User, Depends(require_authentic
 
 
 @attendance_time_router.delete("/del/{attend_value_name}", response_model=dict)
-def delete_attendance_time(user: Annotated[User, Depends(require_admin_teacher_principal)],attend_value_name: str, session: Session = Depends(get_session)):
+def delete_attendance_time(user: Annotated[User, Depends(require_permission("setup_timings", "delete"))],attend_value_name: str, session: Session = Depends(get_session)):
     attendance_time = session.exec(select(AttendanceTime).where(
         AttendanceTime.attendance_time == attend_value_name)).first()
     # Check for related records (adjust model and field as needed)
@@ -100,7 +101,7 @@ def delete_attendance_time(user: Annotated[User, Depends(require_admin_teacher_p
 
 @attendance_time_router.delete("/{attendance_time_id}", response_model=dict)
 def delete_attendance_time_by_id(
-    user: Annotated[User, Depends(require_admin_teacher_principal)],
+    user: Annotated[User, Depends(require_permission("setup_timings", "delete"))],
     attendance_time_id: int, 
     session: Session = Depends(get_session)
 ):
@@ -130,3 +131,5 @@ def delete_attendance_time_by_id(
             status_code=500,
             detail="Error deleting attendance time"
         )
+
+

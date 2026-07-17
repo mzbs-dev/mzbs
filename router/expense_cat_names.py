@@ -1,3 +1,4 @@
+
 from asyncio.log import logger
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,7 +9,7 @@ from db import get_session
 from utils.cache import cache_get, cache_set, cache_invalidate
 
 from schemas.expense_cat_names_model import ExpenseCatNames, ExpenseCatNamesCreate, ExpenseCatNamesResponse
-from user.user_crud import require_admin_accountant_fee_manager
+from user.user_crud import require_permission
 from user.user_models import User
 from schemas.expense_model import Expense  # <-- Add this import
 
@@ -25,7 +26,7 @@ async def root():
 
 @expense_cat_names_router.post("/add_expense_cat_name/", response_model=ExpenseCatNamesResponse)
 def create_expense_cat_name( 
-    user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
+    user: Annotated[User, Depends(require_permission("setup_expense_categories", "add"))],
     expense_cat_name: ExpenseCatNamesCreate, session: Session = Depends(get_session),):
     db_expense_cat_name = ExpenseCatNames(**expense_cat_name.model_dump())
     session.add(db_expense_cat_name)
@@ -56,7 +57,7 @@ def create_expense_cat_name(
 
 @expense_cat_names_router.get("/expense-cat-names-all/", response_model=List[ExpenseCatNamesResponse])
 def read_expense_cat_names(
-    user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
+    user: Annotated[User, Depends(require_permission("setup_expense_categories", "view"))],
     session: Session = Depends(get_session)
 ):
     cached = cache_get("expense_cats")
@@ -69,7 +70,7 @@ def read_expense_cat_names(
 
 @expense_cat_names_router.get("/{expense_cat_id}", response_model=ExpenseCatNamesResponse)
 def read_expense_cat_name(
-    user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
+    user: Annotated[User, Depends(require_permission("setup_expense_categories", "view"))],
     expense_cat_id: int, session: Session = Depends(get_session)):
     expense_cat_name = session.get(ExpenseCatNames, expense_cat_id)
     if not expense_cat_name:
@@ -79,7 +80,7 @@ def read_expense_cat_name(
 
 @expense_cat_names_router.delete("/del/{expense_cat_id}", response_model=dict)
 def delete_expense_cat_name(
-    user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
+    user: Annotated[User, Depends(require_permission("setup_expense_categories", "delete"))],
     expense_cat_id: int, session: Session = Depends(get_session)):
     expense_cat_name = session.get(ExpenseCatNames, expense_cat_id)
     if not expense_cat_name:
@@ -96,3 +97,5 @@ def delete_expense_cat_name(
     session.commit()
     cache_invalidate("expense_cats")
     return {"message": "Expense Category Name deleted successfully"}
+
+

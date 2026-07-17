@@ -1,12 +1,19 @@
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
+from threading import Lock
+from typing import Annotated, Dict
 from urllib.parse import urlparse, urlunparse
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from sqlalchemy.engine import Engine
 from sqlmodel import SQLModel, create_engine, Session, select
 from utils.logging import logger
 import setting
 
 import schemas.student_parent_credentials_model  # noqa: F401
+
+from control_plane_client.tenant_lookup import lookup_tenant_connection
+from token_deps import TokenPayload, get_token_payload
 
 CONN_STRING: str = str(setting.DATABASE_URL)
 
@@ -64,6 +71,43 @@ engine = get_engine(CONN_STRING=CONN_STRING)
 # Add SessionLocal
 SessionLocal = Session
 
+_tenant_engines: Dict[str, Engine] = {}
+_tenant_engine_last_used: Dict[str, datetime] = {}
+_tenant_engine_lock = Lock()
+_TENANT_ENGINE_TTL = timedelta(minutes=30)
+
+
+def evict_idle_tenant_engines(max_idle_minutes: int = 30) -> list[str]:
+    """Remove cached tenant engines that have been unused for longer than the threshold."""
+    cutoff = datetime.utcnow() - timedelta(minutes=max_idle_minutes)
+    with _tenant_engine_lock:
+        stale_tenant_ids = [
+            tenant_id
+            for tenant_id, last_used in _tenant_engine_last_used.items()
+            if last_used < cutoff
+        ]
+        for tenant_id in stale_tenant_ids:
+            tenant_engine = _tenant_engines.pop(tenant_id, None)
+            _tenant_engine_last_used.pop(tenant_id, None)
+            if tenant_engine is not None:
+                tenant_engine.dispose()
+    return stale_tenant_ids
+
+
+def get_tenant_engine(tenant_id: str) -> Engine:
+    """Resolve a tenant_id to a cached engine."""
+    evict_idle_tenant_engines(max_idle_minutes=int(_TENANT_ENGINE_TTL.total_seconds() // 60))
+    with _tenant_engine_lock:
+        tenant_engine = _tenant_engines.get(tenant_id)
+        if tenant_engine is None:
+            conn_str = lookup_tenant_connection(tenant_id)
+            tenant_engine = get_engine(conn_str)
+            _tenant_engines[tenant_id] = tenant_engine
+            logger.info(f"Created new engine for tenant '{tenant_id}'")
+        _tenant_engine_last_used[tenant_id] = datetime.utcnow()
+        return tenant_engine
+
+
 def seed_attendance_values():
     """Seed initial attendance values into the database"""
     try:
@@ -113,10 +157,11 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Closing database connection")
 
-def get_session():
+def get_session(payload: Annotated[TokenPayload, Depends(get_token_payload)]):
     session = None
     try:
-        session = SessionLocal(engine)
+        tenant_engine = get_tenant_engine(payload.tenant_id)
+        session = SessionLocal(tenant_engine)
         yield session
     except Exception as e:
         logger.error(f"Database session error: {str(e)}")

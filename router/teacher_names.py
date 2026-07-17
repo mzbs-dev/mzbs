@@ -1,3 +1,4 @@
+
 from asyncio.log import logger
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,7 +10,7 @@ from utils.cache import cache_get, cache_set, cache_invalidate
 
 from schemas.teacher_names_model import TeacherNames, TeacherNamesCreate, TeacherNamesResponse
 from schemas.attendance_model import Attendance
-from user.user_crud import require_admin, require_admin_teacher_principal, require_admin_teacher_principal_accountant
+from user.user_crud import require_permission, require_admin_teacher_principal_accountant
 from user.user_models import User
 
 teachernames_router = APIRouter(
@@ -25,7 +26,7 @@ async def root():
 
 
 @teachernames_router.post("/add_teacher_name/", response_model=TeacherNamesResponse)
-def create_teachernames( user: Annotated[User, Depends(require_admin())],teachernames: TeacherNamesCreate, session: Session = Depends(get_session),):
+def create_teachernames( user: Annotated[User, Depends(require_permission("setup_teachers", "add"))],teachernames: TeacherNamesCreate, session: Session = Depends(get_session),):
     db_teachernames = TeacherNames(**teachernames.model_dump())
     session.add(db_teachernames)
 
@@ -83,7 +84,7 @@ def read_teachernames(current_user: Annotated[User, Depends(require_admin_teache
 
 @teachernames_router.delete("/del/{teacher_name}", response_model=dict)
 def delete_teachernames(
-    user: Annotated[User, Depends(require_admin())],
+    user: Annotated[User, Depends(require_permission("setup_teachers", "delete"))],
     teacher_name: str,
     session: Session = Depends(get_session)
 ):
@@ -107,7 +108,7 @@ def delete_teachernames(
 
 @teachernames_router.delete("/{teacher_id}", response_model=dict)
 def delete_teacher_by_id(
-    user: Annotated[User, Depends(require_admin())],
+    user: Annotated[User, Depends(require_permission("setup_teachers", "delete"))],
     teacher_id: int, 
     session: Session = Depends(get_session)
 ):
@@ -137,3 +138,4 @@ def delete_teacher_by_id(
             status_code=500,
             detail="Error deleting teacher"
         )
+

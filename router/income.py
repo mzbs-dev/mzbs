@@ -1,3 +1,4 @@
+
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
@@ -6,7 +7,7 @@ from typing import List, Optional  # Import List and Optional for response model
 
 from db import get_session
 from schemas.income_model import Income, IncomeCreate, IncomeResponse, IncomeUpdate
-from user.user_crud import require_admin_accountant_fee_manager, require_admin_accountant, require_admin
+from user.user_crud import require_permission
 from user.user_models import User
 from schemas.income_cat_names_model import IncomeCatNames  # Import IncomeCatNames
 
@@ -23,7 +24,7 @@ async def root():
 @income_router.get("/all", response_model=dict)
 def get_all_incomes(
     session: Session = Depends(get_session),
-    user: User = Depends(require_admin_accountant()),
+    user: User = Depends(require_permission("income", "view")),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
 ):
@@ -70,7 +71,7 @@ def get_all_incomes(
 def create_income(
     income: IncomeCreate,
     session: Session = Depends(get_session),
-    user: User = Depends(require_admin_accountant())
+    user: User = Depends(require_permission("income", "add"))
 ):
     # Ensure the category exists
     category = session.get(IncomeCatNames, income.category_id)
@@ -123,7 +124,7 @@ def update_income(
     income_id: int,
     income: IncomeUpdate,
     session: Session = Depends(get_session),
-    user: User = Depends(require_admin_accountant())
+    user: User = Depends(require_permission("income", "edit"))
 ):
     db_income = session.get(Income, income_id)
     if not db_income:
@@ -188,7 +189,7 @@ def update_income(
 def delete_income(
     income_id: int,
     session: Session = Depends(get_session),
-    user: User = Depends(require_admin())
+    user: User = Depends(require_permission("income", "delete"))
 ):
     db_income = session.get(Income, income_id)
     if not db_income:
@@ -211,7 +212,7 @@ def delete_income(
 def filter_income(
     category_id: Optional[int] = None,
     session: Session = Depends(get_session),
-    user: User = Depends(require_admin_accountant()),
+    user: User = Depends(require_permission("income", "view")),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
 ):
@@ -256,5 +257,7 @@ def filter_income(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error filtering income records: {str(e)}"
         )
+
+
 
 

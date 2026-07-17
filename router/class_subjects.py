@@ -1,3 +1,4 @@
+
 from asyncio.log import logger
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,7 +14,7 @@ from schemas.class_subject_model import (
     ClassSubjectSetResponse,
 )
 from schemas.class_names_model import ClassNames
-from user.user_crud import require_admin, require_non_student
+from user.user_crud import require_permission, require_non_student
 from user.user_models import User
 
 class_subjects_router = APIRouter(
@@ -30,7 +31,7 @@ async def root():
 
 @class_subjects_router.post("/set/", response_model=ClassSubjectSetResponse)
 def set_class_subjects(
-    user: Annotated[User, Depends(require_admin())],
+    user: Annotated[User, Depends(require_permission("setup_class_subjects", "edit"))],
     payload: ClassSubjectSetRequest,
     session: Session = Depends(get_session),
 ):
@@ -91,7 +92,7 @@ def read_class_subjects(
 
 @class_subjects_router.post("/add/", response_model=ClassSubjectResponse)
 def create_class_subject(
-    user: Annotated[User, Depends(require_admin())],
+    user: Annotated[User, Depends(require_permission("setup_class_subjects", "add"))],
     payload: ClassSubjectCreate,
     session: Session = Depends(get_session),
 ):
@@ -124,7 +125,7 @@ def create_class_subject(
 
 @class_subjects_router.delete("/{class_subject_id}", response_model=dict)
 def delete_class_subject(
-    user: Annotated[User, Depends(require_admin())],
+    user: Annotated[User, Depends(require_permission("setup_class_subjects", "delete"))],
     class_subject_id: int,
     session: Session = Depends(get_session),
 ):
@@ -134,3 +135,5 @@ def delete_class_subject(
     session.delete(item)
     session.commit()
     return {"message": "Class subject deleted successfully"}
+
+

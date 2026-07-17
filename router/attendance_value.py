@@ -1,3 +1,4 @@
+
 from sqlalchemy import text
 from asyncio.log import logger
 from typing import Annotated, List
@@ -9,7 +10,7 @@ from sqlalchemy.exc import IntegrityError  # <-- Add this import
 from db import get_session
 from utils.cache import cache_get, cache_set, cache_invalidate
 from schemas.attendance_value_model import AttendanceValue, AttendanceValueCreate, AttendanceValueResponse
-from user.user_crud import require_admin_teacher_principal, require_admin, require_authenticated
+from user.user_crud import require_permission, require_admin, require_authenticated
 from user.user_models import User
 attendancevalue_router = APIRouter(
     prefix="/attendance_value",
@@ -24,7 +25,7 @@ async def root():
 
 
 @attendancevalue_router.post("/add_attendance_value/", response_model=AttendanceValueResponse)
-def create_attendancevalue(user: Annotated[User, Depends(require_admin_teacher_principal())],attendancevalue: AttendanceValueCreate, session: Session = Depends(get_session)):
+def create_attendancevalue(user: Annotated[User, Depends(require_permission("setup_attendance_values", "add"))],attendancevalue: AttendanceValueCreate, session: Session = Depends(get_session)):
     db_attendancevalue = AttendanceValue(**attendancevalue.model_dump())
     session.add(db_attendancevalue)
 
@@ -81,7 +82,7 @@ def read_attendancevalue(current_user: Annotated[User, Depends(require_authentic
 
 
 @attendancevalue_router.delete("/del/{attend_value_name}", response_model=dict)
-def delete_attendancevalue(user: Annotated[User, Depends(require_admin_teacher_principal())],attend_value_name: str, session: Session = Depends(get_session)):
+def delete_attendancevalue(user: Annotated[User, Depends(require_permission("setup_attendance_values", "delete"))],attend_value_name: str, session: Session = Depends(get_session)):
     attendancevalue = session.exec(select(AttendanceValue).where(
         AttendanceValue.attendance_value == attend_value_name)).first()
     # Check for related records (adjust model and field as needed)
@@ -101,7 +102,7 @@ def delete_attendancevalue(user: Annotated[User, Depends(require_admin_teacher_p
 
 @attendancevalue_router.delete("/{attendance_value_id}", response_model=dict)
 def delete_attendancevalue_by_id(
-    user: Annotated[User, Depends(require_admin_teacher_principal())],
+    user: Annotated[User, Depends(require_permission("setup_attendance_values", "delete"))],
     attendance_value_id: int, 
     session: Session = Depends(get_session)
 ):
@@ -142,5 +143,7 @@ def reset_attendance_id(current_user: Annotated[User, Depends(require_admin())],
     session.commit()
 
     return "Attendance IDs have been reset to start from 1."
+
+
 
 

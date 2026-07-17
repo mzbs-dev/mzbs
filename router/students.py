@@ -15,7 +15,7 @@ from schemas.students_model import Students, StudentsCreate, StudentsResponse, S
 from schemas.attendance_model import Attendance
 from schemas.fee_model import Fee, FeeStatus
 from schemas.admission_model import Admission
-from user.user_crud import require_admin_principal
+from user.user_crud import require_permission
 from user.user_models import User
 
 students_router = APIRouter(
@@ -26,7 +26,7 @@ students_router = APIRouter(
 
 
 @students_router.post("/add/", response_model=StudentsResponse)
-def create_student(user: Annotated[User, Depends(require_admin_principal())],student: StudentsCreate, session: Annotated[Session, Depends(get_session)]):
+def create_student(user: Annotated[User, Depends(require_permission("students", "add"))],student: StudentsCreate, session: Annotated[Session, Depends(get_session)]):
     db_student = Students(**student.model_dump())
     session.add(db_student)
 
@@ -41,7 +41,7 @@ def create_student(user: Annotated[User, Depends(require_admin_principal())],stu
 
 
 @students_router.post("/add_bulk/", response_model=List[StudentsResponse])
-def create_bulk_students(user: Annotated[User, Depends(require_admin_principal())],students: List[StudentsCreate], session: Annotated[Session, Depends(get_session)]):
+def create_bulk_students(user: Annotated[User, Depends(require_permission("students", "add"))],students: List[StudentsCreate], session: Annotated[Session, Depends(get_session)]):
     db_students = [Students(**student.model_dump()) for student in students]
     session.add_all(db_students)
 
@@ -57,7 +57,7 @@ def create_bulk_students(user: Annotated[User, Depends(require_admin_principal()
 
 
 @students_router.patch("/{student_id}", response_model=StudentsResponse)
-def update_student(user: Annotated[User, Depends(require_admin_principal())],student_id: int, student: StudentsUpdate, session: Annotated[Session, Depends(get_session)]):
+def update_student(user: Annotated[User, Depends(require_permission("students", "edit"))],student_id: int, student: StudentsUpdate, session: Annotated[Session, Depends(get_session)]):
     db_student = session.exec(select(Students).where(
         Students.student_id == student_id)).first()
     if not db_student:
@@ -76,7 +76,7 @@ def update_student(user: Annotated[User, Depends(require_admin_principal())],stu
 
 @students_router.delete("/{student_id}", response_model=dict)
 def delete_student(
-    user: Annotated[User, Depends(require_admin_principal())],
+    user: Annotated[User, Depends(require_permission("students", "delete"))],
     student_id: int,
     payload: SoftDeleteRequest,
     session: Annotated[Session, Depends(get_session)]
@@ -244,16 +244,11 @@ def delete_student(
 
 @students_router.get("/all_students/", response_model=dict)
 def all_students(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("students", "view"))],
     session: Annotated[Session, Depends(get_session)],
     page: int = Query(10, ge=1, le=50, description="Page number"),
     page_size: int = Query(10, ge=1, le=50, description="Records per page"),
 ):
-    if current_user.role == UserRole.STUDENT:
-        raise HTTPException(
-            status_code=403,
-            detail="Only teachers and administrators can view student records"
-        )
     total = session.exec(select(func.count(Students.student_id))).one()
     students = session.exec(
         select(Students)
@@ -271,15 +266,10 @@ def all_students(
 
 @students_router.get("/by_class_name/", response_model=List[StudentsResponse])
 def get_students_by_class(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("students", "view"))],
     class_name: str, 
     session: Annotated[Session, Depends(get_session)]
 ):
-    if current_user.role == UserRole.STUDENT:
-        raise HTTPException(
-            status_code=403,
-            detail="Only teachers and administrators can view student records"
-        )
     query = select(Students).where(Students.class_name == class_name)
     students = session.exec(query).all()
     if not students:
@@ -292,18 +282,11 @@ def get_students_by_class(
 
 @students_router.get("/by_class_id/", response_model=List[StudentsResponse])
 def get_students_by_class_id(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("students", "view"))],
     class_id: int, 
     session: Annotated[Session, Depends(get_session)]
 ):
     try:
-        # Check user authorization
-        if current_user.role == UserRole.STUDENT:
-            raise HTTPException(
-                status_code=403,
-                detail="Only teachers and administrators can view student records"
-            )
-        
         # Validate class_id
         if class_id <= 0:
             raise HTTPException(
@@ -346,15 +329,10 @@ def get_students_by_class_id(
 
 @students_router.get("/by_gender", response_model=List[StudentsResponse])
 def get_student_by_gender(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("students", "view"))],
     gender: str, 
     session: Annotated[Session, Depends(get_session)]
 ):
-    if current_user.role == UserRole.STUDENT:
-        raise HTTPException(
-            status_code=403,
-            detail="Only teachers and administrators can view student records"
-        )
     query = select(Students).where(Students.student_gender == gender)
     student = session.exec(query).all()
     if not student:
@@ -367,15 +345,10 @@ def get_student_by_gender(
 
 @students_router.get("/by_city", response_model=List[StudentsResponse])
 def get_student_by_city(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("students", "view"))],
     city: str, 
     session: Annotated[Session, Depends(get_session)]
 ):
-    if current_user.role == UserRole.STUDENT:
-        raise HTTPException(
-            status_code=403,
-            detail="Only teachers and administrators can view student records"
-        )
     query = select(Students).where(Students.student_city == city)
     student = session.exec(query).all()
     if not student:
@@ -388,17 +361,12 @@ def get_student_by_city(
 
 @students_router.get("/filter", response_model=List[StudentsResponse])
 def filter_students(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("students", "view"))],
     session: Annotated[Session, Depends(get_session)],
     class_name: Optional[str] = Query(None, description="Filter by class name"),
     gender: Optional[str] = Query(None, description="Filter by gender"),
     city: Optional[str] = Query(None, description="Filter by city"),
 ):
-    if current_user.role == UserRole.STUDENT:
-        raise HTTPException(
-            status_code=403,
-            detail="Only teachers and administrators can view student records"
-        )
     query = select(Students)
 
     if class_name:
@@ -450,3 +418,5 @@ def get_student_details(
             "father_name": student.father_name
         }
     return None
+
+

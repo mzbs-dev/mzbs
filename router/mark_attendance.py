@@ -1,3 +1,4 @@
+
 from schemas.attendance_model import (
     Attendance,
     AttendanceCreate,
@@ -16,7 +17,7 @@ from sqlmodel import Session, select
 from sqlalchemy.orm import joinedload
 from typing import Annotated, List, Optional
 from user.user_models import User, UserRole
-from user.user_crud import get_current_user
+from user.user_crud import require_permission
 from sqlalchemy.exc import IntegrityError
 from datetime import date, datetime, timedelta
 
@@ -77,13 +78,12 @@ def _eager_select() -> any:
 
 @mark_attendance_router.get("/show_all_attendance", response_model=dict)
 def get_all_attendance(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("attendance", "view"))],
     session: Session = Depends(get_session),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=10, ge=1, le=50, description="Records per page"),
 ):
     """View all attendance records with role-based access (paginated)."""
-    _require_not_user(current_user, "view attendance records")
 
     from sqlalchemy import func
     total = session.exec(select(func.count(Attendance.attendance_id))).one()
@@ -105,11 +105,10 @@ def get_all_attendance(
 @mark_attendance_router.post("/add_attendance/", response_model=FilteredAttendanceResponse)
 def add_attendance(
     create_attendance: AttendanceCreate,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("attendance", "add"))],
     session: Session = Depends(get_session),
 ):
     """Add a single attendance record."""
-    _require_not_user(current_user, "add attendance records")
 
     data = create_attendance.model_dump()
     student_id = data["student_id"]
@@ -156,7 +155,7 @@ def add_attendance(
 def add_bulk_attendance(
     bulk: BulkAttendanceCreate,
     session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_user)] = None,
+    current_user: Annotated[User, Depends(require_permission("attendance", "add"))] = None,
 ):
     saved = []
     skipped = []
@@ -226,10 +225,9 @@ def add_bulk_attendance(
 @mark_attendance_router.delete("/delete_attendance/{attendance_id}", response_model=str)
 def delete_attendance(
     attendance_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("attendance", "delete"))],
     session: Session = Depends(get_session),
 ):
-    _require_not_user(current_user, "delete attendance records")
 
     attendance = session.get(Attendance, attendance_id)
     if not attendance:
@@ -246,10 +244,9 @@ def delete_attendance(
 def update_attendance(
     attendance_id: int,
     attendance_update: AttendanceUpdate,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("attendance", "edit"))],
     session: Session = Depends(get_session),
 ):
-    _require_not_user(current_user, "update attendance records")
 
     db_attendance = session.get(Attendance, attendance_id)
     if not db_attendance:
@@ -273,7 +270,7 @@ def update_attendance(
 
 @mark_attendance_router.get("/filter_attendance_by_ids", response_model=dict)
 def filter_attendance_by_ids(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("attendance", "view"))],
     session: Session = Depends(get_session),
     attendance_date: Optional[str] = Query(None, description="Filter by date (YYYY-MM-DD)"),
     attendance_time_id: Optional[int] = Query(None, description="Filter by Attendance Time ID"),
@@ -286,7 +283,6 @@ def filter_attendance_by_ids(
     page_size: int = Query(default=10, ge=1, le=50),
 ):
     """Filter attendance by IDs with role-based access."""
-    _require_not_user(current_user, "view attendance records")
 
     query = _eager_select()
 
@@ -334,7 +330,7 @@ def filter_attendance_by_ids(
 
 @mark_attendance_router.get("/filtered_attendance_by_name", response_model=List[FilteredAttendanceResponse])
 def get_filtered_attendance_by_name(                       # FIX 1 (continued): unique function name
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("attendance", "view"))],
     session: Session = Depends(get_session),
     class_name: Optional[str] = Query(None, description="Filter by Class name"),
     teacher_name: Optional[str] = Query(None, description="Filter by Teacher name"),
@@ -345,7 +341,6 @@ def get_filtered_attendance_by_name(                       # FIX 1 (continued): 
     attendance_id: Optional[int] = Query(None, description="Filter by Attendance ID"),
 ):
     """Filter attendance records by name fields."""
-    _require_not_user(current_user, "view attendance records")
 
     query = _eager_select()
 
@@ -391,14 +386,13 @@ def get_filtered_attendance_by_name(                       # FIX 1 (continued): 
 
 @mark_attendance_router.get("/attendance_status_summary", response_model=AttendanceStatusSummary)
 def get_attendance_status_summary(
-    current_user: Annotated[User, Depends(get_current_user)],   # FIX 11: removed = None default
+    current_user: Annotated[User, Depends(require_permission("attendance", "view"))],   # FIX 11: removed = None default
     session: Session = Depends(get_session),
     student_id: int = Query(..., description="Student ID"),
     from_date: Optional[str] = Query(None, description="From date (YYYY-MM-DD)"),
     to_date: Optional[str] = Query(None, description="To date (YYYY-MM-DD)"),
 ):
     """Get attendance status summary (present / absent / late / leave) for a student."""
-    _require_not_user(current_user, "view attendance summaries")
 
     student = session.get(Students, student_id)
     if not student:
@@ -451,3 +445,4 @@ def get_attendance_status_summary(
             "to": to_date or "N/A",
         },
     )
+

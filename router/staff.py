@@ -1,3 +1,4 @@
+
 from datetime import date, datetime, timedelta
 from typing import Annotated, List, Optional
 
@@ -17,7 +18,7 @@ from schemas.staff_attendance_model import (
     StaffListItem,
 )
 from schemas.teacher_names_model import TeacherNames
-from user.user_crud import require_admin, require_admin_chief_principal
+from user.user_crud import require_permission
 from user.user_models import User
 
 staff_router = APIRouter(prefix="/staff", tags=["Staff"], responses={404: {"description": "Staff module"}})
@@ -55,7 +56,7 @@ def root() -> dict:
 
 @staff_router.get("/list", response_model=List[StaffListItem])
 def get_staff_list(
-    current_user: Annotated[User, Depends(require_admin_chief_principal())],
+    current_user: Annotated[User, Depends(require_permission("staff", "view"))],
     session: Session = Depends(get_session),
     search: Optional[str] = Query(None),
 ):
@@ -81,7 +82,7 @@ def get_staff_list(
 
 @staff_router.get("/attendance", response_model=List[StaffAttendanceRow])
 def get_staff_attendance_rows(
-    current_user: Annotated[User, Depends(require_admin_chief_principal())],
+    current_user: Annotated[User, Depends(require_permission("staff", "view"))],
     session: Session = Depends(get_session),
     attendance_date: Optional[date] = Query(None),
 ):
@@ -114,7 +115,7 @@ def get_staff_attendance_rows(
 @staff_router.post("/attendance", response_model=StaffAttendanceBulkResponse)
 def create_staff_attendance_bulk(
     payload: StaffAttendanceBulkCreate,
-    current_user: Annotated[User, Depends(require_admin_chief_principal())],
+    current_user: Annotated[User, Depends(require_permission("staff", "add"))],
     session: Session = Depends(get_session),
 ):
     created_count = 0
@@ -184,7 +185,7 @@ def create_staff_attendance_bulk(
 
 @staff_router.get("/attendance/history", response_model=List[StaffAttendanceResponse])
 def get_staff_attendance_history(
-    current_user: Annotated[User, Depends(require_admin_chief_principal())],
+    current_user: Annotated[User, Depends(require_permission("staff", "view"))],
     session: Session = Depends(get_session),
     staff_id: Optional[int] = Query(None),
     attendance_date: Optional[date] = Query(None),
@@ -220,7 +221,7 @@ def get_staff_attendance_history(
 def update_staff_attendance(
     attendance_id: int,
     payload: StaffAttendanceUpdate,
-    current_user: Annotated[User, Depends(require_admin())],
+    current_user: Annotated[User, Depends(require_permission("staff", "edit"))],
     session: Session = Depends(get_session),
 ):
     record = session.get(StaffAttendance, attendance_id)
@@ -255,7 +256,7 @@ def update_staff_attendance(
 @staff_router.delete("/attendance/{attendance_id}", response_model=dict)
 def delete_staff_attendance(
     attendance_id: int,
-    current_user: Annotated[User, Depends(require_admin())],
+    current_user: Annotated[User, Depends(require_permission("staff", "delete"))],
     session: Session = Depends(get_session),
 ):
     record = session.get(StaffAttendance, attendance_id)
@@ -264,3 +265,5 @@ def delete_staff_attendance(
     session.delete(record)
     session.commit()
     return {"message": "Attendance record deleted successfully"}
+
+

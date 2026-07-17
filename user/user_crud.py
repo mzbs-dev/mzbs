@@ -220,7 +220,7 @@ from typing import Annotated, List
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlmodel import Session, select
-from db import get_session
+from db import get_session, get_tenant_engine
 from user.settings import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, REFRESH_TOKEN_EXPIRE_MINUTES, SECRET_KEY
 from user.services import create_access_token, get_password_hash, get_user_by_username, verify_password, oauth2_scheme
 from user.user_models import (
@@ -235,42 +235,46 @@ from user.user_models import (
     AdminUserUpdate
 )
 
-def user_login(db: Session, form_data: UserLogin | OAuth2PasswordRequestForm) -> LoginResponse:
+def user_login(tenant_id: str, form_data: UserLogin | OAuth2PasswordRequestForm) -> LoginResponse:
     username = form_data.username
     password = form_data.password
-    
-    user = get_user_by_username(db, username)
-    if not user or not verify_password(password, user.password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+
+    tenant_engine = get_tenant_engine(tenant_id)
+    with Session(tenant_engine) as db:
+        user = get_user_by_username(db, username)
+        if not user or not verify_password(password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username, "tenant_id": tenant_id},
+            expires_delta=access_token_expires,
         )
 
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
+        refresh_token_expires = timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
+        refresh_token = create_access_token(
+            data={"sub": user.username, "tenant_id": tenant_id},
+            expires_delta=refresh_token_expires,
+        )
 
-    refresh_token_expires = timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
-    refresh_token = create_access_token(
-        data={"sub": user.username}, expires_delta=refresh_token_expires
-    )
+        user_response = UserResponse(
+            username=user.username,
+            email=user.email,
+            role=user.role,
+            id=user.id,
+        )
 
-    user_response = UserResponse(
-        username=user.username,
-        email=user.email,
-        role=user.role,
-        id=user.id
-    )
-
-    return LoginResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        expires_in=int(access_token_expires.total_seconds()),
-        token_type="bearer",
-        user=user_response
-    )
+        return LoginResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=int(access_token_expires.total_seconds()),
+            token_type="bearer",
+            user=user_response,
+        )
 
 
 async def signup_user(user_data: UserCreate, db: Session) -> User:
@@ -568,3 +572,54 @@ def can_view_attendance_data(current_user: User):
 def require_admin_accountant_fee_manager():
     """ADMIN, ACCOUNTANT, or FEE_MANAGER can access"""
     return require_roles([UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.FEE_MANAGER])
+
+# ==================== DB-DRIVEN PERMISSIONS (Phase 1) ====================
+# Replaces the hardcoded require_*() functions above, one router at a time
+# (Phase 1, Day 3). Do not remove the functions above yet — routers are
+# swapped over individually and tested, not all at once.
+
+from utils.cache import cache_get, cache_set, cache_invalidate
+
+
+def _load_permission_matrix(session: Session) -> dict[tuple[str, str, str], bool]:
+    from schemas.role_permission_model import RolePermission  # deferred: avoids circular import with user.user_models
+    """Load the full role_permissions table into a single in-memory dict,
+    keyed by (role, module, action). Cached as one slot, same pattern as
+    class_names/teacher_names/etc in utils/cache.py — the whole table is
+    small (currently ~500 rows), so caching it wholesale and invalidating
+    wholesale on any write is simpler than per-key caching."""
+    cached = cache_get("role_permissions")
+    if cached is not None:
+        return cached
+
+    rows = session.exec(select(RolePermission)).all()
+    matrix = {(row.role.value, row.module, row.action): row.allowed for row in rows}
+    cache_set("role_permissions", matrix)
+    return matrix
+
+
+def has_permission(role: UserRole, module: str, action: str, session: Session) -> bool:
+    """ADMIN always passes (same failsafe as require_roles()), so a missing
+    or incorrect role_permissions row can never lock every admin out."""
+    if role == UserRole.ADMIN:
+        return True
+
+    matrix = _load_permission_matrix(session)
+    return matrix.get((role.value, module, action), False)
+
+
+def require_permission(module: str, action: str):
+    """DB-driven equivalent of require_roles() — checks role_permissions
+    instead of a hardcoded list. ADMIN always passes."""
+    def checker(
+        current_user: Annotated[User, Depends(get_current_user)],
+        session: Session = Depends(get_session),
+    ):
+        if not has_permission(current_user.role, module, action, session):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Not permitted: {module}.{action}",
+            )
+        return current_user
+
+    return checker

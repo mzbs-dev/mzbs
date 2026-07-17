@@ -1,3 +1,4 @@
+
 from datetime import datetime
 from decimal import Decimal
 from sqlmodel import  Relationship, SQLModel, Field
@@ -43,14 +44,17 @@ class FeeResponse(SQLModel):
     student_name: Optional[str] = None
     father_name: Optional[str] = None
     class_name: Optional[str] = None
-    fee_amount: Decimal
+    fee_amount: Optional[Decimal] = None  # None = hidden from this role (see fee.py masking)
     fee_month: str
     fee_year: str  # Changed from int to str
     fee_status: FeeStatus
 
-    @field_serializer('fee_amount')
-    def serialize_fee_amount(self, value: Decimal) -> int:
-        """Serialize Decimal as integer (no decimal places)"""
+    @field_serializer("fee_amount")
+    def serialize_fee_amount(self, value: Optional[Decimal]):
+        """Serialize Decimal as integer (no decimal places). None passes through
+        as null — used when the amount is intentionally hidden for this role."""
+        if value is None:
+            return None
         return int(value) if value % 1 == 0 else float(value)
 
 class FeeUpdateRequest(SQLModel):
@@ -83,12 +87,15 @@ class FilterPaidUnpaid(SQLModel):
     fee_status: FeeStatus
     fee_month: str
     fee_year: str
-    fee_amount: Decimal
+    fee_amount: Optional[Decimal] = None  # None = hidden from this role (see fee.py masking)
     is_deleted: bool = False  # Flag to indicate if student is deleted (for UI styling)
 
-    @field_serializer('fee_amount')
-    def serialize_fee_amount(self, value: Decimal) -> int:
-        """Serialize Decimal as integer (no decimal places)"""
+    @field_serializer("fee_amount")
+    def serialize_fee_amount(self, value: Optional[Decimal]):
+        """Serialize Decimal as integer (no decimal places). None passes through
+        as null — used when the amount is intentionally hidden for this role."""
+        if value is None:
+            return None
         return int(value) if value % 1 == 0 else float(value)
 
     @classmethod
@@ -103,4 +110,3 @@ class FilterPaidUnpaid(SQLModel):
             fee_year=str(fee.fee_year),  # Explicit conversion
             fee_amount=fee.fee_amount
         )
-

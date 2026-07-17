@@ -1,3 +1,4 @@
+
 from typing import Optional
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
@@ -14,8 +15,8 @@ from schemas.fee_model import MONTHS
 
 from db import get_session
 from schemas.fee_model import Fee, FeeCreate, FeeResponse, FeeStatus, FeeUpdateRequest, FeeFilter, FilterPaidUnpaid
-from user.user_crud import require_admin_accountant_fee_manager, require_admin
-from user.user_models import User
+from user.user_crud import require_permission
+from user.user_models import User, UserRole
 from services.finance_sync_service import sync_income_for_fee, delete_income_for_fee
 
 fee_router = APIRouter(
@@ -24,6 +25,17 @@ fee_router = APIRouter(
     responses={404: {"Description": "Not found"}}
 )
 
+def _mask_fee_amount_for_restricted_roles(items, current_user: User):
+    """CHIEF_PRINCIPAL/PRINCIPAL can view fee records (per Phase 1 permission
+    decision) but must not see the monetary amount. Nulling it out here, in
+    one place, avoids repeating the check in every branch that builds a
+    FeeResponse/FilterPaidUnpaid object."""
+    if current_user.role in (UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL):
+        for item in items:
+            item.fee_amount = None
+    return items
+
+
 @fee_router.get("/", response_model=dict)
 async def root():
     return {"message": "Fee Router Page running :-)"}
@@ -31,7 +43,7 @@ async def root():
 @fee_router.get("/all", response_model=List[FeeResponse])
 async def get_all_fees(
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())]
+    current_user: Annotated[User, Depends(require_permission("fees", "view"))]
 ):
     """Retrieve all student fee records (Authenticated users)."""
     from sqlalchemy import outerjoin
@@ -64,13 +76,14 @@ async def get_all_fees(
             fee_status=fee.fee_status
         ))
 
+    response_list = _mask_fee_amount_for_restricted_roles(response_list, current_user)
     return response_list
 
 @fee_router.post("/add_fee", response_model=FeeResponse, status_code=status.HTTP_201_CREATED)
 async def create_fee(
     fee_data: FeeCreate,
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())]
+    current_user: Annotated[User, Depends(require_permission("fees", "add"))]
 ):
     """Create a new student fee record (Admin only)."""
     try:
@@ -136,7 +149,7 @@ async def create_fee(
 async def delete_fee(
     fee_id: int,
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin())]
+    current_user: Annotated[User, Depends(require_permission("fees", "delete"))]
 ):
     """Delete a student fee record by ID (Admin only)."""
     try:
@@ -170,7 +183,7 @@ async def update_fee(
     fee_id: int,
     fee_data: FeeUpdateRequest,
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())]
+    current_user: Annotated[User, Depends(require_permission("fees", "edit"))]
 ):
     """Update a student fee record - only paid fees can be edited (Admin/Accountant only)."""
     try:
@@ -254,7 +267,7 @@ async def update_fee(
 @fee_router.post("/filter/", response_model=dict)
 async def filter_fees(
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
+    current_user: Annotated[User, Depends(require_permission("fees", "view"))],
     class_id: Optional[int] = Query(None, description="Filter by class ID"),
     fee_month: Optional[str] = Query(None, description="Filter by fee month"),
     fee_year: Optional[str] = Query(None, description="Filter by fee year"),
@@ -646,6 +659,7 @@ async def filter_fees(
                 ))
         # ── Sort by class name ────────────────────────────────────────────────
         filtered_response.sort(key=lambda x: x.class_name)
+        filtered_response = _mask_fee_amount_for_restricted_roles(filtered_response, current_user)
 
         # ── Pagination ────────────────────────────────────────────────────────
         total = len(filtered_response)
@@ -669,7 +683,7 @@ async def filter_fees(
 @fee_router.get("/paid-students/", response_model=List[FilterPaidUnpaid])
 async def get_paid_students(
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
+    current_user: Annotated[User, Depends(require_permission("fees", "view"))],
     class_id: Optional[int] = Query(None, description="Filter by class ID"),
     fee_month: Optional[str] = Query(None, description="Filter by month", enum=MONTHS),
     fee_year: Optional[str] = Query(None, description="Filter by fee year")
@@ -713,6 +727,7 @@ async def get_paid_students(
             )
             students_list.append(student_info)
 
+        students_list = _mask_fee_amount_for_restricted_roles(students_list, current_user)
         return students_list
 
     except Exception as e:
@@ -724,7 +739,7 @@ async def get_paid_students(
 @fee_router.get("/unpaid_students/", response_model=List[FilterPaidUnpaid])
 async def get_unpaid_students(
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
+    current_user: Annotated[User, Depends(require_permission("fees", "view"))],
     class_id: Optional[int] = Query(None, description="Filter by class ID"),
     fee_month: Optional[str] = Query(None, description="Filter by month", enum=MONTHS),
     fee_year: Optional[str] = Query(None, description="Filter by fee year"),
@@ -777,6 +792,7 @@ async def get_unpaid_students(
                 )
             )
         
+        response_list = _mask_fee_amount_for_restricted_roles(response_list, current_user)
         return response_list
         
     except Exception as e:
@@ -788,7 +804,7 @@ async def get_unpaid_students(
 @fee_router.get("/class-fee-status/{class_id}", response_model=List[FilterPaidUnpaid])
 async def get_class_fee_status(
     db: Annotated[Session, Depends(get_session)],
-    current_user: Annotated[User, Depends(require_admin_accountant_fee_manager())],
+    current_user: Annotated[User, Depends(require_permission("fees", "view"))],
     class_id: int,
     fee_month: Optional[str] = Query(None, description="Filter by month", enum=MONTHS),
     fee_year: Optional[str] = Query(None, description="Filter by year")
@@ -860,6 +876,7 @@ async def get_class_fee_status(
                     )
                 )
         
+        response_list = _mask_fee_amount_for_restricted_roles(response_list, current_user)
         return response_list
 
     except Exception as e:
@@ -867,3 +884,5 @@ async def get_class_fee_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching class fee status: {str(e)}"
         )
+
+

@@ -257,6 +257,12 @@ const menuList: MenuItem[] = [
         path: "/dashboard/setup/class_name",
       },
       {
+        id: 23,
+        name: "Role Permissions",
+        icon: GoDotFill,
+        path: "/dashboard/setup/role_permissions",
+      },
+      {
         id: 6,
         name: "Class Subjects",
         icon: GoDotFill,
@@ -322,7 +328,7 @@ const getMenuItemSection = (path: string): string => {
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { role, isLoading, clearRole } = useRole();
+  const { role, isLoading, clearRole, permissions } = useRole();
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [userData, setUserData] = useState<string | null>(null);
@@ -340,7 +346,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
     // Check if role can access this section
     const section = getMenuItemSection(item.path);
-    return canAccessSection(role, section);
+    return canAccessSection(role, section, permissions);
   });
 
   const toggleSubmenu = (id: number) =>
@@ -469,7 +475,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                     ?.filter((subItem) => {
                       // Filter submenu items by role and specific restrictions
                       const section = getMenuItemSection(subItem.path);
-                      return canAccessSection(role, section) && canAccessSubmenuItem(role, subItem.path);
+                      return canAccessSection(role, section, permissions) && canAccessSubmenuItem(role, subItem.path, permissions);
                     })
                     .map((subItem) => (
                       <Link

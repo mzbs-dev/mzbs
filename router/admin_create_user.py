@@ -1,3 +1,4 @@
+
 from asyncio.log import logger
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -11,7 +12,7 @@ from user.user_models import (
     UserResponse, 
     AdminUserUpdate
 )
-from user.user_crud import require_admin as check_admin
+from user.user_crud import require_permission
 from user.services import get_password_hash
 
 admin_create_user_router = APIRouter(
@@ -26,7 +27,7 @@ async def root():
 
 @admin_create_user_router.post("/add_user/", response_model=UserResponse)
 def create_user(
-    user: Annotated[User, Depends(check_admin)], 
+    user: Annotated[User, Depends(require_permission("setup_users", "add"))], 
     user_create: UserCreate, 
     session: Session = Depends(get_session)
 ):
@@ -65,7 +66,7 @@ def create_user(
 
 @admin_create_user_router.get("/all_users/", response_model=List[UserResponse])
 def read_users(
-    current_user: Annotated[User, Depends(check_admin)],
+    current_user: Annotated[User, Depends(require_permission("setup_users", "view"))],
     session: Session = Depends(get_session)
 ):
     users = session.exec(select(User)).all()
@@ -73,7 +74,7 @@ def read_users(
 
 @admin_create_user_router.get("/{user_id}", response_model=UserResponse)
 def read_user(
-    current_user: Annotated[User, Depends(check_admin)], 
+    current_user: Annotated[User, Depends(require_permission("setup_users", "view"))], 
     user_id: int,
     session: Session = Depends(get_session)
 ):
@@ -85,7 +86,7 @@ def read_user(
 
 @admin_create_user_router.delete("/{user_id}", response_model=dict)
 def delete_user_by_id(
-    current_user: Annotated[User, Depends(check_admin)],
+    current_user: Annotated[User, Depends(require_permission("setup_users", "delete"))],
     user_id: int, 
     session: Session = Depends(get_session)
 ):
@@ -108,3 +109,4 @@ def delete_user_by_id(
             status_code=500,
             detail="Error deleting user"
         )
+

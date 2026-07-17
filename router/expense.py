@@ -1,3 +1,4 @@
+
 from typing import List, Annotated, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,7 +9,7 @@ from sqlmodel import Session, select
 from db import get_session
 from schemas.expense_model import Expense, ExpenseCreate, ExpenseResponse, ExpenseUpdate
 from schemas.expense_cat_names_model import ExpenseCatNames  # Import ExpenseCatNames
-from user.user_crud import require_admin_accountant_fee_manager, require_admin_accountant, require_admin
+from user.user_crud import require_permission
 from user.user_models import User, UserRole
 
 expense_router = APIRouter(
@@ -23,7 +24,7 @@ async def root():
 
 @expense_router.post("/add_expense/", response_model=ExpenseResponse)
 def create_expense(
-     user: Annotated[User, Depends(require_admin_accountant())],session: Session = Depends(get_session), expense: ExpenseCreate = None
+     user: Annotated[User, Depends(require_permission("expenses", "add"))],session: Session = Depends(get_session), expense: ExpenseCreate = None
 ):
     # Ensure created_at is set to the current datetime if not provided
     if not expense.created_at:
@@ -72,7 +73,7 @@ def create_expense(
 
 @expense_router.get("/expenses-all/", response_model=dict)
 def read_expenses(
-    user: Annotated[User, Depends(require_admin_accountant())],
+    user: Annotated[User, Depends(require_permission("expenses", "view"))],
     session: Session = Depends(get_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
@@ -107,7 +108,7 @@ def read_expenses(
     }
 
 @expense_router.get("/{expense_id}", response_model=ExpenseResponse)
-def read_expense(user: Annotated[User, Depends(require_admin_accountant())],expense_id: int, session: Session = Depends(get_session)):
+def read_expense(user: Annotated[User, Depends(require_permission("expenses", "view"))],expense_id: int, session: Session = Depends(get_session)):
     expense = session.get(Expense, expense_id)
     if not expense:
         raise HTTPException(
@@ -126,7 +127,7 @@ def read_expense(user: Annotated[User, Depends(require_admin_accountant())],expe
     )
 
 @expense_router.put("/update/{expense_id}", response_model=ExpenseResponse)
-def update_expense(user: Annotated[User, Depends(require_admin_accountant())],
+def update_expense(user: Annotated[User, Depends(require_permission("expenses", "edit"))],
     expense_id: int, expense_update: ExpenseUpdate, session: Session = Depends(get_session)):
     db_expense = session.get(Expense, expense_id)
     if not db_expense:
@@ -166,7 +167,7 @@ def update_expense(user: Annotated[User, Depends(require_admin_accountant())],
     )
 
 @expense_router.delete("/del/{expense_id}", response_model=dict)
-def delete_expense(user: Annotated[User, Depends(require_admin())],expense_id: int, session: Session = Depends(get_session)):
+def delete_expense(user: Annotated[User, Depends(require_permission("expenses", "delete"))],expense_id: int, session: Session = Depends(get_session)):
     expense = session.get(Expense, expense_id)
     if not expense:
         raise HTTPException(
@@ -186,7 +187,7 @@ def delete_expense(user: Annotated[User, Depends(require_admin())],expense_id: i
 @expense_router.get("/filter-by-category/{category_id}", response_model=dict)
 def filter_expense_by_category(
     category_id: int,
-    user: Annotated[User, Depends(require_admin_accountant())],
+    user: Annotated[User, Depends(require_permission("expenses", "view"))],
     session: Session = Depends(get_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
@@ -230,3 +231,4 @@ def filter_expense_by_category(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error filtering expense records: {str(e)}")
+

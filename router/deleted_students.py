@@ -10,7 +10,7 @@ from schemas.students_model import DeletedStudent, DeletedStudentResponse, Stude
 from schemas.attendance_model import Attendance
 from schemas.admission_model import Admission
 from schemas.fee_model import Fee, FeeStatus
-from user.user_crud import require_admin_principal, require_admin
+from user.user_crud import require_permission
 from user.user_models import User
 
 deleted_students_router = APIRouter(
@@ -22,7 +22,7 @@ deleted_students_router = APIRouter(
 
 @deleted_students_router.get("/", response_model=dict)
 def get_deleted_students(
-    user: Annotated[User, Depends(require_admin_principal())],
+    user: Annotated[User, Depends(require_permission("deleted_students", "view"))],
     session: Annotated[Session, Depends(get_session)],
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
@@ -48,7 +48,7 @@ def get_deleted_students(
 @deleted_students_router.post("/{deleted_student_id}/restore")
 def restore_student(
     deleted_student_id: int,
-    user: Annotated[User, Depends(require_admin_principal())],
+    user: Annotated[User, Depends(require_permission("deleted_students", "edit"))],
     session: Annotated[Session, Depends(get_session)]
 ):
     """
@@ -187,7 +187,7 @@ def restore_student(
 @deleted_students_router.delete("/{deleted_student_id}/permanent")
 def permanently_delete_student(
     deleted_student_id: int,
-    user: Annotated[User, Depends(require_admin())],
+    user: Annotated[User, Depends(require_permission("deleted_students", "delete"))],
     session: Annotated[Session, Depends(get_session)]
 ):
     """

@@ -8,7 +8,7 @@ from schemas.student_parent_credentials_model import StudentParentCredential
 from schemas.student_profile_model import StudentProfileResponse
 from router.student_profile import _build_profile_response
 from user.services import create_access_token, get_password_hash, verify_password
-from user.user_crud import require_admin
+from user.user_crud import require_permission
 from datetime import datetime
 from user.settings import ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 from jose import jwt, JWTError
@@ -205,7 +205,7 @@ def get_student_portal_profile(
 @student_portal_auth_router.post("/admin/reset-password")
 def admin_reset_student_portal_password(
     payload: AdminResetStudentPasswordRequest,
-    current_user=Depends(require_admin()),
+    current_user=Depends(require_permission("setup_reset_student_password", "edit")),
     session: Session = Depends(get_session),
 ):
     # Ensure student exists

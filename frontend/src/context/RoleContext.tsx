@@ -1,12 +1,17 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect } from "react";
+import React, { createContext, useState, useContext, useEffect, useCallback } from "react";
+import { PermissionsAPI } from "@/api/Permissions/PermissionsAPI";
+import { MyPermissions } from "@/models/permissions/Permission";
 
 interface RoleContextType {
   role: string | null;
   setRole: (role: string) => void;
   clearRole: () => void;
   isLoading: boolean;
+  permissions: MyPermissions | null;
+  permissionsLoaded: boolean; // true once the fetch has settled (success OR failure)
+  refreshPermissions: () => Promise<void>;
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
@@ -14,6 +19,21 @@ const RoleContext = createContext<RoleContextType | undefined>(undefined);
 export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [permissions, setPermissions] = useState<MyPermissions | null>(null);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+
+  const loadPermissions = useCallback(async () => {
+    try {
+      const response = await PermissionsAPI.GetMy();
+      setPermissions(response.data);
+    } catch {
+      // Fetch failed (network issue, backend down, etc.) — leave permissions
+      // null so callers fall back to the static ROLE_PERMISSIONS object.
+      setPermissions(null);
+    } finally {
+      setPermissionsLoaded(true);
+    }
+  }, []);
 
   useEffect(() => {
     // Guard against SSR — storage is only available in browser
@@ -28,6 +48,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     if (storedRole) {
       setRole(storedRole);
       setIsLoading(false);
+      loadPermissions();
       return;
     }
 
@@ -43,6 +64,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           setRole(user.role);
           // Sync into sessionStorage so subsequent checks are fast
           sessionStorage.setItem("userRole", user.role);
+          loadPermissions();
         } else {
           console.warn("RoleContext - user object in localStorage has no role field:", user);
         }
@@ -54,7 +76,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     }
 
     setIsLoading(false);
-  }, []);
+  }, [loadPermissions]);
 
   const setRoleAndStore = (newRole: string) => {
     setRole(newRole);
@@ -71,10 +93,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Non-critical — sessionStorage is the primary source
     }
+    // Fresh login (or role change) — fetch this role's permissions
+    loadPermissions();
   };
 
   const clearRole = () => {
     setRole(null);
+    setPermissions(null);
+    setPermissionsLoaded(false);
     sessionStorage.removeItem("userRole");
     localStorage.removeItem("user");
     localStorage.removeItem("userRole");
@@ -87,6 +113,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         setRole: setRoleAndStore,
         clearRole,
         isLoading,
+        permissions,
+        permissionsLoaded,
+        refreshPermissions: loadPermissions,
       }}
     >
       {children}

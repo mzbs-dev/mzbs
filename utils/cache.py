@@ -12,6 +12,7 @@ _attendance_values_cache: TTLCache = TTLCache(maxsize=1, ttl=600) # 10 min
 _attendance_times_cache: TTLCache = TTLCache(maxsize=1, ttl=600)  # 10 min
 _income_cats_cache: TTLCache = TTLCache(maxsize=1, ttl=600)       # 10 min
 _expense_cats_cache: TTLCache = TTLCache(maxsize=1, ttl=600)      # 10 min
+_role_permissions_cache: TTLCache = TTLCache(maxsize=1, ttl=600)  # 10 min — whole matrix, one slot
 
 CACHES = {
     "class_names": _class_names_cache,
@@ -20,6 +21,7 @@ CACHES = {
     "attendance_times": _attendance_times_cache,
     "income_cats": _income_cats_cache,
     "expense_cats": _expense_cats_cache,
+    "role_permissions": _role_permissions_cache,
 }
 
 def cache_get(name: str) -> Optional[Any]:

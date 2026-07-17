@@ -36,6 +36,7 @@ from router.exam_marks import exam_marks_router
 from router.student_profile import student_profile_router
 from router.student_portal_auth import student_portal_auth_router
 from router.staff import staff_router
+from router.permissions import permissions_router
 
 # User related imports
 from user.user_router import public_router, user_router, admin_router
@@ -167,6 +168,7 @@ app.include_router(exam_marks_router)
 app.include_router(student_profile_router)
 app.include_router(student_portal_auth_router)
 app.include_router(staff_router)
+app.include_router(permissions_router)
 app.include_router(adm_del_router)
 
 @app.get("/", tags=["MMS Backend"])
