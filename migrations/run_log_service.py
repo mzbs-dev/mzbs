@@ -43,7 +43,7 @@ def write_migration_run_log(
                         (:migration_id, :tenant_id, :status, :error_detail, :run_at)
                     """
                 ),
-                {
+                params={
                     "migration_id": migration_id,
                     "tenant_id": tenant_id,
                     "status": status,

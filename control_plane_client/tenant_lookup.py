@@ -127,7 +127,7 @@ def lookup_tenant_connection(tenant_id: str) -> str:
 
 
 def _check_status(tenant_id: str, status: str) -> None:
-    if status not in ("active", "trial"):
+    if status.lower() not in ("active", "trial"):
         logger.warning(f"Blocked login attempt for tenant '{tenant_id}' with status '{status}'")
         raise HTTPException(status_code=403, detail="School account is not active")
 

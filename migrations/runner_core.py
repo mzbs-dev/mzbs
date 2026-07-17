@@ -60,6 +60,6 @@ def apply_migration(session: Session, module: ModuleType) -> None:
             "INSERT INTO schema_migrations (migration_id, applied_at) "
             "VALUES (:mid, :applied_at)"
         ),
-        {"mid": module.MIGRATION_ID, "applied_at": datetime.now(timezone.utc)},
+        params={"mid": module.MIGRATION_ID, "applied_at": datetime.now(timezone.utc)},
     )
     session.commit()

@@ -117,7 +117,7 @@ def main(dry_run: bool = False, only: str | None = None, tenant: str | None = No
     with get_control_plane_session() as cp_session:
         tenants = list_tenants(cp_session)
 
-    active_tenants = [t for t in tenants if t.status == "active"]
+    active_tenants = [t for t in tenants if t.status.lower() == "active"]
     if tenant:
         active_tenants = [t for t in active_tenants if t.tenant_id == tenant]
         if not active_tenants:
