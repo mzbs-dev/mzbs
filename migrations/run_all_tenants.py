@@ -206,3 +206,17 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     sys.exit(main(dry_run=args.dry_run, only=args.only, tenant=args.tenant))
+
+
+
+# To dry run this file
+# cd F:\2_PROJECTS\A_MMS\mzbs
+# .venv\Scripts\python.exe -m migrations.run_all_tenants --dry-run
+
+# To run this file for a specific migration
+# cd F:\2_PROJECTS\A_MMS\mzbs
+#for checking all migration to all tenants
+#.venv\Scripts\python.exe -m migrations.run_all_tenants
+
+#for running a specific migration to all tenants
+# .venv\Scripts\python.exe -m migrations.run_all_tenants --only 0007_add_admissions_module  
