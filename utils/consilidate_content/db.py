@@ -107,7 +107,6 @@ def list_tenants(session: Session) -> list[SimpleNamespace]:
 SessionLocal = Session
 
 _tenant_engines: Dict[str, Engine] = {}
-_tenant_engine_conn_strs: Dict[str, str] = {}
 _tenant_engine_last_used: Dict[str, datetime] = {}
 _tenant_engine_lock = Lock()
 _TENANT_ENGINE_TTL = timedelta(minutes=30)
@@ -124,7 +123,6 @@ def evict_idle_tenant_engines(max_idle_minutes: int = 30) -> list[str]:
         ]
         for tenant_id in stale_tenant_ids:
             tenant_engine = _tenant_engines.pop(tenant_id, None)
-            _tenant_engine_conn_strs.pop(tenant_id, None)
             _tenant_engine_last_used.pop(tenant_id, None)
             if tenant_engine is not None:
                 tenant_engine.dispose()
@@ -132,47 +130,15 @@ def evict_idle_tenant_engines(max_idle_minutes: int = 30) -> list[str]:
 
 
 def get_tenant_engine(tenant_id: str) -> Engine:
-    """Resolve a tenant_id to a cached engine.
-
-    Status/connection-string are re-validated on every call via
-    lookup_tenant_connection() — that function has its own ~5-minute
-    cache, so this adds negligible overhead (a dict read on a cache hit,
-    not a fresh DB round-trip every request). This is deliberate: the
-    previous version only checked status when an engine didn't exist yet,
-    which meant an ACTIVELY-used tenant's suspension or connection-string
-    rotation would never take effect (idle-eviction never fires for a
-    tenant that's continuously in use) — only a truly idle tenant would
-    ever get re-checked. Now a suspend/rotate takes effect within
-    lookup_tenant_connection's TTL regardless of how active the tenant is.
-
-    Note: we deliberately compare against a separately-tracked raw
-    connection string (_tenant_engine_conn_strs), NOT str(engine.url) —
-    SQLAlchemy 1.4+ masks the password in that string by default
-    (renders as '...://user:***@host/db'), which would never match the
-    real conn_str and would silently recreate the engine on every single
-    call, defeating the cache entirely.
-    """
+    """Resolve a tenant_id to a cached engine."""
     evict_idle_tenant_engines(max_idle_minutes=int(_TENANT_ENGINE_TTL.total_seconds() // 60))
-
-    conn_str = lookup_tenant_connection(tenant_id)  # raises 403/404; fails closed on bad/suspended tenants
-    normalized_conn_str = _normalize_database_url(conn_str)
-
     with _tenant_engine_lock:
         tenant_engine = _tenant_engines.get(tenant_id)
-        cached_conn_str = _tenant_engine_conn_strs.get(tenant_id)
-
-        if tenant_engine is None or cached_conn_str != normalized_conn_str:
-            if tenant_engine is not None:
-                # Connection string rotated — dispose the old pool so we
-                # don't leak connections tied to credentials that may no
-                # longer be valid.
-                tenant_engine.dispose()
-                logger.info(f"Connection string changed for tenant '{tenant_id}'; engine refreshed")
+        if tenant_engine is None:
+            conn_str = lookup_tenant_connection(tenant_id)
             tenant_engine = get_engine(conn_str)
             _tenant_engines[tenant_id] = tenant_engine
-            _tenant_engine_conn_strs[tenant_id] = normalized_conn_str
             logger.info(f"Created new engine for tenant '{tenant_id}'")
-
         _tenant_engine_last_used[tenant_id] = datetime.utcnow()
         return tenant_engine
 
