@@ -10,4 +10,13 @@ export const StudentProfileAPI = {
     });
     return response.data;
   },
+
+  getAttendanceSummary: async (studentId: number) => {
+    const response = await AxiosInstance.get('/mark_attendance/attendance_status_summary', {
+      params: {
+        student_id: studentId,
+      },
+    });
+    return response.data;
+  },
 };

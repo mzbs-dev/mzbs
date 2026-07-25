@@ -79,22 +79,35 @@ const AttendanceStatusSummary = () => {
     loadAllStudents();
   }, []);
 
-  // Load students when class is selected
+  // Load students when class is selected or the student list is ready
   useEffect(() => {
-    if (selectedClass && selectedClass === "ALL") {
-      setStudents(allStudentsData);
-    } else if (selectedClass) {
-      const filtered = allStudentsData.filter(s => s.class_name === selectedClass);
-      setStudents(filtered);
-    } else {
+    if (!selectedClass) {
       setStudents([]);
+      return;
     }
-  }, [selectedClass]);
+
+    if (selectedClass === "ALL") {
+      setStudents(allStudentsData);
+    } else {
+      const filtered = allStudentsData.filter((s) => s.class_name === selectedClass);
+      setStudents(filtered);
+    }
+  }, [selectedClass, allStudentsData]);
 
   const loadAllStudents = async () => {
     try {
-      const response = await AxiosInstance.get(`/students/all_students/`);
-      const sortedStudents = (response.data || []).sort((a: StudentData, b: StudentData) =>
+      const response = await AxiosInstance.get(`/students/all_students/`, {
+        params: { page: 1, page_size: 50 },
+      });
+      const payload = response?.data;
+      const studentPayload = Array.isArray(payload)
+        ? payload
+        : (payload as { data?: unknown })?.data ?? [];
+      const normalizedStudents = Array.isArray(studentPayload)
+        ? (studentPayload as StudentData[])
+        : [];
+
+      const sortedStudents = [...normalizedStudents].sort((a: StudentData, b: StudentData) =>
         a.student_name.localeCompare(b.student_name)
       );
       setAllStudentsData(sortedStudents);

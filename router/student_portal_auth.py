@@ -2,14 +2,15 @@ import unicodedata
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlmodel import Session, select
-from db import get_session
+from db import get_session, get_tenant_engine
 from schemas.students_model import Students
 from schemas.student_parent_credentials_model import StudentParentCredential
 from schemas.student_profile_model import StudentProfileResponse
 from router.student_profile import _build_profile_response
 from user.services import create_access_token, get_password_hash, verify_password
 from user.user_crud import require_permission
-from datetime import datetime
+import setting
+from datetime import datetime, timedelta
 from user.settings import ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 from jose import jwt, JWTError
 from pydantic import BaseModel
@@ -21,6 +22,7 @@ class StudentPortalLoginRequest(BaseModel):
     student_name: str
     father_contact: str
     password: str
+    tenant_id: Optional[str] = None  # sent by frontend as NEXT_PUBLIC_TENANT_ID; falls back to DEFAULT_TENANT_ID
 
 
 class StudentPortalChangePasswordRequest(BaseModel):
@@ -68,33 +70,40 @@ def _normalize_text(value: str) -> str:
 
 
 @student_portal_auth_router.post("/login", response_model=StudentPortalLoginResponse)
-def student_portal_login(payload: StudentPortalLoginRequest, session: Session = Depends(get_session)):
-    normalized_name = _normalize_text(payload.student_name)
-    normalized_contact = _normalize_text(payload.father_contact)
+def student_portal_login(payload: StudentPortalLoginRequest):
+    tenant_id = payload.tenant_id or getattr(setting, "DEFAULT_TENANT_ID", None)
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_id is required")
 
-    candidates = session.exec(
-        select(Students).where(Students.father_contact == normalized_contact)
-    ).all()
+    tenant_engine = get_tenant_engine(tenant_id)  # fails closed: 404 unknown tenant, 403 suspended
 
-    student = None
-    for candidate in candidates:
-        if _normalize_text(candidate.student_name) == normalized_name:
-            student = candidate
-            break
+    with Session(tenant_engine) as session:
+        normalized_name = _normalize_text(payload.student_name)
+        normalized_contact = _normalize_text(payload.father_contact)
 
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
+        candidates = session.exec(
+            select(Students).where(Students.father_contact == normalized_contact)
+        ).all()
 
-    credential = _get_or_create_credential(session, student)
-    if not credential.is_active:
-        raise HTTPException(status_code=403, detail="Student portal access is disabled")
-    if not verify_password(payload.password, credential.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid password")
+        student = None
+        for candidate in candidates:
+            if _normalize_text(candidate.student_name) == normalized_name:
+                student = candidate
+                break
 
-    access_token = create_access_token(
-        data={"sub": f"student:{student.student_id}"},
-        expires_delta=__import__('datetime').timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-    )
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        credential = _get_or_create_credential(session, student)
+        if not credential.is_active:
+            raise HTTPException(status_code=403, detail="Student portal access is disabled")
+        if not verify_password(payload.password, credential.password_hash):
+            raise HTTPException(status_code=401, detail="Invalid password")
+
+        access_token = create_access_token(
+            data={"sub": f"student:{student.student_id}", "tenant_id": tenant_id},
+            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        )
 
     return {
         "access_token": access_token,
@@ -140,7 +149,7 @@ def change_student_portal_password(
         raise HTTPException(status_code=401, detail="Current password is incorrect")
 
     credential.password_hash = get_password_hash(payload.new_password)
-    credential.updated_at = __import__('datetime').datetime.utcnow()
+    credential.updated_at = datetime.utcnow()
     session.add(credential)
     session.commit()
     session.refresh(credential)

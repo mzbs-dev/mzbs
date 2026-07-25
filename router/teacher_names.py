@@ -10,6 +10,8 @@ from utils.cache import cache_get, cache_set, cache_invalidate
 
 from schemas.teacher_names_model import TeacherNames, TeacherNamesCreate, TeacherNamesResponse
 from schemas.attendance_model import Attendance
+from schemas.exam_marks_model import ExamMark
+from schemas.salary_model import TeacherSalary, SalaryLedger, SalaryPayment, Allowance, Deduction
 from user.user_crud import require_permission, require_admin_teacher_principal_accountant
 from user.user_models import User
 
@@ -106,31 +108,61 @@ def delete_teachernames(
     cache_invalidate("teacher_names")
     return {"message": "Teacher Name deleted successfully"}
 
+def _get_related_teacher_record_names(session: Session, teacher_id: int) -> list[str]:
+    related_records: list[str] = []
+
+    if session.exec(select(Attendance).where(Attendance.teacher_name_id == teacher_id)).first():
+        related_records.append("attendance")
+    if session.exec(select(ExamMark).where(ExamMark.teacher_name_id == teacher_id)).first():
+        related_records.append("exam marks")
+    if session.exec(select(TeacherSalary).where(TeacherSalary.teacher_id == teacher_id)).first():
+        related_records.append("salary")
+    if session.exec(select(SalaryLedger).where(SalaryLedger.teacher_id == teacher_id)).first():
+        related_records.append("salary ledger")
+    if session.exec(select(SalaryPayment).where(SalaryPayment.teacher_id == teacher_id)).first():
+        related_records.append("salary payment")
+    if session.exec(select(Allowance).where(Allowance.teacher_id == teacher_id)).first():
+        related_records.append("allowance")
+    if session.exec(select(Deduction).where(Deduction.teacher_id == teacher_id)).first():
+        related_records.append("deduction")
+
+    return related_records
+
+
 @teachernames_router.delete("/{teacher_id}", response_model=dict)
 def delete_teacher_by_id(
     user: Annotated[User, Depends(require_permission("setup_teachers", "delete"))],
-    teacher_id: int, 
+    teacher_id: int,
     session: Session = Depends(get_session)
 ):
     """Delete a teacher by their ID"""
     teacher = session.get(TeacherNames, teacher_id)
     if not teacher:
         raise HTTPException(
-            status_code=404, 
+            status_code=404,
             detail=f"Teacher with ID {teacher_id} not found"
         )
-    # Check for related attendance records
-    linked_attendance = session.exec(select(Attendance).where(Attendance.teacher_name_id == teacher_id)).first()
-    if linked_attendance:
+
+    related_records = _get_related_teacher_record_names(session, teacher_id)
+    if related_records:
+        related_list = ", ".join(related_records)
         raise HTTPException(
             status_code=409,
-            detail="Please delete related attendance records first before deleting this teacher."
+            detail=f"Please delete related {related_list} records first before deleting this teacher."
         )
+
     try:
         session.delete(teacher)
         session.commit()
         cache_invalidate("teacher_names")
         return {"message": f"Teacher with ID {teacher_id} deleted successfully"}
+    except IntegrityError as e:
+        session.rollback()
+        logger.error(f"Error deleting teacher: {e}")
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete teacher because related records still exist."
+        )
     except Exception as e:
         session.rollback()
         logger.error(f"Error deleting teacher: {e}")

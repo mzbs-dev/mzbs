@@ -39,12 +39,15 @@ def set_class_subjects(
     if not class_name:
         raise HTTPException(status_code=404, detail="Class name not found")
 
-    session.exec(select(ClassSubject).where(ClassSubject.class_name_id == payload.class_name_id)).all()
+    # Delete existing subjects for this class
     existing = session.exec(
         select(ClassSubject).where(ClassSubject.class_name_id == payload.class_name_id)
     ).all()
     for item in existing:
         session.delete(item)
+    
+    # Flush deletions to the database before adding new subjects
+    session.flush()
 
     subjects = []
     for subject_name in payload.subjects:
@@ -59,7 +62,7 @@ def set_class_subjects(
         session.commit()
     except IntegrityError as e:
         session.rollback()
-        logger.error(f"Integrity error: {e}")
+        logger.error(f"Integrity error while saving subjects: {str(e.orig)}")
         raise HTTPException(status_code=400, detail="Unable to save subjects")
     except Exception as e:
         session.rollback()

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   AlertCircle,
   Check,
+  ChevronFirst,
+  ChevronLast,
   Clock,
   ChevronLeft,
   ChevronRight,
@@ -621,80 +623,6 @@ const AttendanceTable: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
-                    Student
-                  </label>
-                  <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={open}
-                        className="w-full justify-between h-10 text-sm"
-                      >
-                        {value
-                          ? studentsList.find(
-                              (student) => student.id.toString() === value
-                            )?.title
-                          : "Select student..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <Command>
-                        <CommandInput
-                          placeholder="Search student..."
-                          className="h-9"
-                        />
-                        <CommandList>
-                          {isLoading ? (
-                            <div className="p-2 text-center text-gray-500">
-                              Loading...
-                            </div>
-                          ) : (
-                            <>
-                              <CommandEmpty>No student found.</CommandEmpty>
-                              <CommandGroup>
-                                {studentsList.map((student) => (
-                                  <CommandItem
-                                    key={student.id}
-                                    value={student.id.toString()}
-                                    onSelect={(currentValue: string) => {
-                                      setValue(
-                                        currentValue === value ? "" : currentValue
-                                      );
-                                      setOpen(false);
-                                      const selectedStudent = studentsList.find(
-                                        (s) => s.id.toString() === currentValue
-                                      );
-                                      if (selectedStudent) {
-                                        setFormValue(
-                                          "student_id",
-                                          Number(selectedStudent.id)
-                                        );
-                                      }
-                                    }}
-                                  >
-                                    {student.title}
-                                    <Check
-                                      className={cn(
-                                        "ml-auto h-4 w-4",
-                                        value === student.id.toString()
-                                          ? "opacity-100"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </>
-                          )}
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
 
                 {/* Search Button — spans 2 cols on mobile */}
                 <div className="flex items-end col-span-2 sm:col-span-2 lg:col-span-1">
@@ -759,8 +687,21 @@ const AttendanceTable: React.FC = () => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
+                    onClick={() => handlePageChange(1)}
                     disabled={currentPage === 1 || isLoading}
+                    className="px-2 sm:px-3"
+                    aria-label="First page"
+                  >
+                    <ChevronFirst className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">First</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1 || isLoading}
+                    className="px-2 sm:px-3"
                   >
                     <ChevronLeft className="mr-1 h-4 w-4" />
                     Previous
@@ -769,11 +710,24 @@ const AttendanceTable: React.FC = () => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages || isLoading}
+                    className="px-2 sm:px-3"
                   >
                     Next
                     <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={currentPage === totalPages || isLoading}
+                    className="px-2 sm:px-3"
+                    aria-label="Last page"
+                  >
+                    <span className="hidden sm:inline mr-1">Last</span>
+                    <ChevronLast className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

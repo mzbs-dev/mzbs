@@ -322,8 +322,8 @@ const SalarySummarySection: React.FC = () => {
       setError(null);
 
       const [teacherSalaries, ledgers] = await Promise.all([
-        SalaryAPI.getAllTeacherSalaries(),
-        SalaryAPI.getAllSalaryLedgers(),
+        SalaryAPI.getAllTeacherSalaries({ fetchAll: true, pageSize: 50 }),
+        SalaryAPI.getAllSalaryLedgers({ fetchAll: true, pageSize: 50 }),
       ]);
 
       setAllTeachers(teacherSalaries);
@@ -345,7 +345,7 @@ const SalarySummarySection: React.FC = () => {
     if (allTeachers.length > 0) {
       const fetchLedgers = async () => {
         try {
-          const ledgers = await SalaryAPI.getAllSalaryLedgers();
+          const ledgers = await SalaryAPI.getAllSalaryLedgers({ fetchAll: true, pageSize: 200 });
           processSalaryData(allTeachers, ledgers);
         } catch (error) {
           console.error("Error fetching ledgers:", error);

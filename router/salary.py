@@ -155,16 +155,16 @@ def get_all_teacher_salaries(
     user: Annotated[User, Depends(require_permission("salary", "view"))],
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
+    all: bool = Query(False),
 ):
     """Get all teacher salary configurations with effective_till."""
     try:
         from sqlalchemy import func
         total = db.exec(select(func.count(TeacherSalary.id))).one()
-        salaries = db.exec(
-            select(TeacherSalary)
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        ).all()
+        query = select(TeacherSalary)
+        if not all:
+            query = query.offset((page - 1) * page_size).limit(page_size)
+        salaries = db.exec(query).all()
         response = []
         for salary in salaries:
             teacher = db.exec(
@@ -377,6 +377,7 @@ def get_teacher_salary_summary(
     - All historical salary periods with prorated calculations
     - Total allowances and deductions
     - Total paid and remaining balance
+    - Payment history details
     """
     try:
         # Verify teacher exists
@@ -402,17 +403,17 @@ def get_all_salary_ledgers(
     user: Annotated[User, Depends(require_permission("salary", "view"))],
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
+    all: bool = Query(False),
 ):
     """Get all salary ledger records."""
     try:
         from sqlalchemy import func
         total = db.exec(select(func.count(SalaryLedger.id))).one()
-        ledgers = db.exec(
-            select(SalaryLedger, TeacherNames)
-            .join(TeacherNames, SalaryLedger.teacher_id == TeacherNames.teacher_name_id)
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        ).all()
+        query = select(SalaryLedger, TeacherNames)
+        query = query.join(TeacherNames, SalaryLedger.teacher_id == TeacherNames.teacher_name_id)
+        if not all:
+            query = query.offset((page - 1) * page_size).limit(page_size)
+        ledgers = db.exec(query).all()
         response = []
         for ledger, teacher in ledgers:
             response.append(SalaryLedgerResponse(
@@ -1240,17 +1241,16 @@ def get_all_deductions(
     user: Annotated[User, Depends(require_permission("salary", "view"))],
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
+    all: bool = Query(False),
 ):
     """Get all deductions."""
     try:
         from sqlalchemy import func
         total = db.exec(select(func.count(Deduction.id))).one()
-        deductions = db.exec(
-            select(Deduction)
-            .order_by(Deduction.year.desc(), Deduction.month.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        ).all()
+        query = select(Deduction).order_by(Deduction.year.desc(), Deduction.month.desc())
+        if not all:
+            query = query.offset((page - 1) * page_size).limit(page_size)
+        deductions = db.exec(query).all()
         response = []
         for deduction in deductions:
             teacher = db.exec(

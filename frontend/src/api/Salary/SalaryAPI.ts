@@ -42,6 +42,7 @@ export interface TeacherSalarySummary {
   total_paid: number;
   remaining: number;
   salary_history: SalaryPeriod[];
+  payment_history: SalaryPaymentResponse[];
 }
 
 export interface SalaryLedgerResponse {
@@ -122,11 +123,32 @@ export namespace SalaryAPI {
   // ============================================================================
 
   // Teacher Salary Management
-  export const getAllTeacherSalaries = async (): Promise<TeacherSalaryResponse[]> => {
+  export const getAllTeacherSalaries = async (opts?: { fetchAll?: boolean; pageSize?: number }): Promise<TeacherSalaryResponse[]> => {
+    const fetchAll = opts?.fetchAll ?? false;
+    const pageSize = opts?.pageSize ?? 50;
+    if (!fetchAll) {
+      try {
+        const response = await axiosInstance.get("/salary/teacher-salary/all");
+        return response.data?.data ?? response.data;
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    // Fetch all records from the backend using all=true
     try {
-      const response = await axiosInstance.get("/salary/teacher-salary/all");
+      const response = await axiosInstance.get("/salary/teacher-salary/all", { params: { all: true } });
       return response.data?.data ?? response.data;
-    } catch (error) {
+    } catch (error: any) {
+      // Temporary debug logging to capture failed responses
+      try {
+        console.error('[SalaryAPI] Error fetching all teacher salaries:', {
+          message: error?.message ?? String(error),
+          stack: error?.stack,
+        });
+      } catch (e) {
+        // ignore logging errors
+      }
       throw error;
     }
   };
@@ -182,11 +204,31 @@ export namespace SalaryAPI {
   };
 
   // Salary Ledger Management
-  export const getAllSalaryLedgers = async (): Promise<SalaryLedgerResponse[]> => {
+  export const getAllSalaryLedgers = async (opts?: { fetchAll?: boolean; pageSize?: number }): Promise<SalaryLedgerResponse[]> => {
+    const fetchAll = opts?.fetchAll ?? false;
+    const pageSize = opts?.pageSize ?? 50;
+    if (!fetchAll) {
+      try {
+        const response = await axiosInstance.get("/salary/ledger/all");
+        return response.data?.data ?? response.data;
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    // Fetch all records from the backend using all=true
     try {
-      const response = await axiosInstance.get("/salary/ledger/all");
+      const response = await axiosInstance.get("/salary/ledger/all", { params: { all: true } });
       return response.data?.data ?? response.data;
-    } catch (error) {
+    } catch (error: any) {
+      try {
+        console.error('[SalaryAPI] Error fetching all salary ledgers:', {
+          message: error?.message ?? String(error),
+          stack: error?.stack,
+        });
+      } catch (e) {
+        // ignore
+      }
       throw error;
     }
   };

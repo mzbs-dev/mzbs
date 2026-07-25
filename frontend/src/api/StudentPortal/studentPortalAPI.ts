@@ -13,7 +13,10 @@ export interface StudentPortalChangePasswordPayload {
 }
 
 export async function studentPortalLogin(payload: StudentPortalLoginPayload) {
-  const response = await axiosInstance.post('/student-portal/login', payload);
+  const response = await axiosInstance.post('/student-portal/login', {
+    ...payload,
+    tenant_id: process.env.NEXT_PUBLIC_TENANT_ID,
+  });
   return response.data;
 }
 

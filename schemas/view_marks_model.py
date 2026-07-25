@@ -33,12 +33,12 @@ def enrich_student_mark_rows(rows: List[StudentMarksViewRow]) -> List[StudentMar
     )
 
     previous_total: Optional[int] = None
-    previous_position = 0
+    current_position = 0
     for index, row in enumerate(ranked_rows):
         if previous_total is None or row.total_obtained_marks != previous_total:
-            previous_position = index + 1
-        previous_total = row.total_obtained_marks
-        ranked_rows[index] = row.model_copy(update={"position": previous_position})
+            current_position += 1
+            previous_total = row.total_obtained_marks
+        ranked_rows[index] = row.model_copy(update={"position": current_position})
 
     return ranked_rows
 

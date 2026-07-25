@@ -107,113 +107,113 @@ def seed_classes(session: Session) -> dict[str, ClassNames]:
     return result
 
 
-def seed_students(session: Session) -> list[Students]:
-    """A handful of fake students split across the two classes."""
-    fake_students = [
-        dict(
-            student_name="Ali Raza",
-            student_date_of_birth=datetime(2015, 3, 12),
-            student_gender="Male",
-            student_age="11",
-            student_education="Primary",
-            class_name="Class 1",
-            student_city="Lahore",
-            student_address="123 Model Town",
-            father_name="Raza Ahmed",
-            father_occupation="Shopkeeper",
-            father_cnic="35202-1234567-1",
-            father_cast_name="Rajput",
-            father_contact="03001234567",
-        ),
-        dict(
-            student_name="Ayesha Khan",
-            student_date_of_birth=datetime(2014, 7, 20),
-            student_gender="Female",
-            student_age="12",
-            student_education="Primary",
-            class_name="Class 1",
-            student_city="Lahore",
-            student_address="45 Johar Town",
-            father_name="Imran Khan",
-            father_occupation="Teacher",
-            father_cnic="35202-7654321-2",
-            father_cast_name="Khan",
-            father_contact="03007654321",
-        ),
-        dict(
-            student_name="Bilal Ahmed",
-            student_date_of_birth=datetime(2013, 11, 5),
-            student_gender="Male",
-            student_age="13",
-            student_education="Middle",
-            class_name="Class 2",
-            student_city="Lahore",
-            student_address="9 Garden Town",
-            father_name="Ahmed Sultan",
-            father_occupation="Engineer",
-            father_cnic="35202-1112223-3",
-            father_cast_name="Sultan",
-            father_contact="03211112223",
-        ),
-        dict(
-            student_name="Sana Malik",
-            student_date_of_birth=datetime(2013, 1, 30),
-            student_gender="Female",
-            student_age="13",
-            student_education="Middle",
-            class_name="Class 2",
-            student_city="Lahore",
-            student_address="77 Gulberg",
-            father_name="Malik Tariq",
-            father_occupation="Businessman",
-            father_cnic="35202-4445556-4",
-            father_cast_name="Malik",
-            father_contact="03334445556",
-        ),
-    ]
+# def seed_students(session: Session) -> list[Students]:
+#     """A handful of fake students split across the two classes."""
+#     fake_students = [
+#         dict(
+#             student_name="Ali Raza",
+#             student_date_of_birth=datetime(2015, 3, 12),
+#             student_gender="Male",
+#             student_age="11",
+#             student_education="Primary",
+#             class_name="Class 1",
+#             student_city="Lahore",
+#             student_address="123 Model Town",
+#             father_name="Raza Ahmed",
+#             father_occupation="Shopkeeper",
+#             father_cnic="35202-1234567-1",
+#             father_cast_name="Rajput",
+#             father_contact="03001234567",
+#         ),
+#         dict(
+#             student_name="Ayesha Khan",
+#             student_date_of_birth=datetime(2014, 7, 20),
+#             student_gender="Female",
+#             student_age="12",
+#             student_education="Primary",
+#             class_name="Class 1",
+#             student_city="Lahore",
+#             student_address="45 Johar Town",
+#             father_name="Imran Khan",
+#             father_occupation="Teacher",
+#             father_cnic="35202-7654321-2",
+#             father_cast_name="Khan",
+#             father_contact="03007654321",
+#         ),
+#         dict(
+#             student_name="Bilal Ahmed",
+#             student_date_of_birth=datetime(2013, 11, 5),
+#             student_gender="Male",
+#             student_age="13",
+#             student_education="Middle",
+#             class_name="Class 2",
+#             student_city="Lahore",
+#             student_address="9 Garden Town",
+#             father_name="Ahmed Sultan",
+#             father_occupation="Engineer",
+#             father_cnic="35202-1112223-3",
+#             father_cast_name="Sultan",
+#             father_contact="03211112223",
+#         ),
+#         dict(
+#             student_name="Sana Malik",
+#             student_date_of_birth=datetime(2013, 1, 30),
+#             student_gender="Female",
+#             student_age="13",
+#             student_education="Middle",
+#             class_name="Class 2",
+#             student_city="Lahore",
+#             student_address="77 Gulberg",
+#             father_name="Malik Tariq",
+#             father_occupation="Businessman",
+#             father_cnic="35202-4445556-4",
+#             father_cast_name="Malik",
+#             father_contact="03334445556",
+#         ),
+#     ]
 
-    created: list[Students] = []
-    for data in fake_students:
-        existing = session.exec(
-            select(Students).where(Students.student_name == data["student_name"])
-        ).first()
-        if existing:
-            print(f"  [skip] student '{data['student_name']}' already exists")
-            created.append(existing)
-            continue
-        student = Students(**data)
-        session.add(student)
-        session.commit()
-        session.refresh(student)
-        created.append(student)
-        print(f"  [add]  student '{data['student_name']}' ({data['class_name']})")
+#     created: list[Students] = []
+#     for data in fake_students:
+#         existing = session.exec(
+#             select(Students).where(Students.student_name == data["student_name"])
+#         ).first()
+#         if existing:
+#             print(f"  [skip] student '{data['student_name']}' already exists")
+#             created.append(existing)
+#             continue
+#         student = Students(**data)
+#         session.add(student)
+#         session.commit()
+#         session.refresh(student)
+#         created.append(student)
+#         print(f"  [add]  student '{data['student_name']}' ({data['class_name']})")
 
-    return created
+#     return created
 
 
-def seed_fees(session: Session, students: list[Students], classes: dict[str, ClassNames]) -> None:
-    """One or two fee records per student."""
-    existing_count = len(session.exec(select(Fee)).all())
-    if existing_count > 0:
-        print(f"  [skip] {existing_count} fee record(s) already exist")
-        return
+# def seed_fees(session: Session, students: list[Students], classes: dict[str, ClassNames]) -> None:
+#     """One or two fee records per student."""
+#     existing_count = len(session.exec(select(Fee)).all())
+#     if existing_count > 0:
+#         print(f"  [skip] {existing_count} fee record(s) already exist")
+#         return
 
-    months = ["June", "July"]
-    for student in students:
-        class_obj = classes[student.class_name]
-        for month in months:
-            fee = Fee(
-                student_id=student.student_id,
-                class_id=class_obj.class_name_id,
-                fee_amount=Decimal("2500"),
-                fee_month=month,
-                fee_year="2026",
-                fee_status=FeeStatus.UNPAID if month == "July" else FeeStatus.PAID,
-            )
-            session.add(fee)
-        print(f"  [add]  2 fee records for '{student.student_name}'")
+#     months = ["June", "July"]
+#     for student in students:
+#         class_obj = classes[student.class_name]
+#         for month in months:
+#             fee = Fee(
+#                 student_id=student.student_id,
+#                 class_id=class_obj.class_name_id,
+#                 fee_amount=Decimal("2500"),
+#                 fee_month=month,
+#                 fee_year="2026",
+#                 fee_status=FeeStatus.UNPAID if month == "July" else FeeStatus.PAID,
+#             )
+#             session.add(fee)
+#         print(f"  [add]  2 fee records for '{student.student_name}'")
 
-    session.commit()
+#     session.commit()
 
 
 def seed_categories(session: Session) -> None:

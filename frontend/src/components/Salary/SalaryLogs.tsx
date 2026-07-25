@@ -68,8 +68,8 @@ const SalaryLogs = () => {
     try {
       setIsLoading(true);
 
-      // Fetch all salary ledgers first to get base information
-      const ledgers = await SalaryAPI.getAllSalaryLedgers();
+      // Fetch all salary ledgers first to get base information (fetch all pages)
+      const ledgers = await SalaryAPI.getAllSalaryLedgers({ fetchAll: true, pageSize: 50 });
 
       // Create a map of ledger data by teacher/month/year for O(1) lookup
       const ledgerMap = new Map<string, SalaryLedgerResponse>();

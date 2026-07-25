@@ -9,6 +9,7 @@ import { Search, Printer, RefreshCw, ChevronDown, ChevronRight, Eye, X } from "l
 import {
   SalaryAPI,
   TeacherSalarySummary as ApiTeacherSalarySummary,
+  SalaryPaymentResponse,
   TeacherSalaryResponse,
   SalaryPeriod
 } from "@/api/Salary/SalaryAPI";
@@ -36,6 +37,7 @@ const ViewSalary = () => {
   const [selectedSummary, setSelectedSummary] = useState<TeacherSalarySummary | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [salaryHistory, setSalaryHistory] = useState<SalaryPeriod[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<SalaryPaymentResponse[]>([]);
   const [isLoadingSalaryHistory, setIsLoadingSalaryHistory] = useState(false);
   const [expandedTeachers, setExpandedTeachers] = useState<Set<number>>(new Set());
 
@@ -58,8 +60,8 @@ const ViewSalary = () => {
     try {
       setIsLoading(true);
 
-      // Get all teachers with salaries
-      const teacherSalaries = await SalaryAPI.getAllTeacherSalaries();
+      // Get all teachers with salaries (fetch all pages)
+      const teacherSalaries = await SalaryAPI.getAllTeacherSalaries({ fetchAll: true, pageSize: 50 });
 
       // Get unique teacher IDs
       const uniqueTeacherIds = Array.from(
@@ -306,10 +308,40 @@ const ViewSalary = () => {
                 <span>Already Paid</span>
                 <span>Rs. ${Math.round(selectedSummary.totalPaid).toLocaleString("en-US")}</span>
               </div>
+              <div class="summary-row">
+                <span>Payments Made</span>
+                <span>${paymentHistory.length} ${paymentHistory.length === 1 ? 'payment' : 'payments'}</span>
+              </div>
               <div class="summary-row" style="font-weight: bold; border-top: 1px solid #0066cc; padding-top: 8px; margin-top: 8px;">
                 <span>Balance ${selectedSummary.remainingBalance >= 0 ? '(Remaining)' : '(Overpaid)'}</span>
                 <span>Rs. ${Math.round(Math.abs(selectedSummary.remainingBalance)).toLocaleString("en-US")}</span>
               </div>
+            </div>
+
+            <div class="summary-section">
+              <h2>Payment Breakdown</h2>
+              ${paymentHistory.length > 0 ? `
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="text-align:left; padding:8px;">#</th>
+                      <th style="text-align:left; padding:8px;">Payment Date</th>
+                      <th style="text-align:right; padding:8px;">Amount Paid</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${paymentHistory.map((payment, index) => `
+                      <tr>
+                        <td style="padding:8px;">${index + 1}</td>
+                        <td style="padding:8px;">${formatDateToDDMMYY(payment.payment_date)}</td>
+                        <td style="padding:8px; text-align:right;">Rs. ${Math.round(payment.amount).toLocaleString("en-US")}</td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              ` : `
+                <p style="margin-top:8px; color:#666;">No payment records found.</p>
+              `}
             </div>
 
             <h2 style="margin-top: 30px;">Salary History (Prorated Breakdown)</h2>
@@ -354,10 +386,12 @@ const ViewSalary = () => {
       setIsLoadingSalaryHistory(true);
       const summary = await SalaryAPI.getTeacherSalarySummary(teacherId);
       setSalaryHistory(summary.salary_history);
+      setPaymentHistory(summary.payment_history || []);
     } catch (error) {
       console.error("Error fetching salary history:", error);
       toast.error("Failed to load salary history");
       setSalaryHistory([]);
+      setPaymentHistory([]);
     } finally {
       setIsLoadingSalaryHistory(false);
     }
@@ -667,11 +701,43 @@ const ViewSalary = () => {
                     <span className="text-gray-700 dark:text-gray-300">Already Paid</span>
                     <span className="font-medium text-cyan-600 dark:text-cyan-400">Rs. {Math.round(selectedSummary.totalPaid).toLocaleString("en-US")}</span>
                   </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-neutral-600">
+                    <span className="text-gray-700 dark:text-gray-300">Payments Made</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{paymentHistory.length} {paymentHistory.length === 1 ? 'payment' : 'payments'}</span>
+                  </div>
                   <div className={`flex justify-between items-center py-3 px-3 rounded font-bold ${selectedSummary.remainingBalance >= 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-400'}`}>
                     <span>Balance {selectedSummary.remainingBalance >= 0 ? '(Remaining)' : '(Overpaid)'}</span>
                     <span>Rs. {Math.round(Math.abs(selectedSummary.remainingBalance)).toLocaleString("en-US")}</span>
                   </div>
                 </div>
+
+                {paymentHistory.length > 0 ? (
+                  <div className="mt-4 border-t border-gray-200 dark:border-neutral-700 pt-4">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Payment Breakdown</h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200 dark:border-neutral-700">
+                            <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">#</th>
+                            <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Payment Date</th>
+                            <th className="text-right py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Amount Paid</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paymentHistory.map((payment, index) => (
+                            <tr key={payment.id} className="border-b border-gray-100 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-700">
+                              <td className="py-2 px-2 text-gray-900 dark:text-gray-100">{index + 1}</td>
+                              <td className="py-2 px-2 text-gray-900 dark:text-gray-100">{formatDateToDDMMYY(payment.payment_date)}</td>
+                              <td className="py-2 px-2 text-right font-medium text-gray-900 dark:text-gray-100">Rs. {Math.round(payment.amount).toLocaleString("en-US")}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">No payment records found.</p>
+                )}
               </div>
 
               {/* Salary History Table */}

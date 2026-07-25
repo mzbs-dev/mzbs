@@ -239,6 +239,25 @@ def calculate_teacher_salary_summary(
     )
     total_paid = session.scalar(paid_stmt) or Decimal(0)
 
+    # 5a. Fetch payment history details
+    payments_stmt = (
+        select(SalaryPayment)
+        .where(SalaryPayment.teacher_id == teacher_id)
+        .order_by(SalaryPayment.payment_date.desc())
+    )
+    payment_records = session.exec(payments_stmt).all()
+    payment_history = [
+        {
+            "id": payment.id,
+            "teacher_id": payment.teacher_id,
+            "ledger_id": payment.ledger_id,
+            "amount": float(payment.amount),
+            "payment_date": payment.payment_date,
+            "created_at": payment.created_at,
+        }
+        for payment in payment_records
+    ]
+
     # 6. Final calculations
     total_net_salary = total_payable + total_allowance - total_deduction
     remaining = total_net_salary - total_paid
@@ -259,6 +278,7 @@ def calculate_teacher_salary_summary(
         "total_paid": float(round(total_paid, 2)),
         "remaining": float(round(remaining, 2)),
         "salary_history": history,
+        "payment_history": payment_history,
     }
 
 
@@ -276,6 +296,7 @@ def _empty_summary(teacher_id: int) -> Dict:
         "total_paid": 0,
         "remaining": 0,
         "salary_history": [],
+        "payment_history": [],
     }
 
 

@@ -58,7 +58,23 @@ interface StudentProfileData {
   }>;
 }
 
-type TabKey = 'personal' | 'attendance' | 'exams' | 'fees';
+interface AttendanceSummaryData {
+  student_id: number;
+  student_name: string;
+  father_name: string;
+  class_name: string;
+  present: number;
+  absent: number;
+  late: number;
+  leave: number;
+  total: number;
+  date_range: {
+    from: string;
+    to: string;
+  };
+}
+
+type TabKey = 'personal' | 'attendance' | 'exams' | 'fees' | 'resultCard';
 
 const formatDate = (value?: string | null) => {
   if (!value) return 'N/A';
@@ -98,16 +114,38 @@ export default function StudentProfileView() {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
   const [profile, setProfile] = useState<StudentProfileData | null>(null);
+  const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummaryData | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('personal');
+  const [isPrinting, setIsPrinting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tabPages, setTabPages] = useState<Record<TabKey, number>>({
     personal: 1,
     attendance: 1,
     exams: 1,
     fees: 1,
+    resultCard: 1,
   });
   const pageSize = 6;
+
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      setActiveTab('resultCard');
+      setIsPrinting(true);
+    };
+
+    const handleAfterPrint = () => {
+      setIsPrinting(false);
+    };
+
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
 
   useEffect(() => {
     const loadClasses = async () => {
@@ -165,8 +203,13 @@ export default function StudentProfileView() {
     setError(null);
 
     try {
-      const data = await StudentProfileAPI.getProfile(Number(selectedStudent), selectedClass || undefined);
-      setProfile(data);
+      const [profileData, summaryData] = await Promise.all([
+        StudentProfileAPI.getProfile(Number(selectedStudent), selectedClass || undefined),
+        StudentProfileAPI.getAttendanceSummary(Number(selectedStudent)),
+      ]);
+
+      setProfile(profileData);
+      setAttendanceSummary(summaryData);
     } catch (error) {
       console.error('Failed to load student profile', error);
       setError('Unable to load student profile. Please try again.');
@@ -181,6 +224,7 @@ export default function StudentProfileView() {
       { key: 'attendance' as const, label: 'Attendance' },
       { key: 'exams' as const, label: 'Exams' },
       { key: 'fees' as const, label: 'Fee History' },
+      { key: 'resultCard' as const, label: 'Result Card' },
     ],
     []
   );
@@ -351,6 +395,95 @@ export default function StudentProfileView() {
     );
   };
 
+  const renderResultCard = () => {
+    if (!profile?.student) {
+      return null;
+    }
+
+    const totalAttendance = attendanceSummary?.total ?? profile.attendance?.length ?? 0;
+    const attendancePercentage = totalAttendance > 0 && attendanceSummary
+      ? Number(((attendanceSummary.present / totalAttendance) * 100).toFixed(1))
+      : 0;
+
+    const summaryCards = [
+      { label: 'Total Working Days', value: totalAttendance },
+      { label: 'Days Present', value: attendanceSummary?.present ?? 0 },
+      { label: 'Days Absent', value: attendanceSummary?.absent ?? 0 },
+      { label: 'Leave Days', value: attendanceSummary?.leave ?? 0 },
+      { label: 'Attendance %', value: `${attendancePercentage}%` },
+    ];
+
+    return (
+      <div className="space-y-6 print:p-0">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border-0 print:shadow-none print:p-2 print:m-0" style={{ pageBreakInside: 'avoid' }}>
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-4">
+            <div>
+              <h4 className="text-lg font-semibold text-gray-900">Result Card</h4>
+              <p className="mt-1 text-sm text-gray-600">
+                {profile.student.student_name} • {profile.student.class_name}
+              </p>
+            </div>
+            <div className="text-sm text-gray-600">
+              <p><span className="font-semibold">Father:</span> {profile.student.father_name || 'N/A'}</p>
+              <p><span className="font-semibold">Roll/ID:</span> {profile.student.student_id}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {summaryCards.map((item) => (
+              <div key={item.label} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <p className="text-sm font-medium text-gray-600">{item.label}</p>
+                <p className="mt-2 text-xl font-semibold text-gray-900">{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8">
+            <h5 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Examination Performance</h5>
+            <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200" style={{ pageBreakInside: 'avoid' }}>
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-left">
+                  <tr>
+                    <th className="px-3 py-2">Date</th>
+                    <th className="px-3 py-2">Subject</th>
+                    <th className="px-3 py-2">Exam Type</th>
+                    <th className="px-3 py-2">Obtained</th>
+                    <th className="px-3 py-2">Total</th>
+                    <th className="px-3 py-2">Percentage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {profile.exams?.length ? (
+                    profile.exams.map((item) => {
+                      const percentage = item.total_marks > 0
+                        ? Number(((item.obtained_marks / item.total_marks) * 100).toFixed(1))
+                        : 0;
+
+                      return (
+                        <tr key={item.exam_id} className="border-t border-gray-200">
+                          <td className="px-3 py-2">{formatDate(item.exam_date)}</td>
+                          <td className="px-3 py-2">{item.subject_name}</td>
+                          <td className="px-3 py-2">{item.exam_type}</td>
+                          <td className="px-3 py-2">{item.obtained_marks}</td>
+                          <td className="px-3 py-2">{item.total_marks}</td>
+                          <td className="px-3 py-2">{percentage}%</td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-3 py-4 text-center text-gray-500">No exam records found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderFees = () => {
     if (!profile?.fees?.length) {
       return <p className="text-sm text-gray-500">No fee history found.</p>;
@@ -391,9 +524,27 @@ export default function StudentProfileView() {
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: auto;
+            margin: 0.25in;
+          }
+
+          body {
+            margin: 0;
+            padding: 0;
+          }
+
+          .print-hide {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div className="space-y-6">
       {/* Filter Card */}
-      <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-sm">
+      <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-sm print-hide">
         <div className="p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
             Select Student
@@ -456,7 +607,11 @@ export default function StudentProfileView() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    setActiveTab('resultCard');
+                    setIsPrinting(true);
+                    window.setTimeout(() => window.print(), 50);
+                  }}
                   className="flex-1 h-10 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-semibold text-sm rounded-lg transition-colors"
                 >
                   Print
@@ -470,8 +625,8 @@ export default function StudentProfileView() {
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
       {profile && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex flex-wrap gap-2 no-print">
+        <div className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm print:border-0 print:shadow-none print:p-0 print:m-0 ${isPrinting ? 'print-hide' : ''}`} style={{ pageBreakInside: 'avoid' }}>
+          <div className="mb-4 flex flex-wrap gap-2 no-print print-hide">
             {tabConfig.map((tab) => (
               <button
                 key={tab.key}
@@ -493,9 +648,17 @@ export default function StudentProfileView() {
             {activeTab === 'attendance' && renderAttendance()}
             {activeTab === 'exams' && renderExams()}
             {activeTab === 'fees' && renderFees()}
+            {activeTab === 'resultCard' && renderResultCard()}
           </div>
         </div>
       )}
+
+      {isPrinting && profile && (
+        <div className="print:block hidden">
+          {renderResultCard()}
+        </div>
+      )}
     </div>
+    </>
   );
 }

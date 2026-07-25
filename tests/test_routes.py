@@ -145,6 +145,49 @@ def test_create_teacher(admin_token):
     assert response.json()["teacher_name"] == teacher_data["teacher_name"]
 
 
+def test_delete_teacher_by_id(admin_token):
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    create_response = client.post(
+        "/teacher_name/add_teacher_name/",
+        json={"teacher_name": "Teacher To Delete"},
+        headers=headers,
+    )
+    assert create_response.status_code == 200
+
+    teacher_id = create_response.json()["teacher_name_id"]
+    delete_response = client.delete(f"/teacher_name/{teacher_id}", headers=headers)
+
+    assert delete_response.status_code == 200
+    assert "deleted successfully" in delete_response.json()["message"].lower()
+
+
+def test_delete_teacher_with_salary_returns_conflict(admin_token):
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    create_response = client.post(
+        "/teacher_name/add_teacher_name/",
+        json={"teacher_name": "Teacher With Salary"},
+        headers=headers,
+    )
+    assert create_response.status_code == 200
+
+    teacher_id = create_response.json()["teacher_name_id"]
+    salary_response = client.post(
+        "/salary/teacher-salary/add",
+        json={
+            "teacher_id": teacher_id,
+            "base_salary": 20000,
+            "effective_from": "2026-07-01",
+        },
+        headers=headers,
+    )
+    assert salary_response.status_code == 201
+
+    delete_response = client.delete(f"/teacher_name/{teacher_id}", headers=headers)
+
+    assert delete_response.status_code == 409
+    assert "related" in delete_response.json()["detail"].lower()
+
+
 def test_set_class_subjects(admin_token):
     headers = {"Authorization": f"Bearer {admin_token}"}
     class_response = client.post(

@@ -89,8 +89,22 @@ const SetSalary = () => {
   const refreshSalaryRecords = async () => {
     try {
       setIsFetchingRecords(true);
-      const records = await SalaryAPI.getAllTeacherSalaries();
-      setSalaryRecords(records);
+      try {
+        const records = await SalaryAPI.getAllTeacherSalaries({ fetchAll: true, pageSize: 50 });
+        setSalaryRecords(records);
+      } catch (err) {
+        console.warn("SalaryAPI.getAllTeacherSalaries(fetchAll) failed, falling back to single-page call", err);
+        try {
+          const resp = await SalaryAPI.getAllTeacherSalaries();
+          // resp may be the paginated object or an array
+          const records = Array.isArray(resp) ? resp : (resp?.data ?? []);
+          setSalaryRecords(records as TeacherSalaryResponse[]);
+          toast.warning("Loaded first page of salary records due to fetch error");
+        } catch (err2) {
+          console.error("Fallback fetch for teacher salaries failed:", err2);
+          throw err2;
+        }
+      }
     } catch (error) {
       console.error("Error fetching teacher salary records:", error);
       toast.error("Failed to load teacher salary records");
