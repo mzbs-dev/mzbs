@@ -9,7 +9,7 @@ import { ClassNameAPI } from "@/api/Classname/ClassNameAPI";
 import { ClassSubjectAPI } from "@/api/ClassSubject/ClassSubjectAPI";
 import { StudentAPI } from "@/api/Student/StudentsAPI";
 import { ExamMarksAPI } from "@/api/ExamMarks/ExamMarksAPI";
-import { TeacherNameAPI } from "@/api/Teacher/TeachetAPI";
+import { TeacherNameAPI } from "@/api/Teacher/TeacherAPI";
 
 interface ClassNameResponse {
   class_name_id: number;

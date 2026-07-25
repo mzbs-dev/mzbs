@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
-import { TeacherNameAPI } from "@/api/Teacher/TeachetAPI";
+import { TeacherNameAPI } from "@/api/Teacher/TeacherAPI";
 import { TeacherModel } from "@/models/teacher/Teacher";
 import { SalaryAPI, TeacherSalaryResponse, TeacherSalaryCreate } from "@/api/Salary/SalaryAPI";
 import { useRole } from "@/context/RoleContext";
@@ -96,9 +96,8 @@ const SetSalary = () => {
         console.warn("SalaryAPI.getAllTeacherSalaries(fetchAll) failed, falling back to single-page call", err);
         try {
           const resp = await SalaryAPI.getAllTeacherSalaries();
-          // resp may be the paginated object or an array
-          const records = Array.isArray(resp) ? resp : (resp?.data ?? []);
-          setSalaryRecords(records as TeacherSalaryResponse[]);
+          const records = resp;
+          setSalaryRecords(records);
           toast.warning("Loaded first page of salary records due to fetch error");
         } catch (err2) {
           console.error("Fallback fetch for teacher salaries failed:", err2);

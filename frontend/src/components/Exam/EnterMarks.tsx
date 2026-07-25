@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectOption } from "@/components/Select";
 import { ClassNameAPI } from "@/api/Classname/ClassNameAPI";
-import { TeacherNameAPI } from "@/api/Teacher/TeachetAPI";
+import { TeacherNameAPI } from "@/api/Teacher/TeacherAPI";
 import { StudentAPI } from "@/api/Student/StudentsAPI";
 import { ClassSubjectAPI } from "@/api/ClassSubject/ClassSubjectAPI";
 import { ExamMarksAPI } from "@/api/ExamMarks/ExamMarksAPI";

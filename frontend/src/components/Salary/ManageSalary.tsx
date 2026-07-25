@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
-import { TeacherNameAPI } from "@/api/Teacher/TeachetAPI";
+import { TeacherNameAPI } from "@/api/Teacher/TeacherAPI";
 import { TeacherModel } from "@/models/teacher/Teacher";
 import { SalaryAPI, SalaryPaymentCreate, AllowanceCreate, DeductionCreate } from "@/api/Salary/SalaryAPI";
 import { ChevronDown, ChevronUp } from "lucide-react";

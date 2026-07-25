@@ -6,7 +6,7 @@ import { Input } from "../ui/input";
 import { useForm } from "react-hook-form";
 import { ClassNameAPI as API } from "@/api/Classname/ClassNameAPI";
 import { AttendanceTimeAPI as API1 } from "@/api/AttendaceTime/attendanceTimeAPI";
-import { TeacherNameAPI as API2 } from "@/api/Teacher/TeachetAPI";
+import { TeacherNameAPI as API2 } from "@/api/Teacher/TeacherAPI";
 import { StudentAPI as API3 } from "@/api/Student/StudentsAPI";
 import { Select, SelectOption as SelectComponentOption } from "../Select";
 import { Button } from "@/components/ui/button";

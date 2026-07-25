@@ -18,7 +18,7 @@ import { useForm } from "react-hook-form";
 import { AttendanceAPI as API } from "@/api/Attendance/AttendanceAPI";
 import { ClassNameAPI as API2 } from "@/api/Classname/ClassNameAPI";
 import { AttendanceTimeAPI as API13 } from "@/api/AttendaceTime/attendanceTimeAPI";
-import { TeacherNameAPI as API4 } from "@/api/Teacher/TeachetAPI";
+import { TeacherNameAPI as API4 } from "@/api/Teacher/TeacherAPI";
 import { StudentAPI as API5 } from "@/api/Student/StudentsAPI";
 import { usePrint } from "@/components/print/usePrint";
 import { toast } from "sonner";

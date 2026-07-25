@@ -129,7 +129,8 @@ export namespace SalaryAPI {
     if (!fetchAll) {
       try {
         const response = await axiosInstance.get("/salary/teacher-salary/all");
-        return response.data?.data ?? response.data;
+      const result = response.data?.data ?? response.data;
+      return Array.isArray(result) ? result : [];
       } catch (error) {
         throw error;
       }
@@ -138,7 +139,8 @@ export namespace SalaryAPI {
     // Fetch all records from the backend using all=true
     try {
       const response = await axiosInstance.get("/salary/teacher-salary/all", { params: { all: true } });
-      return response.data?.data ?? response.data;
+      const result = response.data?.data ?? response.data;
+      return Array.isArray(result) ? result : [];
     } catch (error: any) {
       // Temporary debug logging to capture failed responses
       try {

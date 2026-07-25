@@ -12,7 +12,7 @@ import { Input } from "../ui/input";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { LoaderIcon } from "lucide-react";
-import { TeacherNameAPI as API } from "@/api/Teacher/TeachetAPI";
+import { TeacherNameAPI as API } from "@/api/Teacher/TeacherAPI";
 import { TeacherModel } from "@/models/teacher/Teacher";
 
 const AddNewTeacher = ({ onClassAdded }: { onClassAdded: () => void }) => {
