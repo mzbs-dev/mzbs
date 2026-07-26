@@ -17,25 +17,26 @@ function Layout({ children }: { children: React.ReactNode }) {
             }
           }
         `}</style>
-        <div className="min-h-screen flex flex-col md:flex-row bg-secondary dark:bg-neutral-950 overflow-hidden">
-          {/* Mobile Top Bar */}
-          <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-neutral-900 shadow-md z-30 no-print">
-            <button onClick={() => setSidebarOpen(true)}>
-              <Menu className="w-6 h-6 text-gray-700 dark:text-gray-200" />
+        <div className="min-h-screen flex flex-col md:flex-row overflow-hidden bg-transparent">
+          <div className="md:hidden flex items-center justify-between border-b border-border/70 bg-background/80 p-4 backdrop-blur-xl z-30 no-print shadow-sm">
+            <button onClick={() => setSidebarOpen(true)} className="rounded-full p-2 transition-colors hover:bg-accent/60">
+              <Menu className="h-6 w-6 text-foreground" />
             </button>
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            <h2 className="text-lg font-semibold text-foreground">
               Dashboard
             </h2>
           </div>
 
-          {/* Sidebar */}
-          <div className="md:w-64 md:flex-shrink-0 fixed inset-y-0 left-0 z-30 no-print">
+          <div className="md:w-72 md:flex-shrink-0 fixed inset-y-0 left-0 z-30 no-print">
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
           </div>
 
-        {/* Main content */}
-        <main className="flex-1 p-4 md:ml-64 md:mt-0">{children}</main>
-      </div>
+          <main className="flex-1 p-3 md:p-6 md:ml-72 md:mt-0">
+            <div className="rounded-[28px] border border-border/70 bg-card/70 p-4 shadow-[0_20px_60px_-20px_rgba(15,23,42,0.25)] backdrop-blur-xl md:p-6">
+              {children}
+            </div>
+          </main>
+        </div>
       </>
     </ProtectedRoute>
   );

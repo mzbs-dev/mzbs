@@ -82,34 +82,34 @@ const StatusBadge = ({
 }) => {
   if (present)
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
+        <span className="w-1.5 h-1.5 rounded-full bg-primary/100 inline-block" />
         Present
       </span>
     );
   if (absent)
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">
+        <span className="w-1.5 h-1.5 rounded-full bg-destructive/100 inline-block" />
         Absent
       </span>
     );
   if (late)
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-secondary text-foreground border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
+        <span className="w-1.5 h-1.5 rounded-full bg-secondary0 inline-block" />
         Late
       </span>
     );
   if (leave)
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800">
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-secondary text-foreground border border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800">
         <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
         Leave
       </span>
     );
   return (
-    <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-400 border border-gray-200 dark:bg-slate-700 dark:text-slate-500 dark:border-slate-600">
+    <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border dark:bg-slate-700 dark:text-muted-foreground dark:border-slate-600">
       —
     </span>
   );
@@ -131,16 +131,16 @@ const SummaryBar = ({ data }: { data: Attendance[] }) => {
   );
 
   const pills = [
-    { label: "Present", count: counts.present, color: "text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800" },
-    { label: "Absent", count: counts.absent, color: "text-red-700 bg-red-50 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800" },
-    { label: "Late", count: counts.late, color: "text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800" },
-    { label: "Leave", count: counts.leave, color: "text-orange-700 bg-orange-50 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800" },
-    { label: "Unmarked", count: counts.unmarked, color: "text-gray-500 bg-gray-50 border-gray-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600" },
+    { label: "Present", count: counts.present, color: "text-primary bg-primary/10 border-primary/20 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800" },
+    { label: "Absent", count: counts.absent, color: "text-destructive bg-destructive/10 border-destructive/20 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800" },
+    { label: "Late", count: counts.late, color: "text-foreground bg-secondary border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800" },
+    { label: "Leave", count: counts.leave, color: "text-foreground bg-secondary border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800" },
+    { label: "Unmarked", count: counts.unmarked, color: "text-muted-foreground bg-muted border-border dark:bg-slate-700 dark:text-muted-foreground dark:border-slate-600" },
   ];
 
   return (
-    <div className="flex flex-wrap gap-2 px-4 sm:px-6 py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700">
-      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 self-center mr-1">
+    <div className="flex flex-wrap gap-2 px-4 sm:px-6 py-3 bg-card dark:bg-card border-b border-gray-100 dark:border-border">
+      <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground self-center mr-1">
         Summary:
       </span>
       {pills.map((p) => (
@@ -306,7 +306,7 @@ const MarkAttendance = () => {
     columnHelper.accessor("name", {
       header: "Student Name",
       cell: (info) => (
-        <span className="font-medium text-gray-900 dark:text-gray-100 text-right block pr-2" dir="rtl">
+        <span className="font-medium text-foreground dark:text-foreground text-right block pr-2" dir="rtl">
           {info.getValue()}
         </span>
       ),
@@ -445,7 +445,7 @@ const MarkAttendance = () => {
 
   return (
     // ✅ FIX 1: h-screen (not min-h-screen) so flex children get a bounded height
-    <div className="flex flex-col w-full h-screen bg-gray-50 dark:bg-slate-950">
+    <div className="flex flex-col w-full h-screen bg-muted dark:bg-background">
       <Header value="Mark Attendance" />
       <Loader isActive={isLoading} />
 
@@ -461,19 +461,19 @@ const MarkAttendance = () => {
             ✅ FIX 3: Filter bar is sticky so it stays visible while scrolling
             through a long student list.
           */}
-          <div className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 shadow-sm">
+          <div className="sticky top-0 z-20 bg-card dark:bg-card border-b border-border dark:border-border shadow-sm">
             <div className="px-4 sm:px-6 py-4">
 
               {/* Section title row */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-1 h-6 bg-blue-600 rounded-full" />
-                  <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                  <div className="w-1 h-6 bg-primary rounded-full" />
+                  <h2 className="text-sm font-bold text-foreground dark:text-foreground uppercase tracking-wider">
                     Filters
                   </h2>
                 </div>
                 {data.length > 0 && (
-                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
+                  <span className="text-xs font-semibold text-primary dark:text-blue-400 bg-primary/10 dark:bg-blue-900/30 px-2.5 py-1 rounded-full border border-primary/20 dark:border-blue-800">
                     {data.length} Students
                   </span>
                 )}
@@ -488,12 +488,12 @@ const MarkAttendance = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
+                  <label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wide block">
                     Date
                   </label>
                   <Input
                     type="date"
-                    className="h-10 text-sm border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 text-gray-900 dark:text-gray-100 rounded-lg w-full transition-colors"
+                    className="h-10 text-sm border-border dark:border-slate-600 bg-muted dark:bg-card focus:bg-card dark:focus:bg-slate-700 text-foreground dark:text-foreground rounded-lg w-full transition-colors"
                     {...register("attendance_date", {
                       required: "Date is required",
                     })}
@@ -506,7 +506,7 @@ const MarkAttendance = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
+                  <label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wide block">
                     Class Time
                   </label>
                   <Select
@@ -525,7 +525,7 @@ const MarkAttendance = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
+                  <label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wide block">
                     Class Name
                   </label>
                   <Select
@@ -544,7 +544,7 @@ const MarkAttendance = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
+                  <label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wide block">
                     Teacher Name
                   </label>
                   <Select
@@ -567,7 +567,7 @@ const MarkAttendance = () => {
                   <Button
                     type="button"
                     onClick={() => handleSubmit(HandleSubmitForStudentGet)()}
-                    className="w-full h-10 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 dark:bg-blue-700 dark:hover:bg-blue-600 text-white font-bold text-sm rounded-lg transition-colors shadow-sm"
+                    className="w-full h-10 bg-primary hover:bg-primary/90 active:bg-blue-800 dark:bg-blue-700 dark:hover:bg-primary text-white font-bold text-sm rounded-lg transition-colors shadow-sm"
                   >
                     Get Students
                   </Button>
@@ -583,23 +583,23 @@ const MarkAttendance = () => {
               <SummaryBar data={data} />
 
               {/* Quick-mark row — lets teacher mark all students at once */}
-              <div className="flex flex-wrap items-center gap-2 px-4 sm:px-6 py-3 bg-gray-50 dark:bg-slate-800/60 border-b border-gray-100 dark:border-slate-700">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 mr-1">
+              <div className="flex flex-wrap items-center gap-2 px-4 sm:px-6 py-3 bg-muted dark:bg-card/60 border-b border-gray-100 dark:border-border">
+                <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground mr-1">
                   Mark All:
                 </span>
                 {(
                   [
-                    { field: "present", label: "Present", cls: "border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/30" },
-                    { field: "absent", label: "Absent", cls: "border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30" },
-                    { field: "late", label: "Late", cls: "border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30" },
-                    { field: "leave", label: "Leave", cls: "border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/30" },
+                    { field: "present", label: "Present", cls: "border-emerald-300 text-primary hover:bg-primary/10 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/30" },
+                    { field: "absent", label: "Absent", cls: "border-red-300 text-destructive hover:bg-destructive/10 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30" },
+                    { field: "late", label: "Late", cls: "border-amber-300 text-foreground hover:bg-secondary dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30" },
+                    { field: "leave", label: "Leave", cls: "border-orange-300 text-foreground hover:bg-secondary dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/30" },
                   ] as const
                 ).map(({ field, label, cls }) => (
                   <button
                     key={field}
                     type="button"
                     onClick={() => markAll(field)}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-full border bg-white dark:bg-slate-800 transition-colors ${cls}`}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-full border bg-card dark:bg-card transition-colors ${cls}`}
                   >
                     All {label}
                   </button>
@@ -611,7 +611,7 @@ const MarkAttendance = () => {
                 horizontally on narrow screens instead of overflowing or
                 squishing columns unreadably.
               */}
-              <div className="overflow-x-auto bg-white dark:bg-slate-900">
+              <div className="overflow-x-auto bg-card dark:bg-card">
                 <Table className="w-full min-w-[560px]">
                   <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
@@ -621,8 +621,8 @@ const MarkAttendance = () => {
                             key={header.id}
                             className={`
                               text-center text-xs font-bold uppercase tracking-wider
-                              bg-slate-800 dark:bg-slate-950
-                              text-slate-200 dark:text-slate-300
+                              bg-card dark:bg-background
+                              text-foreground dark:text-foreground
                               py-3.5 border-0 whitespace-nowrap
                               ${i === 0 ? "text-right pr-6 pl-4" : "px-3"}
                             `}
@@ -641,12 +641,12 @@ const MarkAttendance = () => {
                       <TableRow
                         key={row.id}
                         className={`
-                          text-sm transition-colors border-b border-gray-100 dark:border-slate-700/60
+                          text-sm transition-colors border-b border-gray-100 dark:border-border/60
                           ${idx % 2 === 0
-                            ? "bg-white dark:bg-slate-900"
-                            : "bg-slate-50/60 dark:bg-slate-800/40"
+                            ? "bg-card dark:bg-card"
+                            : "bg-muted/60 dark:bg-card/40"
                           }
-                          hover:bg-blue-50/60 dark:hover:bg-slate-700/50
+                          hover:bg-primary/10/60 dark:hover:bg-card/50
                         `}
                       >
                         {row.getVisibleCells().map((cell, i) => (
@@ -674,10 +674,10 @@ const MarkAttendance = () => {
                 scrolling down always reveals it. Not hidden behind a fixed
                 height card.
               */}
-              <div className="bg-white dark:bg-slate-900 border-t-2 border-gray-100 dark:border-slate-700 px-4 sm:px-6 py-5">
+              <div className="bg-card dark:bg-card border-t-2 border-gray-100 dark:border-border px-4 sm:px-6 py-5">
                 <div className="flex flex-col sm:flex-row items-center gap-3 max-w-xl mx-auto">
                   <div className="text-center sm:text-left flex-1">
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                    <p className="text-xs text-muted-foreground dark:text-muted-foreground">
                       {data.filter((s) => !s.present && !s.absent && !s.late && !s.leave).length > 0 ? (
                         <span className="text-amber-600 dark:text-amber-400 font-semibold">
                           ⚠ {data.filter((s) => !s.present && !s.absent && !s.late && !s.leave).length} student(s) still unmarked
@@ -731,16 +731,16 @@ const MarkAttendance = () => {
             </>
           ) : (
             /* Empty state */
-            <div className="flex flex-col items-center justify-center py-24 px-4 text-center bg-white dark:bg-slate-900 min-h-[50vh]">
-              <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+            <div className="flex flex-col items-center justify-center py-24 px-4 text-center bg-card dark:bg-card min-h-[50vh]">
+              <div className="w-16 h-16 rounded-full bg-primary/10 dark:bg-blue-900/30 flex items-center justify-center mb-4">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m4-4a4 4 0 110-8 4 4 0 010 8z" />
                 </svg>
               </div>
-              <h3 className="text-base font-bold text-gray-700 dark:text-gray-300 mb-1">
+              <h3 className="text-base font-bold text-foreground dark:text-foreground mb-1">
                 No Students Loaded
               </h3>
-              <p className="text-sm text-gray-400 dark:text-gray-500 max-w-xs">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground max-w-xs">
                 Select the date, class time, class name, and teacher above, then tap <strong>Get Students</strong> to load the attendance sheet.
               </p>
             </div>

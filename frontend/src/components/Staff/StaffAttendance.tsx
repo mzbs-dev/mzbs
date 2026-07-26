@@ -25,11 +25,11 @@ type StaffAttendanceStatus = "Present" | "Absent" | "Late" | "Leave" | "Unmarked
 const statusOptions: StaffAttendanceStatus[] = ["Present", "Absent", "Late", "Leave"];
 
 const statusStyles: Record<StaffAttendanceStatus, string> = {
-  Present: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800",
-  Absent: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
-  Late: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
-  Leave: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
-  Unmarked: "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600",
+  Present: "bg-primary/10 text-primary border-primary/20 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800",
+  Absent: "bg-destructive/10 text-destructive border-destructive/20 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+  Late: "bg-secondary text-foreground border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
+  Leave: "bg-secondary text-foreground border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
+  Unmarked: "bg-muted text-muted-foreground border-border dark:bg-slate-700 dark:text-muted-foreground dark:border-slate-600",
 };
 
 function StatusBadge({ status }: { status: StaffAttendanceStatus }) {
@@ -143,15 +143,15 @@ export default function StaffAttendancePage() {
       <Header value="Staff Attendance" />
 
       <div className="space-y-4 p-4 md:p-6">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm dark:border-border dark:bg-card">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-xl font-semibold">Staff Attendance</h2>
-              <p className="text-sm text-slate-500">Mark or update attendance for teachers and staff</p>
+              <p className="text-sm text-muted-foreground">Mark or update attendance for teachers and staff</p>
             </div>
             <div className="flex flex-col gap-2 md:flex-row md:items-center">
-              <label className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700">
-                <CalendarDays className="h-4 w-4 text-slate-400" />
+              <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm dark:border-border">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
                 <input
                   type="date"
                   value={selectedDate}
@@ -171,9 +171,9 @@ export default function StaffAttendancePage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Summary:</span>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm dark:border-border dark:bg-card">
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Summary:</span>
             {(["Present", "Absent", "Late", "Leave", "Unmarked"] as const).map((status) => (
               <div key={status} className={`rounded-full border px-3 py-1 ${statusStyles[status]}`}>
                 {status}: {summary[status]}
@@ -182,13 +182,13 @@ export default function StaffAttendancePage() {
           </div>
 
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Mark All:</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mark All:</span>
             {statusOptions.map((status) => (
               <button
                 key={status}
                 type="button"
                 onClick={() => rows.forEach((row) => handleStatusChange(row.staff_id, status))}
-                className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted dark:border-border dark:bg-card dark:text-foreground"
               >
                 All {status}
               </button>
@@ -197,7 +197,7 @@ export default function StaffAttendancePage() {
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-100 text-left dark:bg-slate-800">
+              <thead className="bg-muted text-left dark:bg-card">
                 <tr>
                   <th className="px-4 py-3">Staff Name</th>
                   {statusOptions.map((status) => (
@@ -210,7 +210,7 @@ export default function StaffAttendancePage() {
                 {loading ? (
                   <tr>
                     <td colSpan={statusOptions.length + 2} className="px-4 py-8 text-center">
-                      <div className="flex items-center justify-center gap-2 text-slate-500">
+                      <div className="flex items-center justify-center gap-2 text-muted-foreground">
                         <LoaderCircle className="h-5 w-5 animate-spin" />
                         Loading attendance...
                       </div>
@@ -218,7 +218,7 @@ export default function StaffAttendancePage() {
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={statusOptions.length + 2} className="px-4 py-8 text-center text-slate-500">No staff available.</td>
+                    <td colSpan={statusOptions.length + 2} className="px-4 py-8 text-center text-muted-foreground">No staff available.</td>
                   </tr>
                 ) : (
                   rows.map((row) => {
@@ -226,7 +226,7 @@ export default function StaffAttendancePage() {
                     return (
                       <tr
                         key={row.staff_id}
-                        className={`border-t border-slate-100 ${currentStatus === "Unmarked" ? "bg-amber-50/70 dark:bg-amber-900/20" : "bg-emerald-50/70 dark:bg-emerald-900/20"}`}
+                        className={`border-t border-border ${currentStatus === "Unmarked" ? "bg-secondary/70 dark:bg-amber-900/20" : "bg-primary/10/70 dark:bg-emerald-900/20"}`}
                       >
                         <td className="px-4 py-3">
                           <div className="font-medium">{row.staff_name}</div>

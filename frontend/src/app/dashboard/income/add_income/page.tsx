@@ -76,13 +76,13 @@ const AddIncome = () => {
   };
 
   return (
-    <div className="mx-auto w-auto px-2">
+    <div className="mx-auto w-full px-1 sm:px-2">
       <Header value="Add Income Record" />
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="bg-white dark:bg-background rounded-lg shadow-sm border border-gray-200 dark:border-secondary p-4 mt-2">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-medium dark:text-gray-300">
+        <div className="mt-3 rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 Receipt Number
               </label>
               <Input
@@ -91,10 +91,10 @@ const AddIncome = () => {
                   required: "Required",
                 })}
                 placeholder="Enter receipt number"
-                className="h-9 text-sm"
+                className="h-11 text-sm"
               />
               {errors.recipt_number && (
-                <span className="text-red-500 text-xs inline-block">
+                <span className="inline-block text-xs text-red-500">
                   {errors.recipt_number.message}
                 </span>
               )}
@@ -107,10 +107,10 @@ const AddIncome = () => {
               <Input
                 type="date"
                 {...register("date", { required: "Required" })}
-                className="h-9 text-sm"
+                className="h-11 text-sm"
               />
               {errors.date && (
-                <span className="text-red-500 text-xs inline-block">
+                <span className="inline-block text-xs text-red-500">
                   {errors.date.message}
                 </span>
               )}
@@ -125,7 +125,7 @@ const AddIncome = () => {
                   valueAsNumber: true,
                   required: "Required",
                 })}
-                className="w-full border bg-white rounded-md h-9 px-3 text-sm focus:ring focus:ring-indigo-300 dark:bg-gray-800 dark:text-gray-300"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-950/40"
               >
                 <option disabled value="">Select Category</option>
                 {incomeCategory.map((category) => (
@@ -135,7 +135,7 @@ const AddIncome = () => {
                 ))}
               </select>
               {errors.category_id && (
-                <span className="text-red-500 text-xs inline-block">
+                <span className="inline-block text-xs text-red-500">
                   {errors.category_id.message}
                 </span>
               )}
@@ -148,10 +148,10 @@ const AddIncome = () => {
               <Input
                 {...register("source", { required: "Required" })}
                 placeholder="e.g. Donation, Sponsorship"
-                className="h-9 text-sm"
+                className="h-11 text-sm"
               />
               {errors.source && (
-                <span className="text-red-500 text-xs inline-block">
+                <span className="inline-block text-xs text-red-500">
                   {errors.source.message}
                 </span>
               )}
@@ -164,10 +164,10 @@ const AddIncome = () => {
               <Input
                 {...register("description")}
                 placeholder="Enter description"
-                className="h-9 text-sm"
+                className="h-11 text-sm"
               />
               {errors.description && (
-                <span className="text-red-500 text-xs inline-block">
+                <span className="inline-block text-xs text-red-500">
                   {errors.description.message}
                 </span>
               )}
@@ -180,10 +180,10 @@ const AddIncome = () => {
               <Input
                 {...register("contact")}
                 placeholder="Enter contact"
-                className="h-9 text-sm"
+                className="h-11 text-sm"
               />
               {errors.contact && (
-                <span className="text-red-500 text-xs inline-block">
+                <span className="inline-block text-xs text-red-500">
                   {errors.contact.message}
                 </span>
               )}
@@ -201,18 +201,18 @@ const AddIncome = () => {
                   min: { value: 1, message: "Min: 1" },
                 })}
                 placeholder="Enter amount"
-                className="h-9 text-sm"
+                className="h-11 text-sm"
               />
               {errors.amount && (
-                <span className="text-red-500 text-xs inline-block">
+                <span className="inline-block text-xs text-red-500">
                   {errors.amount.message}
                 </span>
               )}
             </div>
           </div>
 
-          <div className="mt-3 flex justify-end">
-            <Button type="submit" disabled={isLoading} size="sm">
+          <div className="mt-4 flex justify-end sm:mt-6">
+            <Button type="submit" disabled={isLoading} size="default" className="min-w-[140px]">
               {isLoading ? (
                 <>
                   <div className="animate-spin h-3 w-3 mr-1 border-2 border-t-transparent rounded-full" />

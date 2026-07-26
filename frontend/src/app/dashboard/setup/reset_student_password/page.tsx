@@ -104,18 +104,19 @@ export default function ResetStudentPasswordPage() {
   }
 
   return (
-    <div className="w-full h-screen overflow-y-auto bg-bg-light-secondary dark:bg-bg-dark-primary">
-      <div className="pt-2 pl-2 pr-2">
+    <div className="w-full min-h-screen overflow-y-auto">
+      <div className="px-1 pt-1 sm:px-0">
         <Header value="Student Password" />
       </div>
 
-      <div className="p-6">
-        {message && <div className="mb-4 text-sm text-gray-700">{message}</div>}
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+      <div className="px-1 py-3 sm:px-0 sm:py-4">
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
+        {message && <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">{message}</div>}
+        <form onSubmit={handleSubmit} className="mx-auto max-w-xl space-y-4">
           <div>
-            <label className="block text-sm mb-1">Class</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Class</label>
             <select
-              className="w-full border rounded p-2"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-950/40"
               value={selectedClass ?? ''}
               onChange={(e) => setSelectedClass(Number(e.target.value) || null)}
             >
@@ -124,13 +125,13 @@ export default function ResetStudentPasswordPage() {
                 <option key={c.class_name_id} value={c.class_name_id}>{c.class_name}</option>
               ))}
             </select>
-            {classes.length === 0 && <p className="text-xs text-gray-500 mt-1">No classes available</p>}
+            {classes.length === 0 && <p className="mt-1 text-xs text-slate-500">No classes available</p>}
           </div>
 
           <div>
-            <label className="block text-sm mb-1">Student</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Student</label>
             <select
-              className="w-full border rounded p-2"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-950/40"
               value={selectedStudent ?? ''}
               onChange={(e) => setSelectedStudent(Number(e.target.value) || null)}
             >
@@ -140,32 +141,32 @@ export default function ResetStudentPasswordPage() {
               ))}
             </select>
             {selectedClass && students.length === 0 && (
-              <p className="text-xs text-gray-500 mt-1">No students found for selected class</p>
+              <p className="mt-1 text-xs text-slate-500">No students found for selected class</p>
             )}
           </div>
 
           <div className="relative">
-            <label className="block text-sm mb-1">New Password</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">New Password</label>
             <input
               type={showNew ? 'text' : 'password'}
-              className="w-full border rounded p-2 pr-10"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-10 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-950/40"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
-            <button type="button" onClick={() => setShowNew((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500" aria-label={showNew ? 'Hide new password' : 'Show new password'}>
+            <button type="button" onClick={() => setShowNew((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200" aria-label={showNew ? 'Hide new password' : 'Show new password'}>
               {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
 
           <div className="relative">
-            <label className="block text-sm mb-1">Confirm Password</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Confirm Password</label>
             <input
               type={showConfirm ? 'text' : 'password'}
-              className="w-full border rounded p-2 pr-10"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-10 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-950/40"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
-            <button type="button" onClick={() => setShowConfirm((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500" aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}>
+            <button type="button" onClick={() => setShowConfirm((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200" aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}>
               {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
@@ -174,12 +175,13 @@ export default function ResetStudentPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded"
+              className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
             >
               {loading ? 'Resetting...' : 'Reset Password'}
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

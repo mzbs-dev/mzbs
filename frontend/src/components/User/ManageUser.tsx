@@ -156,8 +156,8 @@ const ManageUser = () => {
       <div className="w-full">
         <Header value="Manage User" />
         <div className="p-4 sm:p-6">
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4">
-            <p className="text-red-600 dark:text-red-400">
+          <div className="bg-destructive/10 dark:bg-red-900/20 border border-destructive/20 dark:border-red-700 rounded-lg p-4">
+            <p className="text-destructive dark:text-red-400">
               Access denied. Only administrators can manage users.
             </p>
           </div>
@@ -173,14 +173,14 @@ const ManageUser = () => {
       <div className="p-4 sm:p-6 space-y-6">
         {/* Create User Button */}
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-foreground dark:text-foreground">
             User Management
           </h3>
           <div className="flex gap-2">
             <button
               onClick={fetchUsers}
               disabled={isFetchingUsers}
-              className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 rounded transition disabled:opacity-50"
+              className="p-2 text-primary hover:bg-primary/10 dark:hover:bg-blue-900 rounded transition disabled:opacity-50"
               title="Refresh"
             >
               <RefreshCw className={`w-5 h-5 ${isFetchingUsers ? "animate-spin" : ""}`} />
@@ -196,28 +196,28 @@ const ManageUser = () => {
         </div>
 
         {/* Users Table */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6 overflow-x-auto">
+        <div className="bg-card dark:bg-card rounded-lg shadow-md p-4 sm:p-6 overflow-x-auto">
           {isFetchingUsers ? (
-            <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+            <div className="text-center py-8 text-muted-foreground dark:text-muted-foreground">
               Loading users...
             </div>
           ) : users.length > 0 ? (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
+                <tr className="border-b border-border dark:border-border">
+                  <th className="text-left py-3 px-2 font-semibold text-foreground dark:text-foreground">
                     Serial No.
                   </th>
-                  <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
+                  <th className="text-left py-3 px-2 font-semibold text-foreground dark:text-foreground">
                     Username
                   </th>
-                  <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
+                  <th className="text-left py-3 px-2 font-semibold text-foreground dark:text-foreground">
                     Password
                   </th>
-                  <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
+                  <th className="text-left py-3 px-2 font-semibold text-foreground dark:text-foreground">
                     Role
                   </th>
-                  <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">
+                  <th className="text-left py-3 px-2 font-semibold text-foreground dark:text-foreground">
                     Actions
                   </th>
                 </tr>
@@ -226,22 +226,22 @@ const ManageUser = () => {
                 {users.map((user, index) => (
                   <tr
                     key={user.id}
-                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-neutral-800"
+                    className="border-b border-gray-100 dark:border-border hover:bg-muted dark:hover:bg-neutral-800"
                   >
-                    <td className="py-3 px-2 text-gray-900 dark:text-gray-100">
+                    <td className="py-3 px-2 text-foreground dark:text-foreground">
                       {index + 1}
                     </td>
-                    <td className="py-3 px-2 text-gray-900 dark:text-gray-100">
+                    <td className="py-3 px-2 text-foreground dark:text-foreground">
                       {user.username}
                     </td>
-                    <td className="py-3 px-2 text-gray-600 dark:text-gray-400">
+                    <td className="py-3 px-2 text-muted-foreground dark:text-muted-foreground">
                       <span>********</span>
                     </td>
                     <td className="py-3 px-2">
                       <select
                         value={user.role}
                         onChange={(e) => handleRoleChange(user.id, user.username, e.target.value)}
-                        className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-neutral-800 text-gray-900 dark:text-white"
+                        className="px-2 py-1 border border-border dark:border-border rounded text-sm bg-card dark:bg-card text-foreground dark:text-foreground"
                       >
                         <option value="ADMIN">ADMIN</option>
                         <option value="CHIEF_PRINCIPAL">CHIEF_PRINCIPAL</option>
@@ -256,7 +256,7 @@ const ManageUser = () => {
                     <td className="py-3 px-2 flex gap-2">
                       <button
                         onClick={() => handleEdit(user)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 rounded transition"
+                        className="p-2 text-primary hover:bg-primary/10 dark:hover:bg-blue-900 rounded transition"
                         title="Edit"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -264,7 +264,7 @@ const ManageUser = () => {
                       <button
                         onClick={() => handleDelete(user.id, user.username)}
                         disabled={isDeleting}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded transition disabled:opacity-50"
+                        className="p-2 text-destructive hover:bg-destructive/10 dark:hover:bg-red-900 rounded transition disabled:opacity-50"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -275,7 +275,7 @@ const ManageUser = () => {
               </tbody>
             </table>
           ) : (
-            <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+            <div className="text-center py-8 text-muted-foreground dark:text-muted-foreground">
               No users found.
             </div>
           )}
@@ -285,13 +285,13 @@ const ManageUser = () => {
       {/* Create User Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-neutral-900 rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+          <div className="bg-card dark:bg-card rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4 text-foreground dark:text-foreground">
               Create New User
             </h3>
             <form onSubmit={handleSubmitCreate(onCreateSubmit)} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
+                <label className="block text-sm font-medium mb-1 text-foreground dark:text-foreground">
                   Username
                 </label>
                 <Input
@@ -302,14 +302,14 @@ const ManageUser = () => {
                   placeholder="Enter username"
                 />
                 {errorsCreate.username && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  <p className="mt-1 text-sm text-destructive dark:text-red-400">
                     {errorsCreate.username.message}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
+                <label className="block text-sm font-medium mb-1 text-foreground dark:text-foreground">
                   Email
                 </label>
                 <Input
@@ -324,14 +324,14 @@ const ManageUser = () => {
                   placeholder="Enter email"
                 />
                 {errorsCreate.email && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  <p className="mt-1 text-sm text-destructive dark:text-red-400">
                     {errorsCreate.email.message}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
+                <label className="block text-sm font-medium mb-1 text-foreground dark:text-foreground">
                   Password
                 </label>
                 <div className="relative">
@@ -347,26 +347,26 @@ const ManageUser = () => {
                   <button
                     type="button"
                     onClick={() => setShowCreatePassword((value) => !value)}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground"
                     aria-label={showCreatePassword ? "Hide password" : "Show password"}
                   >
                     {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {errorsCreate.password && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  <p className="mt-1 text-sm text-destructive dark:text-red-400">
                     {errorsCreate.password.message}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
+                <label className="block text-sm font-medium mb-1 text-foreground dark:text-foreground">
                   Role
                 </label>
                 <select
                   {...registerCreate("role", { required: "Role is required" })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 border border-border dark:border-border rounded-lg bg-card dark:bg-card text-foreground dark:text-foreground"
                 >
                   <option value="">Select role</option>
                   <option value="ADMIN">ADMIN</option>
@@ -379,7 +379,7 @@ const ManageUser = () => {
                   <option value="FEE_MANAGER">FEE_MANAGER</option>
                 </select>
                 {errorsCreate.role && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  <p className="mt-1 text-sm text-destructive dark:text-red-400">
                     {errorsCreate.role.message}
                   </p>
                 )}
@@ -410,13 +410,13 @@ const ManageUser = () => {
       {/* Edit User Modal */}
       {showEditModal && editingUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-neutral-900 rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+          <div className="bg-card dark:bg-card rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4 text-foreground dark:text-foreground">
               Edit User: {editingUser.username}
             </h3>
             <form onSubmit={handleSubmitEdit(onEditSubmit)} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
+                <label className="block text-sm font-medium mb-1 text-foreground dark:text-foreground">
                   Username
                 </label>
                 <Input
@@ -427,14 +427,14 @@ const ManageUser = () => {
                   placeholder="Enter username"
                 />
                 {errorsEdit.username && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  <p className="mt-1 text-sm text-destructive dark:text-red-400">
                     {errorsEdit.username.message}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
+                <label className="block text-sm font-medium mb-1 text-foreground dark:text-foreground">
                   Email
                 </label>
                 <Input
@@ -449,14 +449,14 @@ const ManageUser = () => {
                   placeholder="Enter email"
                 />
                 {errorsEdit.email && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  <p className="mt-1 text-sm text-destructive dark:text-red-400">
                     {errorsEdit.email.message}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
+                <label className="block text-sm font-medium mb-1 text-foreground dark:text-foreground">
                   New Password (leave empty to keep current)
                 </label>
                 <div className="relative">
@@ -471,26 +471,26 @@ const ManageUser = () => {
                   <button
                     type="button"
                     onClick={() => setShowEditPassword((value) => !value)}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground"
                     aria-label={showEditPassword ? "Hide password" : "Show password"}
                   >
                     {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {errorsEdit.password && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  <p className="mt-1 text-sm text-destructive dark:text-red-400">
                     {errorsEdit.password.message}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
+                <label className="block text-sm font-medium mb-1 text-foreground dark:text-foreground">
                   Role
                 </label>
                 <select
                   {...registerEdit("role", { required: "Role is required" })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 border border-border dark:border-border rounded-lg bg-card dark:bg-card text-foreground dark:text-foreground"
                 >
                   <option value="">Select role</option>
                   <option value="ADMIN">ADMIN</option>
@@ -503,7 +503,7 @@ const ManageUser = () => {
                   <option value="FEE_MANAGER">FEE_MANAGER</option>
                 </select>
                 {errorsEdit.role && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  <p className="mt-1 text-sm text-destructive dark:text-red-400">
                     {errorsEdit.role.message}
                   </p>
                 )}

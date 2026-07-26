@@ -3,10 +3,12 @@ import StudentProfileView from '@/components/Students/StudentProfileView';
 
 export default function StudentProfilePage() {
   return (
-    <div className="w-full md:w-[85%] min-h-screen overflow-y-auto bg-bg-light-secondary dark:bg-bg-dark-primary">
-      <Header value="Student Profile" />
-      <div className="px-3 py-4 sm:px-6 md:px-4">
-        <StudentProfileView />
+    <div className="w-full min-h-screen overflow-y-auto bg-bg-light-secondary/60 dark:bg-bg-dark-primary">
+      <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-3 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-4">
+        <Header value="Student Profile" />
+        <div className="mt-4">
+          <StudentProfileView />
+        </div>
       </div>
     </div>
   );

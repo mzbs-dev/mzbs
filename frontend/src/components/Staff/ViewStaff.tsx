@@ -53,28 +53,28 @@ export default function ViewStaff() {
     <div className="space-y-4">
       <Header value="View Staff" />
       <div className="space-y-4 p-4 md:p-6">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm dark:border-border dark:bg-card">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-xl font-semibold">View Staff</h2>
-            <p className="text-sm text-slate-500">Teachers and staff members with tenure details</p>
+            <p className="text-sm text-muted-foreground">Teachers and staff members with tenure details</p>
           </div>
           <div className="relative w-full md:w-72">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search staff"
-              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm outline-none ring-0 dark:border-slate-700 dark:bg-slate-800"
+              className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none ring-0 dark:border-border dark:bg-card"
             />
           </div>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm dark:border-border dark:bg-card">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-100 text-left dark:bg-slate-800">
+            <thead className="bg-muted text-left dark:bg-card">
               <tr>
                 <th className="px-4 py-3">Sr. No</th>
                 <th className="px-4 py-3">Staff Name</th>
@@ -86,7 +86,7 @@ export default function ViewStaff() {
               {loading ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center">
-                    <div className="flex items-center justify-center gap-2 text-slate-500">
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
                       <LoaderCircle className="h-5 w-5 animate-spin" />
                       Loading staff list...
                     </div>
@@ -94,16 +94,16 @@ export default function ViewStaff() {
                 </tr>
               ) : filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">No staff found.</td>
+                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No staff found.</td>
                 </tr>
               ) : (
                 filteredRows.map((row, index) => (
-                  <tr key={row.staff_id} className="border-t border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60">
+                  <tr key={row.staff_id} className="border-t border-border hover:bg-muted dark:border-border dark:hover:bg-card/60">
                     <td className="px-4 py-3">{index + 1}</td>
                     <td className="px-4 py-3 font-medium">{row.staff_name}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4 text-slate-400" />
+                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
                         {new Date(row.joining_date).toLocaleDateString("en-GB")}
                       </div>
                     </td>

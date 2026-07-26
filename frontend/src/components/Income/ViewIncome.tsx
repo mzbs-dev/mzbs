@@ -228,13 +228,13 @@ const ViewIncome = () => {
   const getSourceBadgeClasses = (sourceType: string | null | undefined): string => {
     switch (sourceType) {
       case "Fee":
-        return "bg-green-100 text-green-700";
+        return "bg-primary/10 text-primary";
       case "SalaryPayment":
-        return "bg-blue-100 text-blue-700";
+        return "bg-blue-100 text-primary";
       case "Allowance":
-        return "bg-amber-100 text-amber-700";
+        return "bg-amber-100 text-foreground";
       default:
-        return "bg-gray-200 text-gray-700";
+        return "bg-muted text-foreground";
     }
   };
 
@@ -244,9 +244,9 @@ const ViewIncome = () => {
 
       <form className="space-y-4 border w-full my-2">
         <div className="space-y-4 px-2 rounded-md">
-          <label className="font-bold text-sm dark:text-gray-300">Category: </label>
+          <label className="font-bold text-sm dark:text-foreground">Category: </label>
           <select
-            className="w-[14rem] border bg-white rounded-md px-3 py-2 focus:ring focus:ring-indigo-300 dark:bg-background dark:text-gray-300"
+            className="w-[14rem] border bg-card rounded-md px-3 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground"
             value={selectedCategory}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
               const value = Number(e.target.value);
@@ -267,7 +267,7 @@ const ViewIncome = () => {
         </div>
       </form>
 
-      <div className="mt-4 container mx-auto bg-white dark:bg-background rounded-md">
+      <div className="mt-4 container mx-auto bg-card dark:bg-background rounded-md">
         {isLoading ? (
           <TableSkeleton rows={8} />
         ) : incomeData.length > 0 ? (
@@ -279,14 +279,14 @@ const ViewIncome = () => {
                   const meta = `Total records: ${incomeData.length} · Printed: ${new Date().toLocaleDateString()}`;
                   printRecords('income-print-area', 'Income Report', meta);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition"
               >
                 <Printer size={16} />
                 Print
               </button>
             </div>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 px-4 no-print">
-              <p className="text-sm text-gray-500">Page {currentPage} of {totalPages}</p>
+              <p className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</p>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -338,15 +338,15 @@ const ViewIncome = () => {
               <Table>
                 <TableHeader className="bg-primary dark:bg-secondary hover:bg-none">
                   <TableRow>
-                    <TableHead className="text-gray-100">Receipt Number</TableHead>
-                    <TableHead className="text-gray-100">Date</TableHead>
-                    <TableHead className="text-gray-100">Category</TableHead>
-                    <TableHead className="text-gray-100">Source</TableHead>
-                    <TableHead className="text-gray-100">Description</TableHead>
-                    <TableHead className="text-gray-100">Contact</TableHead>
-                    <TableHead className="text-gray-100">Amount</TableHead>
+                    <TableHead>Receipt Number</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Amount</TableHead>
                     {(role === "ADMIN" || role === "ACCOUNTANT") && (
-                      <TableHead className="text-gray-100 no-print">Actions</TableHead>
+                      <TableHead className="no-print">Actions</TableHead>
                     )}
                   </TableRow>
                 </TableHeader>
@@ -375,7 +375,7 @@ const ViewIncome = () => {
                             <>
                               <button
                                 onClick={() => handleEditClick(item)}
-                                className="p-1 text-blue-600 hover:bg-blue-100 rounded transition"
+                                className="p-1 text-primary hover:bg-blue-100 rounded transition"
                                 title="Edit"
                           >
                             <Edit2 size={16} />
@@ -383,7 +383,7 @@ const ViewIncome = () => {
                           {role === "ADMIN" && (
                             <button
                               onClick={() => handleDeleteIncome(item.id)}
-                              className="p-1 text-red-600 hover:bg-red-100 rounded transition"
+                              className="p-1 text-destructive hover:bg-red-100 rounded transition"
                               title="Delete"
                             >
                               <Trash2 size={16} />
@@ -442,7 +442,7 @@ const ViewIncome = () => {
                   onChange={(e) =>
                     setEditFormData({ ...editFormData, category_id: e.target.value })
                   }
-                  className="w-full border rounded-md px-3 py-2 bg-white dark:bg-background dark:text-gray-300"
+                  className="w-full border rounded-md px-3 py-2 bg-card dark:bg-background dark:text-foreground"
                 >
                   <option value="">Select Category</option>
                   {incomeCategory.map((category) => (
@@ -508,14 +508,14 @@ const ViewIncome = () => {
           <DialogFooter>
             <button
               onClick={() => setIsEditModalOpen(false)}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+              className="px-4 py-2 text-muted-foreground hover:bg-muted rounded"
             >
               Cancel
             </button>
             <Button
               onClick={handleUpdateIncome}
               disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
             >
               {isLoading ? "Updating..." : "Update"}
             </Button>

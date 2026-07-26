@@ -343,27 +343,27 @@ const AttendanceTable: React.FC = () => {
           return (
             <div className="flex justify-center">
               {value === "present" ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/100 inline-block" />
                   Present
                 </span>
               ) : value === "absent" ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-destructive/100 inline-block" />
                   Absent
                 </span>
               ) : value === "late" ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-secondary text-foreground border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-secondary0 inline-block" />
                   Late
                 </span>
               ) : value === "leave" ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-secondary text-foreground border border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800">
                   <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
                   Leave
                 </span>
               ) : (
-                <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-400 border border-gray-200 dark:bg-slate-700 dark:text-slate-500 dark:border-slate-600">
+                <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border dark:bg-slate-700 dark:text-muted-foreground dark:border-slate-600">
                   —
                 </span>
               )}
@@ -508,7 +508,7 @@ const AttendanceTable: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col w-full h-screen bg-gray-50 dark:bg-slate-950">
+    <div className="flex flex-col w-full h-screen bg-muted dark:bg-background">
       {/* ✅ FIX 1: h-screen (not min-h-screen) so flex children get a bounded height */}
       
       {/*
@@ -523,39 +523,37 @@ const AttendanceTable: React.FC = () => {
             ✅ FIX 3: Filter bar is sticky so it stays visible while scrolling
             through records.
           */}
-          <div className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 shadow-sm">
+          <div className="sticky top-0 z-20 bg-card dark:bg-card border-b border-border dark:border-border shadow-sm">
             <div className="px-4 sm:px-6 py-4">
               
               {/* Section title row */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-1 h-6 bg-blue-600 rounded-full" />
-                  <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                  <div className="w-1 h-6 bg-primary rounded-full" />
+                  <h2 className="text-sm font-bold text-foreground dark:text-foreground uppercase tracking-wider">
                     Filters
                   </h2>
                 </div>
                 {attendanceRecords.length > 0 && (
-                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800">
+                  <span className="text-xs font-semibold text-primary dark:text-blue-400 bg-primary/10 dark:bg-blue-900/30 px-2.5 py-1 rounded-full border border-primary/20 dark:border-blue-800">
                     {totalRecords || attendanceRecords.length} Records Found
                   </span>
                 )}
               </div>
 
               {/*
-                Responsive grid:
-                - Mobile:  2 columns
-                - Tablet:  3 columns
-                - Desktop: 7 columns in one row
+                Balanced flexible layout so controls scale evenly on wider screens
+                instead of feeling cramped or unevenly stretched.
               */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+              <div className="flex flex-wrap items-end gap-3">
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
+                <div className="min-w-[220px] flex-1 basis-[220px] space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wide block">
                     Date
                   </label>
                   <input
                     type="date"
-                    className="h-10 text-sm border border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 text-gray-900 dark:text-gray-100 rounded-lg w-full transition-colors px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="h-10 text-sm border border-border dark:border-slate-600 bg-muted dark:bg-card focus:bg-card dark:focus:bg-slate-700 text-foreground dark:text-foreground rounded-lg w-full transition-colors px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     {...register("attendance_date", {})}
                   />
                   <p className="text-red-500 text-xs">
@@ -563,8 +561,8 @@ const AttendanceTable: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
+                <div className="min-w-[220px] flex-1 basis-[220px] space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wide block">
                     Class Time
                   </label>
                   <Select
@@ -578,8 +576,8 @@ const AttendanceTable: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
+                <div className="min-w-[220px] flex-1 basis-[220px] space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wide block">
                     Class Name
                   </label>
                   <Select
@@ -593,8 +591,8 @@ const AttendanceTable: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
+                <div className="min-w-[220px] flex-1 basis-[220px] space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wide block">
                     Teacher Name
                   </label>
                   <Select
@@ -608,8 +606,8 @@ const AttendanceTable: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">
+                <div className="min-w-[220px] flex-1 basis-[220px] space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wide block">
                     Status
                   </label>
                   <Select
@@ -624,11 +622,11 @@ const AttendanceTable: React.FC = () => {
                 </div>
 
 
-                {/* Search Button — spans 2 cols on mobile */}
-                <div className="flex items-end col-span-2 sm:col-span-2 lg:col-span-1">
+                {/* Search Button */}
+                <div className="flex items-end min-w-[220px] flex-1 basis-[220px]">
                   <Button
                     type="submit"
-                    className="w-full h-10 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 dark:bg-blue-700 dark:hover:bg-blue-600 text-white font-bold text-sm rounded-lg transition-colors shadow-sm"
+                    className="w-full h-10 bg-primary hover:bg-primary/90 active:bg-blue-800 dark:bg-blue-700 dark:hover:bg-primary text-white font-bold text-sm rounded-lg transition-colors shadow-sm"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -664,22 +662,22 @@ const AttendanceTable: React.FC = () => {
           {attendanceRecords.length > 0 && (
             <>
               {/* Header with title and print button */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 sm:p-4 no-print border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Attendance Records</h3>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 sm:p-4 no-print border-b border-border dark:border-border bg-card dark:bg-card">
+                <h3 className="text-lg font-semibold text-foreground dark:text-foreground">Attendance Records</h3>
                 <button
                   onClick={() => {
                     const meta = `Total records: ${attendanceRecords.length} · Printed: ${new Date().toLocaleDateString()}`;
                     printRecords('attendance-print-area', 'Attendance Report', meta);
                   }}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition w-full sm:w-auto justify-center sm:justify-start mt-2 sm:mt-0"
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition w-full sm:w-auto justify-center sm:justify-start mt-2 sm:mt-0"
                 >
                   <Printer size={16} />
                   Print
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 no-print">
-                <p className="text-sm text-gray-600 dark:text-gray-300">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3 border-b border-border dark:border-border bg-card dark:bg-card no-print">
+                <p className="text-sm text-muted-foreground dark:text-foreground">
                   Page {currentPage} of {totalPages}
                 </p>
                 <div className="flex items-center gap-2">
@@ -737,7 +735,7 @@ const AttendanceTable: React.FC = () => {
                 horizontally on narrow screens instead of overflowing or
                 squishing columns unreadably.
               */}
-              <div id="attendance-print-area" className="overflow-x-auto bg-white dark:bg-slate-900">
+              <div id="attendance-print-area" className="overflow-x-auto bg-card dark:bg-card">
                 <Table className="w-full min-w-full">
                   <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
@@ -747,8 +745,8 @@ const AttendanceTable: React.FC = () => {
                             key={header.id}
                             className={`
                               text-center text-xs font-bold uppercase tracking-wider
-                              bg-slate-800 dark:bg-slate-950
-                              text-slate-200 dark:text-slate-300
+                              bg-card dark:bg-background
+                              text-foreground dark:text-foreground
                               py-3.5 border-0 whitespace-nowrap px-3
                               ${header.column.columnDef.id === "actions" ? "no-print" : ""}
                             `}
@@ -769,7 +767,7 @@ const AttendanceTable: React.FC = () => {
                       <TableRow>
                         <TableCell
                           colSpan={columns.length}
-                          className="text-center py-8 sm:py-16 text-gray-500"
+                          className="text-center py-8 sm:py-16 text-muted-foreground"
                         >
                           <div className="flex justify-center py-4 sm:py-8 items-center space-x-2">
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-500"></div>
@@ -783,12 +781,12 @@ const AttendanceTable: React.FC = () => {
                           key={row.id}
                           data-state={row.getIsSelected() && "selected"}
                           className={`
-                            text-xs md:text-sm transition-colors border-b border-gray-100 dark:border-slate-700/60
+                            text-xs md:text-sm transition-colors border-b border-gray-100 dark:border-border/60
                             ${idx % 2 === 0
-                              ? "bg-white dark:bg-slate-900"
-                              : "bg-slate-50/60 dark:bg-slate-800/40"
+                              ? "bg-card dark:bg-card"
+                              : "bg-muted/60 dark:bg-card/40"
                             }
-                            hover:bg-blue-50/60 dark:hover:bg-slate-700/50
+                            hover:bg-primary/10/60 dark:hover:bg-card/50
                           `}
                         >
                           {row.getVisibleCells().map((cell) => (
@@ -810,10 +808,10 @@ const AttendanceTable: React.FC = () => {
                       <TableRow>
                         <TableCell
                           colSpan={columns.length}
-                          className="text-center py-8 sm:py-16 text-gray-500"
+                          className="text-center py-8 sm:py-16 text-muted-foreground"
                         >
                           <div className="flex flex-col items-center justify-center">
-                            <AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 mb-2" />
+                            <AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground mb-2" />
                             <p className="text-xs sm:text-sm">No attendance records found</p>
                           </div>
                         </TableCell>
@@ -829,14 +827,14 @@ const AttendanceTable: React.FC = () => {
 
           {/* Empty state */}
           {!isLoading && attendanceRecords.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-24 px-4 text-center bg-white dark:bg-slate-900 min-h-[50vh]">
-              <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+            <div className="flex flex-col items-center justify-center py-24 px-4 text-center bg-card dark:bg-card min-h-[50vh]">
+              <div className="w-16 h-16 rounded-full bg-primary/10 dark:bg-blue-900/30 flex items-center justify-center mb-4">
                 <AlertCircle className="h-8 w-8 text-blue-400" />
               </div>
-              <h3 className="text-base font-bold text-gray-700 dark:text-gray-300 mb-1">
+              <h3 className="text-base font-bold text-foreground dark:text-foreground mb-1">
                 No Records Found
               </h3>
-              <p className="text-sm text-gray-400 dark:text-gray-500 max-w-xs">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground max-w-xs">
                 Use the filters above to search for attendance records
               </p>
             </div>

@@ -85,57 +85,59 @@ export default function LoginForm() {
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.16),_transparent_30%),linear-gradient(135deg,_#f8fbff_0%,_#eef4ff_100%)] p-4">
+      <div className="w-full max-w-md rounded-[28px] border border-slate-200/80 bg-white/80 p-8 shadow-[0_30px_90px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl">
         <div className="flex justify-center">
-          <Image src="/logo.png" alt="logo" width={100} height={100} className="object-contain" />
+          <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-3 shadow-lg">
+            <Image src="/logo.png" alt="logo" width={96} height={96} className="object-contain" />
+          </div>
         </div>
-        <h2 className="text-center text-2xl font-semibold text-gray-800 mt-4">Sign In</h2>
-        <p className="text-center text-gray-500 mb-4">Enter your credentials to access your account</p>
+        <h2 className="mt-6 text-center text-3xl font-semibold tracking-tight text-slate-900">Welcome back</h2>
+        <p className="mb-6 mt-2 text-center text-sm text-slate-600">Enter your credentials to access your account</p>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
+            <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-slate-700">Username</label>
             <div className="relative mt-1">
-              <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              <Mail className="absolute left-3 top-2.75 h-5 w-5 text-slate-400" />
               <input
                 id="username"
                 type="text"
                 placeholder="Enter your username"
-                className="w-full border rounded-md bg-white text-gray-900 px-10 py-2 focus:ring focus:ring-indigo-300"
+                className="w-full rounded-xl border border-slate-200 bg-white px-10 py-2.5 text-slate-900 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 {...register("username", { required: "This field is required" })}
               />
             </div>
-            {errors.username && <p className="text-sm text-red-500 mt-1">{errors.username.message}</p>}
+            {errors.username && <p className="mt-1 text-sm text-red-500">{errors.username.message}</p>}
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-slate-700">Password</label>
             <div className="relative mt-1">
-              <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              <Lock className="absolute left-3 top-2.75 h-5 w-5 text-slate-400" />
               <input
                 id="password"
-                type= {showPassword ? "text" : "password"}
+                type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
-                className="w-full bg-white border text-gray-900 rounded-md px-10 py-2 focus:ring focus:ring-indigo-300"
+                className="w-full rounded-xl border border-slate-200 bg-white px-10 py-2.5 pr-12 text-slate-900 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 {...register("password", { required: "Password is required" })}
               />
-              <button type="button" onClick={togglePasswordVisibility} className="absolute right-3 top-2.5">
-                {showPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
+              <button type="button" onClick={togglePasswordVisibility} className="absolute right-3 top-2.75 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
-            {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>}
+            {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password.message}</p>}
           </div>
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 text-white py-2 rounded-md flex justify-center items-center"
+            className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 py-2.5 font-medium text-white shadow-lg shadow-blue-200 transition hover:translate-y-[-1px] hover:shadow-blue-300 disabled:cursor-not-allowed disabled:opacity-70"
             disabled={isLoading}
           >
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign In"}
           </button>
         </form>
-        <div className="mt-4 text-center text-sm text-gray-600">
-          <Link href="/student-login" className="font-medium text-indigo-600 hover:text-indigo-500">
+        <div className="mt-5 text-center text-sm text-slate-600">
+          <Link href="/student-login" className="font-medium text-blue-600 transition hover:text-blue-700">
             Student / Parent Login
           </Link>
         </div>

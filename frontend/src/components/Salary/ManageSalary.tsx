@@ -285,7 +285,7 @@ const ManageSalary = () => {
       
       <div className="p-4 sm:p-6 space-y-6">
         {/* Pay Salary Section */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6">
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
           <button
             onClick={() => setIsPaySalaryExpanded(!isPaySalaryExpanded)}
             className="w-full flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-lg p-2 -m-2 mb-4"
@@ -391,7 +391,7 @@ const ManageSalary = () => {
         </div>
 
         {/* Pay Allowance Section */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6">
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
           <button
             onClick={() => setIsPayAllowanceExpanded(!isPayAllowanceExpanded)}
             className="w-full flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-lg p-2 -m-2 mb-4"
@@ -537,7 +537,7 @@ const ManageSalary = () => {
         </div>
 
         {/* Deduct Amount Section */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6">
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
           <button
             onClick={() => setIsDeductAmountExpanded(!isDeductAmountExpanded)}
             className="w-full flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-lg p-2 -m-2 mb-4"

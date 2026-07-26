@@ -226,15 +226,15 @@ const EnterMarks = () => {
       <Header value="Enter Marks" />
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-neutral-900">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm dark:border-border dark:bg-card">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
+              <label className="text-sm font-medium text-foreground dark:text-foreground">Date</label>
               <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Class</label>
+              <label className="text-sm font-medium text-foreground dark:text-foreground">Class</label>
               <Select
                 options={classOptions}
                 value={selectedClassId}
@@ -244,7 +244,7 @@ const EnterMarks = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Teacher Name</label>
+              <label className="text-sm font-medium text-foreground dark:text-foreground">Teacher Name</label>
               <Select
                 options={teacherOptions}
                 value={selectedTeacherId}
@@ -254,7 +254,7 @@ const EnterMarks = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Subject</label>
+              <label className="text-sm font-medium text-foreground dark:text-foreground">Subject</label>
               <Select
                 options={subjectOptions}
                 value={selectedSubject}
@@ -264,7 +264,7 @@ const EnterMarks = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Exam</label>
+              <label className="text-sm font-medium text-foreground dark:text-foreground">Exam</label>
               <Select
                 options={examTypes}
                 value={selectedExamType}
@@ -274,7 +274,7 @@ const EnterMarks = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Marks</label>
+              <label className="text-sm font-medium text-foreground dark:text-foreground">Total Marks</label>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -297,13 +297,13 @@ const EnterMarks = () => {
         </div>
 
         {students.length > 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-neutral-900">
+          <div className="rounded-xl border border-border bg-card shadow-sm dark:border-border dark:bg-card">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-                <thead className="bg-gray-50 dark:bg-slate-900">
+                <thead className="bg-muted dark:bg-card">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Student</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Obtained Marks</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Student</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Obtained Marks</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -311,7 +311,7 @@ const EnterMarks = () => {
                     const entry = entries.find((item) => item.student_id === student.student_id);
                     return (
                       <tr key={student.student_id}>
-                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{student.student_name}</td>
+                        <td className="px-4 py-3 text-sm text-foreground dark:text-foreground">{student.student_name}</td>
                         <td className="px-4 py-3">
                           <Input
                             type="number"
@@ -332,7 +332,7 @@ const EnterMarks = () => {
             </div>
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-neutral-900 dark:text-gray-400">
+          <div className="rounded-xl border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground dark:border-border dark:bg-card dark:text-muted-foreground">
             Load students for the selected class to begin entering marks.
           </div>
         )}

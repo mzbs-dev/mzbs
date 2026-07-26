@@ -61,7 +61,7 @@ const EditFees = ({
 
   // Only show edit for paid fees
   if (feeStatus !== "Paid") {
-    return <span className="text-gray-400 text-sm">N/A</span>;
+    return <span className="text-muted-foreground text-sm">N/A</span>;
   }
 
   const handleFormSubmit = async () => {
@@ -109,7 +109,7 @@ const EditFees = ({
     <Dialog open={open} onOpenChange={setOpen}>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center justify-center p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition"
+        className="flex items-center justify-center p-1.5 text-primary hover:bg-primary/10 dark:hover:bg-blue-900/20 rounded transition"
         title="Edit fee record"
       >
         <FaRegEdit className="text-lg" />
@@ -122,56 +122,56 @@ const EditFees = ({
         <div className="space-y-4">
           {/* Read-only fields */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground dark:text-foreground mb-1">
               Student Name
             </label>
             <Input
               type="text"
               value={studentName}
               disabled
-              className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+              className="bg-muted dark:bg-card cursor-not-allowed"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground dark:text-foreground mb-1">
               Father Name
             </label>
             <Input
               type="text"
               value={fatherName}
               disabled
-              className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+              className="bg-muted dark:bg-card cursor-not-allowed"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground dark:text-foreground mb-1">
               Class
             </label>
             <Input
               type="text"
               value={className}
               disabled
-              className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+              className="bg-muted dark:bg-card cursor-not-allowed"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground dark:text-foreground mb-1">
               Status
             </label>
             <Input
               type="text"
               value={feeStatus}
               disabled
-              className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+              className="bg-muted dark:bg-card cursor-not-allowed"
             />
           </div>
 
           {/* Editable fields */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground dark:text-foreground mb-1">
               Fee Amount
             </label>
             <Input
@@ -187,7 +187,7 @@ const EditFees = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground dark:text-foreground mb-1">
               Fee Month
             </label>
             <select
@@ -195,7 +195,7 @@ const EditFees = ({
               onChange={(e) =>
                 setEditFormData({ ...editFormData, fee_month: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-border dark:border-border rounded-md bg-card dark:bg-card text-foreground dark:text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Month</option>
               <option value="January">January</option>
@@ -214,7 +214,7 @@ const EditFees = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground dark:text-foreground mb-1">
               Fee Year
             </label>
             <select
@@ -222,7 +222,7 @@ const EditFees = ({
               onChange={(e) =>
                 setEditFormData({ ...editFormData, fee_year: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-border dark:border-border rounded-md bg-card dark:bg-card text-foreground dark:text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Year</option>
               <option value="2023">2023</option>
@@ -244,7 +244,7 @@ const EditFees = ({
           <Button
             onClick={handleFormSubmit}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-primary hover:bg-primary/90"
           >
             {loading ? (
               <>

@@ -139,10 +139,10 @@ const ViewMarks = () => {
     <div className="space-y-6">
       <Header value="View Marks" />
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-neutral-900">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Class</label>
+      <div className="rounded-[24px] border border-border/80 bg-card/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-border dark:bg-background/70 sm:p-6">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[220px] flex-1 basis-[220px] space-y-1.5">
+            <label className="text-sm font-medium text-foreground dark:text-foreground">Class</label>
             <Select
               options={classOptions}
               value={selectedClassId}
@@ -151,8 +151,8 @@ const ViewMarks = () => {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Subject</label>
+          <div className="min-w-[220px] flex-1 basis-[220px] space-y-1.5">
+            <label className="text-sm font-medium text-foreground dark:text-foreground">Subject</label>
             <Select
               options={subjectOptions}
               value={selectedSubject}
@@ -161,8 +161,8 @@ const ViewMarks = () => {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Exam</label>
+          <div className="min-w-[220px] flex-1 basis-[220px] space-y-1.5">
+            <label className="text-sm font-medium text-foreground dark:text-foreground">Exam</label>
             <Select
               options={examTypes}
               value={selectedExamType}
@@ -170,37 +170,37 @@ const ViewMarks = () => {
               DisplayItem="title"
             />
           </div>
-        </div>
 
-        <div className="mt-4">
-          <Button onClick={handleGet} className="bg-primary text-white">
-            Get
-          </Button>
+          <div className="min-w-[180px] flex-1 basis-[180px] sm:max-w-[180px]">
+            <Button onClick={handleGet} className="h-10 w-full bg-primary text-white">
+              Get
+            </Button>
+          </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500 dark:border-gray-800 dark:bg-neutral-900 dark:text-gray-400">
+        <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground dark:border-border dark:bg-card dark:text-muted-foreground">
           Loading marks...
         </div>
       ) : viewData ? (
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-neutral-900">
+        <div className="rounded-xl border border-border bg-card shadow-sm dark:border-border dark:bg-card">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-              <thead className="bg-gray-50 dark:bg-slate-900">
+              <thead className="bg-muted dark:bg-card">
                 <tr>
-                  <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:bg-slate-900 dark:text-gray-300">
+                  <th className="sticky left-0 z-10 bg-muted px-4 py-3 text-left text-sm font-semibold text-foreground dark:bg-card dark:text-foreground">
                     Student Name
                   </th>
                   {viewData.dates.map((dateValue) => (
-                    <th key={dateValue} className="px-4 py-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <th key={dateValue} className="px-4 py-3 text-center text-sm font-semibold text-foreground dark:text-foreground">
                       {formatDate(dateValue)}
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-foreground dark:text-foreground">
                     Total Obtained / Total Marks
                   </th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-foreground dark:text-foreground">
                     Position
                   </th>
                 </tr>
@@ -208,7 +208,7 @@ const ViewMarks = () => {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {tableRows.map((student) => (
                   <tr key={student.student_id}>
-                    <td className="sticky left-0 z-10 bg-white px-4 py-3 text-sm font-medium text-gray-700 dark:bg-neutral-900 dark:text-gray-300">
+                    <td className="sticky left-0 z-10 bg-card px-4 py-3 text-sm font-medium text-foreground dark:bg-card dark:text-foreground">
                       {student.student_name}
                     </td>
                     {viewData.dates.map((dateValue) => {
@@ -216,15 +216,15 @@ const ViewMarks = () => {
                       const obtainedMarks = match?.obtained_marks ?? "-";
                       const totalMarks = match?.total_marks ?? "-";
                       return (
-                        <td key={`${student.student_id}-${dateValue}`} className="px-4 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
+                        <td key={`${student.student_id}-${dateValue}`} className="px-4 py-3 text-center text-sm text-muted-foreground dark:text-muted-foreground">
                           {match ? `${obtainedMarks} / ${totalMarks}` : "-"}
                         </td>
                       );
                     })}
-                    <td className="px-4 py-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <td className="px-4 py-3 text-center text-sm font-semibold text-foreground dark:text-foreground">
                       {student.total_obtained_marks} / {student.total_marks}
                     </td>
-                    <td className="px-4 py-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <td className="px-4 py-3 text-center text-sm font-semibold text-foreground dark:text-foreground">
                       {student.position}
                     </td>
                   </tr>
@@ -234,7 +234,7 @@ const ViewMarks = () => {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-neutral-900 dark:text-gray-400">
+        <div className="rounded-xl border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground dark:border-border dark:bg-card dark:text-muted-foreground">
           Select filters and press Get to view exam results.
         </div>
       )}

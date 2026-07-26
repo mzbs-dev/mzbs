@@ -5,6 +5,7 @@ import { ThemeProvider } from "./ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleProvider } from "@/context/RoleContext";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { PaletteInitializer } from "@/components/providers/PaletteInitializer";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -31,10 +32,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background text-foreground antialiased`}>
         <QueryProvider>
           <RoleProvider>
             <ThemeProvider
@@ -43,12 +42,13 @@ export default function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              <Toaster />
+              <PaletteInitializer />
+              <Toaster richColors position="top-right" />
               <main>{children}</main>
             </ThemeProvider>
           </RoleProvider>
         </QueryProvider>
       </body>
-    </html >
+    </html>
   );
 }

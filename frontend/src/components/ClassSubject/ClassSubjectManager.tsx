@@ -88,14 +88,14 @@ export default function ClassSubjectManager() {
   };
 
   return (
-    <div className="mt-4 sm:mt-7 ml-1 sm:ml-3 p-3 sm:p-6 w-full sm:w-[98%] bg-white dark:bg-transparent rounded-lg shadow-lg border border-purple-200 dark:border-gray-700">
+    <div className="mt-4 sm:mt-7 ml-1 sm:ml-3 p-3 sm:p-6 w-full sm:w-[98%] bg-card dark:bg-transparent rounded-lg shadow-lg border border-border dark:border-border">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Class Subjects</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-300">Choose a class and manage the subjects assigned to it.</p>
+          <h2 className="text-xl font-semibold text-foreground dark:text-foreground">Class Subjects</h2>
+          <p className="text-sm text-muted-foreground dark:text-foreground">Choose a class and manage the subjects assigned to it.</p>
         </div>
         <div className="w-full md:w-72">
-          <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Select Class</label>
+          <label className="mb-2 block text-sm font-medium text-foreground dark:text-foreground">Select Class</label>
           <Select value={selectedClassId} onValueChange={setSelectedClassId}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select a class" />
@@ -113,13 +113,13 @@ export default function ClassSubjectManager() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <LoaderIcon className="h-6 w-6 animate-spin text-purple-600" />
+          <LoaderIcon className="h-6 w-6 animate-spin text-primary" />
         </div>
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-          <div className="rounded-xl border border-purple-200 p-4 dark:border-gray-700">
+          <div className="rounded-xl border border-border p-4 dark:border-border">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+              <h3 className="text-lg font-semibold text-foreground dark:text-foreground">
                 {selectedClass ? `${selectedClass.class_name} subjects` : "Subjects"}
               </h3>
               <Button onClick={saveSubjects} disabled={saving} className="bg-primary text-white">
@@ -131,23 +131,23 @@ export default function ClassSubjectManager() {
             <div className="grid gap-3 md:grid-cols-2">
               {draftSubjects.length ? (
                 draftSubjects.map((subject) => (
-                  <div key={subject} className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-slate-900">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{subject}</span>
-                    <button onClick={() => removeSubject(subject)} className="text-red-500 hover:text-red-600">
+                  <div key={subject} className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2 dark:border-border dark:bg-card">
+                    <span className="text-sm font-medium text-foreground dark:text-foreground">{subject}</span>
+                    <button onClick={() => removeSubject(subject)} className="text-red-500 hover:text-destructive">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 ))
               ) : (
-                <div className="md:col-span-2 rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                <div className="md:col-span-2 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground dark:border-border dark:text-muted-foreground">
                   No subjects assigned yet.
                 </div>
               )}
             </div>
           </div>
 
-          <div className="rounded-xl border border-purple-200 p-4 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Add subject</h3>
+          <div className="rounded-xl border border-border p-4 dark:border-border">
+            <h3 className="text-lg font-semibold text-foreground dark:text-foreground">Add subject</h3>
             <div className="mt-4 space-y-3">
               <Input
                 placeholder="Enter subject name"

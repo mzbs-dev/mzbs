@@ -353,7 +353,7 @@ export default function ModernStudentTable() {
   });
 
   return (
-    <Card className="mt-2 p-3 sm:p-6 w-full bg-white dark:bg-background rounded-lg shadow-lg">
+    <Card className="mt-2 w-full max-w-full overflow-x-auto overflow-y-visible p-3 sm:p-6 bg-white dark:bg-background rounded-[24px] shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)]">
       {(role === "ADMIN" || role === "PRINCIPAL") && <AddNewStudent onClassAdded={GetData} />}
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex gap-2 items-center">
@@ -440,16 +440,16 @@ export default function ModernStudentTable() {
 
       {/* Mobile: Card View, Desktop: Table View */}
       {/* Table rendering - Hidden on mobile, visible on sm and up */}
-      <div className="hidden sm:block w-full rounded-md border border-gray-200 transition-shadow duration-300 hover:shadow-md overflow-x-auto">
-        <div id="student-print-area">
-          <Table className="w-full whitespace-nowrap scroll-smooth">
-          <TableHeader className="bg-primary hover:bg-none text-white sticky top-0 z-10">
+      <div className="hidden sm:block w-full max-w-full overflow-x-auto rounded-[24px] border border-slate-200/80 bg-white/80 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70">
+        <div id="student-print-area" className="w-full min-w-0">
+          <Table className="w-full min-w-[920px] whitespace-nowrap scroll-smooth">
+          <TableHeader className="sticky top-0 z-10 bg-slate-50/90 text-slate-700 dark:bg-slate-900/80 dark:text-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className={`font-bold text-white px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm ${
+                    className={`px-2 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 sm:px-3 sm:py-3 sm:text-sm dark:text-slate-400 ${
                       header.column.columnDef.id === "Action" ? "no-print" : ""
                     }`}
                   >
@@ -478,7 +478,7 @@ export default function ModernStudentTable() {
                   {row.getVisibleCells().map((cell) => (
                     <TableCell 
                       key={cell.id} 
-                      className={`py-2 px-2 sm:px-3 md:px-4 text-xs sm:text-sm ${
+                      className={`px-2 py-2 text-xs text-slate-700 sm:px-3 sm:text-sm dark:text-slate-300 ${
                         cell.column.columnDef.id === "Action" ? "no-print" : ""
                       }`}
                     >
@@ -510,7 +510,7 @@ export default function ModernStudentTable() {
             {table.getRowModel().rows.map((row) => (
               <div
                 key={row.id}
-                className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-3 space-y-2"
+                className="rounded-[20px] border border-slate-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
               >
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex-1">
@@ -525,7 +525,7 @@ export default function ModernStudentTable() {
                         setSelectedStudent(row.original);
                         setShowDetailsDialog(true);
                       }}
-                      className="p-1 text-gray-600 hover:bg-gray-100 rounded transition"
+                      className="rounded-lg p-1.5 text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                       title="View"
                     >
                       <Eye size={16} />
@@ -534,7 +534,7 @@ export default function ModernStudentTable() {
                     {(role === "ADMIN" || role === "PRINCIPAL") && (
                       <button
                         onClick={() => handleEditClick(row.original)}
-                        className="p-1 text-blue-600 hover:bg-blue-100 rounded transition"
+                        className="rounded-lg p-1.5 text-blue-600 transition hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-950/40"
                         title="Edit"
                       >
                         <Edit2 size={16} />
@@ -544,7 +544,7 @@ export default function ModernStudentTable() {
                     {role === "ADMIN" && (
                       <button
                         onClick={() => setModalStudent({ id: Number(row.original.student_id), name: row.original.student_name })}
-                        className="p-1 text-red-600 hover:bg-red-100 rounded transition"
+                        className="rounded-lg p-1.5 text-rose-600 transition hover:bg-rose-100 dark:text-rose-400 dark:hover:bg-rose-950/40"
                         title="Delete"
                       >
                         <Trash2 size={16} />
@@ -578,7 +578,7 @@ export default function ModernStudentTable() {
             ))}
           </>
         ) : (
-          <div className="text-center py-8 text-gray-500">No results found.</div>
+          <div className="rounded-[20px] border border-dashed border-slate-200 bg-slate-50/70 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/60">No results found.</div>
         )}
       </div>
 

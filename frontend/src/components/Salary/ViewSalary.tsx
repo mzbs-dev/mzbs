@@ -445,7 +445,7 @@ const ViewSalary = () => {
 
       <div className="p-4 sm:p-6 space-y-6">
         {/* Search and Filter Section */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6">
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-6">
             <div className="flex-1 w-full">
               <div className="relative">
@@ -487,28 +487,28 @@ const ViewSalary = () => {
 
         {/* Summary Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg shadow p-4 border border-blue-200 dark:border-blue-700">
+          <div className="rounded-[20px] border border-slate-200/80 bg-gradient-to-br from-sky-50 via-white to-cyan-50/80 p-4 shadow-[0_12px_30px_-16px_rgba(15,23,42,0.25)] backdrop-blur-xl dark:border-slate-800 dark:from-slate-900/80 dark:via-slate-950/70 dark:to-slate-900/80">
             <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Total Teachers/Staff</p>
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-2">
               {summaryStats.totalTeachers}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg shadow p-4 border border-green-200 dark:border-green-700">
+          <div className="rounded-[20px] border border-slate-200/80 bg-gradient-to-br from-emerald-50 via-white to-green-50/80 p-4 shadow-[0_12px_30px_-16px_rgba(15,23,42,0.25)] backdrop-blur-xl dark:border-slate-800 dark:from-slate-900/80 dark:via-slate-950/70 dark:to-slate-900/80">
             <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Total Base Salary</p>
             <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-2">
               Rs. {Math.round(summaryStats.totalBaseSalary).toLocaleString("en-US")}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg shadow p-4 border border-purple-200 dark:border-purple-700">
+          <div className="rounded-[20px] border border-slate-200/80 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50/80 p-4 shadow-[0_12px_30px_-16px_rgba(15,23,42,0.25)] backdrop-blur-xl dark:border-slate-800 dark:from-slate-900/80 dark:via-slate-950/70 dark:to-slate-900/80">
             <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Total Payable</p>
             <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-2">
               Rs. {Math.round(summaryStats.totalPayable).toLocaleString("en-US")}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg shadow p-4 border border-orange-200 dark:border-orange-700">
+          <div className="rounded-[20px] border border-slate-200/80 bg-gradient-to-br from-amber-50 via-white to-orange-50/80 p-4 shadow-[0_12px_30px_-16px_rgba(15,23,42,0.25)] backdrop-blur-xl dark:border-slate-800 dark:from-slate-900/80 dark:via-slate-950/70 dark:to-slate-900/80">
             <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Net Salary</p>
             <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-2">
               Rs. {Math.round(summaryStats.totalNetSalary).toLocaleString("en-US")}
@@ -518,28 +518,28 @@ const ViewSalary = () => {
 
         {/* Second row of summary cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-lg shadow p-4 border border-emerald-200 dark:border-emerald-700">
+          <div className="rounded-[20px] border border-slate-200/80 bg-gradient-to-br from-emerald-50 via-white to-teal-50/80 p-4 shadow-[0_12px_30px_-16px_rgba(15,23,42,0.25)] backdrop-blur-xl dark:border-slate-800 dark:from-slate-900/80 dark:via-slate-950/70 dark:to-slate-900/80">
             <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Total Allowance</p>
             <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">
               Rs. {Math.round(summaryStats.totalAllowance).toLocaleString("en-US")}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-lg shadow p-4 border border-red-200 dark:border-red-700">
+          <div className="rounded-[20px] border border-slate-200/80 bg-gradient-to-br from-rose-50 via-white to-red-50/80 p-4 shadow-[0_12px_30px_-16px_rgba(15,23,42,0.25)] backdrop-blur-xl dark:border-slate-800 dark:from-slate-900/80 dark:via-slate-950/70 dark:to-slate-900/80">
             <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Total Deduction</p>
             <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-2">
               Rs. {Math.round(summaryStats.totalDeduction).toLocaleString("en-US")}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/20 dark:to-cyan-800/20 rounded-lg shadow p-4 border border-cyan-200 dark:border-cyan-700">
+          <div className="rounded-[20px] border border-slate-200/80 bg-gradient-to-br from-cyan-50 via-white to-sky-50/80 p-4 shadow-[0_12px_30px_-16px_rgba(15,23,42,0.25)] backdrop-blur-xl dark:border-slate-800 dark:from-slate-900/80 dark:via-slate-950/70 dark:to-slate-900/80">
             <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Total Paid</p>
             <p className="text-2xl font-bold text-cyan-600 dark:text-cyan-400 mt-2">
               Rs. {Math.round(summaryStats.totalPaid).toLocaleString("en-US")}
             </p>
           </div>
 
-          <div className="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20 rounded-lg shadow p-4 border border-pink-200 dark:border-pink-700">
+          <div className="rounded-[20px] border border-slate-200/80 bg-gradient-to-br from-pink-50 via-white to-rose-50/80 p-4 shadow-[0_12px_30px_-16px_rgba(15,23,42,0.25)] backdrop-blur-xl dark:border-slate-800 dark:from-slate-900/80 dark:via-slate-950/70 dark:to-slate-900/80">
             <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Total Remaining</p>
             <p className="text-2xl font-bold text-pink-600 dark:text-pink-400 mt-2">
               Rs. {Math.round(summaryStats.totalRemaining).toLocaleString("en-US")}
@@ -548,7 +548,7 @@ const ViewSalary = () => {
         </div>
 
         {/* Data Table */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md overflow-hidden">
+        <div className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/80 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70">
           {isLoading ? (
             <div className="p-6 text-center text-gray-500">Loading salary data...</div>
           ) : filteredSummaries.length === 0 ? (

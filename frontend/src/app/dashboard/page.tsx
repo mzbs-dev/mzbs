@@ -14,11 +14,11 @@ export default function DashboardRouter() {
   // Show loading state while role is being determined
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="inline-block">
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-4 text-gray-600">Loading...</p>
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <p className="mt-4 text-muted-foreground">Loading...</p>
           </div>
         </div>
       </div>
@@ -42,9 +42,9 @@ export default function DashboardRouter() {
       return <StudentDashboard />;
     default:
       return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="flex min-h-screen items-center justify-center">
           <div className="text-center">
-            <p className="text-xl text-gray-600">Unknown role. Please log in again.</p>
+            <p className="text-xl text-muted-foreground">Unknown role. Please log in again.</p>
           </div>
         </div>
       );

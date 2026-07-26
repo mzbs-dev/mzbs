@@ -44,7 +44,7 @@ const RADIO_OPTIONS: {
   color: string;
 }[] = [
   { value: "present", label: "Present", color: "text-emerald-600" },
-  { value: "absent",  label: "Absent",  color: "text-red-600"     },
+  { value: "absent",  label: "Absent",  color: "text-destructive"     },
   { value: "late",    label: "Late",    color: "text-amber-500"   },
   { value: "leave",   label: "Leave",   color: "text-orange-500"  },
 ];
@@ -120,7 +120,7 @@ const EditAttendance = ({ attendanceId, onUpdate }: EditAttendanceProps) => {
             <DialogTitle className="text-xl text-center font-semibold">
               Edit Attendance
             </DialogTitle>
-            <hr className="border-t border-gray-300" />
+            <hr className="border-t border-border" />
           </DialogHeader>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

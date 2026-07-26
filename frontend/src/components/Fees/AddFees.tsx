@@ -231,10 +231,10 @@ const AddFees = () => {
     <div className="mx-auto w-auto px-4">
       <Header value="Add Fee Record" />
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="bg-white dark:bg-background rounded-xl shadow-sm border border-gray-200 dark:border-secondary p-6 mt-4">
+        <div className="bg-card dark:bg-background rounded-xl shadow-sm border border-border dark:border-secondary p-6 mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-sm text-gray-700 dark:text-gray-300 font-bold">
+              <label className="text-sm text-foreground dark:text-foreground font-bold">
                 Class Name
               </label>
               <Select
@@ -250,7 +250,7 @@ const AddFees = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-gray-700 dark:text-gray-300 font-bold">
+              <label className="text-sm text-foreground dark:text-foreground font-bold">
                 Student
               </label>
               <Popover open={open} onOpenChange={setOpen}>
@@ -280,7 +280,7 @@ const AddFees = () => {
                     />
                     <CommandList>
                       {isLoading ? (
-                        <div className="p-2 text-center text-gray-500">
+                        <div className="p-2 text-center text-muted-foreground">
                           Loading...
                         </div>
                       ) : (
@@ -328,7 +328,7 @@ const AddFees = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-gray-700 dark:text-gray-300 font-bold">
+              <label className="text-sm text-foreground dark:text-foreground font-bold">
                 Fee Amount
               </label>
               <Input
@@ -371,7 +371,7 @@ const AddFees = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-gray-700 dark:text-gray-300 font-bold">
+              <label className="text-sm text-foreground dark:text-foreground font-bold">
                 Year
               </label>
               <Input

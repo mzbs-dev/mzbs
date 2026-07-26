@@ -217,10 +217,10 @@ const EditMarks = () => {
     <div className="space-y-6">
       <Header value="Edit Marks" />
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-neutral-900">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm dark:border-border dark:bg-card">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Class</label>
+            <label className="text-sm font-medium text-foreground dark:text-foreground">Class</label>
             <Select
               options={classOptions}
               value={selectedClassId}
@@ -238,35 +238,35 @@ const EditMarks = () => {
       </div>
 
       {sessions.length > 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-neutral-900">
+        <div className="rounded-xl border border-border bg-card shadow-sm dark:border-border dark:bg-card">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-              <thead className="bg-gray-50 dark:bg-slate-900">
+              <thead className="bg-muted dark:bg-card">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Date</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Teacher</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Subject</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Exam</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Total Marks</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Students</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Date</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Teacher</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Subject</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Exam</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Total Marks</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Students</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {sessions.map((session) => (
                   <tr key={`${session.exam_date}-${session.subject_name}-${session.exam_type}-${session.teacher_name_id}`}>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{session.exam_date}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{session.teacher_name ?? "-"}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{session.subject_name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{session.exam_type}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{session.total_marks}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{session.student_count}</td>
+                    <td className="px-4 py-3 text-sm text-foreground dark:text-foreground">{session.exam_date}</td>
+                    <td className="px-4 py-3 text-sm text-foreground dark:text-foreground">{session.teacher_name ?? "-"}</td>
+                    <td className="px-4 py-3 text-sm text-foreground dark:text-foreground">{session.subject_name}</td>
+                    <td className="px-4 py-3 text-sm text-foreground dark:text-foreground">{session.exam_type}</td>
+                    <td className="px-4 py-3 text-sm text-foreground dark:text-foreground">{session.total_marks}</td>
+                    <td className="px-4 py-3 text-sm text-foreground dark:text-foreground">{session.student_count}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => void loadSessionDetails(session, "view")}
-                          className="rounded p-1 text-gray-600 transition hover:bg-gray-100"
+                          className="rounded p-1 text-muted-foreground transition hover:bg-muted"
                           title="View"
                           aria-label="View exam results"
                         >
@@ -276,7 +276,7 @@ const EditMarks = () => {
                           <button
                             type="button"
                             onClick={() => void loadSessionDetails(session, "edit")}
-                            className="rounded p-1 text-blue-600 transition hover:bg-blue-100"
+                            className="rounded p-1 text-primary transition hover:bg-blue-100"
                             title="Edit"
                             aria-label="Edit exam results"
                           >
@@ -287,7 +287,7 @@ const EditMarks = () => {
                           <button
                             type="button"
                             onClick={() => void handleDeleteSession(session)}
-                            className="rounded p-1 text-red-600 transition hover:bg-red-100"
+                            className="rounded p-1 text-destructive transition hover:bg-red-100"
                             title="Delete"
                             aria-label="Delete exam results"
                           >
@@ -303,17 +303,17 @@ const EditMarks = () => {
           </div>
         </div>
       ) : !loadingHistory ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-neutral-900 dark:text-gray-400">
+        <div className="rounded-xl border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground dark:border-border dark:bg-card dark:text-muted-foreground">
           Load a class to view and manage previously conducted exams.
         </div>
       ) : null}
 
       {selectedSession && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-neutral-900">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm dark:border-border dark:bg-card">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{selectedSession.subject_name} • {selectedSession.exam_type}</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <h2 className="text-lg font-semibold text-foreground dark:text-foreground">{selectedSession.subject_name} • {selectedSession.exam_type}</h2>
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                 {selectedSession.exam_date} • {selectedSession.teacher_name ?? "Unknown teacher"}
               </p>
             </div>
@@ -325,11 +325,11 @@ const EditMarks = () => {
           </div>
 
           {loadingSession ? (
-            <div className="text-sm text-gray-500 dark:text-gray-400">Loading exam details...</div>
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground">Loading exam details...</div>
           ) : isEditing ? (
             <div className="space-y-4">
               <div className="space-y-1.5 max-w-xs">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Marks</label>
+                <label className="text-sm font-medium text-foreground dark:text-foreground">Total Marks</label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -342,16 +342,16 @@ const EditMarks = () => {
 
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-                  <thead className="bg-gray-50 dark:bg-slate-900">
+                  <thead className="bg-muted dark:bg-card">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Student</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Obtained Marks</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Student</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Obtained Marks</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                     {sessionRows.map((row) => (
                       <tr key={row.exam_mark_id}>
-                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{studentNames[row.student_id] ?? `Student ${row.student_id}`}</td>
+                        <td className="px-4 py-3 text-sm text-foreground dark:text-foreground">{studentNames[row.student_id] ?? `Student ${row.student_id}`}</td>
                         <td className="px-4 py-3">
                           <Input
                             type="number"
@@ -373,17 +373,17 @@ const EditMarks = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-                <thead className="bg-gray-50 dark:bg-slate-900">
+                <thead className="bg-muted dark:bg-card">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Student</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Obtained Marks</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Student</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Obtained Marks</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {sessionRows.map((row) => (
                     <tr key={row.exam_mark_id}>
-                      <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{studentNames[row.student_id] ?? `Student ${row.student_id}`}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{row.obtained_marks ?? "-"}</td>
+                      <td className="px-4 py-3 text-sm text-foreground dark:text-foreground">{studentNames[row.student_id] ?? `Student ${row.student_id}`}</td>
+                      <td className="px-4 py-3 text-sm text-foreground dark:text-foreground">{row.obtained_marks ?? "-"}</td>
                     </tr>
                   ))}
                 </tbody>

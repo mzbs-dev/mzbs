@@ -402,7 +402,7 @@ const SalaryLogs = () => {
 
       <div className="p-4 sm:p-6 space-y-6">
         {/* Search, Refresh and Print Section */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6">
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-6">
             <div className="flex-1 w-full">
               <div className="relative">
@@ -477,7 +477,7 @@ const SalaryLogs = () => {
         </div>
 
         {/* Tabs Section */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6">
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
           <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700 pb-4">
             <button
               onClick={() => setActiveTab('payment')}
@@ -513,7 +513,7 @@ const SalaryLogs = () => {
         </div>
 
         {/* Salary Logs Table */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-md p-4 sm:p-6 overflow-x-auto">
+        <div className="overflow-x-auto rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
           {isLoading ? (
             <div className="text-center py-8 text-gray-600 dark:text-gray-400">
               Loading salary logs...

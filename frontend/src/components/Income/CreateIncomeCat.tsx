@@ -64,7 +64,7 @@ const AddIncomeCategory = ({
       <div className="flex justify-end my-4  mr-2">
         <Button
           onClick={() => setOpen(true)}
-          className="bg-primary dark:bg-transparent dark:border dark:border-white text-white hover:bg-blue-600 dark:hover:bg-zinc-900"
+          className="bg-primary dark:bg-transparent dark:border dark:border-white text-white hover:bg-primary dark:hover:bg-zinc-900"
         >
           + Create
         </Button>
@@ -74,10 +74,10 @@ const AddIncomeCategory = ({
         <DialogContent>
           <DialogHeader>
             {/* Dialog Title */}
-            <DialogTitle className="text-2xl font-semibold text-gray-800 dark:text-gray-100">
+            <DialogTitle className="text-2xl font-semibold text-foreground dark:text-foreground">
               Add Income Category
             </DialogTitle>
-            <hr className="bg-gray-400 dark:bg-gray-200" />
+            <hr className="bg-gray-400 dark:bg-muted" />
 
             <DialogDescription>
               {/* Form starts here */}
@@ -87,7 +87,7 @@ const AddIncomeCategory = ({
               >
                 {/* Category Name Field */}
                 <div className="py-2 space-y-1">
-                  <label className="text-gray-700 dark:text-gray-400">
+                  <label className="text-foreground dark:text-muted-foreground">
                     Category Name
                   </label>
                   <Input
@@ -107,14 +107,14 @@ const AddIncomeCategory = ({
                     type="button"
                     onClick={() => setOpen(false)}
                     variant="ghost"
-                    className="bg-gray-200 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:bg-secondary dark:hover:bg-gray-800"
+                    className="bg-muted text-foreground dark:text-foreground hover:bg-gray-300 dark:bg-secondary dark:hover:bg-gray-800"
                   >
                     Cancel {/* Cancel button */}
                   </Button>
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="bg-primary dark:bg-transparent dark:border dark:border-white text-white hover:bg-blue-600 dark:hover:bg-zinc-900"
+                    className="bg-primary dark:bg-transparent dark:border dark:border-white text-white hover:bg-primary dark:hover:bg-zinc-900"
                   >
                     {loading ? <LoaderIcon className="animate-spin" /> : "Save"}
                   </Button>

@@ -34,18 +34,14 @@ export default function DeletedStudentsPage() {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div className="w-full">
-
-      {/* ── Black title bar — matches "Students List" header exactly ── */}
-      <div className="w-full bg-black py-5 text-center">
-        <h1 className="text-2xl font-bold text-white">Deleted Students</h1>
+    <div className="w-full space-y-4">
+      <div className="rounded-[24px] border border-slate-200/80 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800 p-5 text-center shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)]">
+        <h1 className="text-2xl font-semibold text-white">Deleted Students</h1>
       </div>
 
-      {/* ── White card — matches the card below the Students List header ── */}
-      <div className="mx-2 my-2 bg-white border border-gray-200 rounded p-4 sm:mx-4 sm:my-4 sm:p-6">
+      <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
         <DeletedStudentsTable students={data} onRestoreSuccess={fetchDeleted} />
       </div>
-
     </div>
   );
 }

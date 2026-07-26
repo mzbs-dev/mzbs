@@ -190,13 +190,13 @@ const filteredFeesData = feesData.filter((fee) => {
   return (
     <div className="container mx-auto px-2 sm:px-4">
       <Header value="View Fees" />
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mt-3">
+      <div className="mt-3 rounded-[24px] border border-border/80 bg-card/80 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-border dark:bg-background/70">
         <form
           onSubmit={handleSubmit((data) => handleGetFees(data, 1))}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 lg:items-end gap-3 sm:gap-4 p-3 sm:p-4"
+          className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:gap-4 sm:p-4 lg:grid-cols-5 lg:items-end"
         >
           <div className="col-span-1">
-            <label className="text-sm text-gray-700 dark:text-gray-300 font-bold">
+            <label className="text-sm text-foreground dark:text-foreground font-bold">
               Class Name
             </label>
             <Select
@@ -207,7 +207,7 @@ const filteredFeesData = feesData.filter((fee) => {
             />
           </div>
           <div className="col-span-1">
-            <label className="text-sm text-gray-700 dark:text-gray-300 font-bold">
+            <label className="text-sm text-foreground dark:text-foreground font-bold">
               Fee Month
             </label>
             <Select
@@ -232,7 +232,7 @@ const filteredFeesData = feesData.filter((fee) => {
             />
           </div>
           <div className="col-span-1">
-            <label className="text-sm text-gray-700 dark:text-gray-300 font-bold">
+            <label className="text-sm text-foreground dark:text-foreground font-bold">
               Fee Year
             </label>
             <Select
@@ -248,7 +248,7 @@ const filteredFeesData = feesData.filter((fee) => {
             />
           </div>
           <div className="col-span-1">
-            <label className="text-sm text-gray-700 dark:text-gray-300 font-bold">
+            <label className="text-sm text-foreground dark:text-foreground font-bold">
               Fee Status
             </label>
             <Select
@@ -262,21 +262,21 @@ const filteredFeesData = feesData.filter((fee) => {
               className="w-full"
             />
           </div>
-          <Button className="w-full lg:col-span-1" type="submit">
+          <Button className="w-full rounded-xl lg:col-span-1" type="submit">
             Get
           </Button>
         </form>
 
         {feesData.length > 0 && (
           <div className="p-2 sm:p-4">
-            <div className="flex justify-between items-center mb-4 no-print">
-              <h3 className="text-lg font-semibold">Fees Data</h3>
+            <div className="mb-4 flex items-center justify-between gap-3 no-print">
+              <h3 className="text-lg font-semibold text-foreground dark:text-foreground">Fees Data</h3>
               <button
                 onClick={() => {
                   const meta = `Total records: ${feesData.length} · Printed: ${new Date().toLocaleDateString()}`;
                   printRecords('fees-print-area', 'Fees Report', meta);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:from-primary/90 hover:to-primary/90"
               >
                 <Printer size={16} />
                 Print
@@ -284,7 +284,7 @@ const filteredFeesData = feesData.filter((fee) => {
             </div>
 
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 no-print">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                 Page {currentPage} of {totalPages}
               </p>
               <div className="flex items-center gap-2">
@@ -342,27 +342,27 @@ const filteredFeesData = feesData.filter((fee) => {
                 placeholder="Search by student name, father name, class, month, or status..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-xl border-border px-4 py-2.5 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-border dark:focus:border-primary dark:focus:ring-primary/20"
               />
               {filteredFeesData.length !== feesData.length && (
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground">
                   Showing {filteredFeesData.length} of {feesData.length} records
                 </p>
               )}
             </div>
 
-            <div id="fees-print-area" className="overflow-x-auto">
-              <Table className="w-full">
-                <TableHeader>
+            <div id="fees-print-area" className="overflow-x-auto rounded-[20px] border border-border/80 bg-card/80 dark:border-border dark:bg-background/70">
+              <Table className="min-w-[760px] w-full">
+                <TableHeader className="bg-muted/90 dark:bg-card/80">
                   <TableRow>
-                    <TableHead className="w-1/8">Student Name</TableHead>
-                    <TableHead className="w-1/8">Father Name</TableHead>
-                    <TableHead className="w-1/8">Class</TableHead>
-                    <TableHead className="w-1/8">Amount</TableHead>
-                    <TableHead className="w-1/8">Month</TableHead>
-                    <TableHead className="w-1/8">Year</TableHead>
-                    <TableHead className="w-1/8">Status</TableHead>
-                    <TableHead className="w-1/8 no-print">Actions</TableHead>
+                    <TableHead className="w-1/8 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em]">Student Name</TableHead>
+                    <TableHead className="w-1/8 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em]">Father Name</TableHead>
+                    <TableHead className="w-1/8 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em]">Class</TableHead>
+                    <TableHead className="w-1/8 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em]">Amount</TableHead>
+                    <TableHead className="w-1/8 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em]">Month</TableHead>
+                    <TableHead className="w-1/8 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em]">Year</TableHead>
+                    <TableHead className="w-1/8 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em]">Status</TableHead>
+                    <TableHead className="w-1/8 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em] no-print">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -370,36 +370,36 @@ const filteredFeesData = feesData.filter((fee) => {
                     filteredFeesData.map((fee) => (
                       <TableRow 
                         key={fee.fee_id} 
-                        className={fee.is_deleted ? "bg-gray-100 dark:bg-gray-800 opacity-60" : ""}
+                        className={fee.is_deleted ? "bg-muted/70 opacity-60 dark:bg-card/70" : "hover:bg-muted/70 dark:hover:bg-card/70"}
                       >
-                        <TableCell className={fee.is_deleted ? "text-gray-500 dark:text-gray-400" : ""}>
+                        <TableCell className={fee.is_deleted ? "px-3 py-3 text-muted-foreground dark:text-muted-foreground" : "px-3 py-3 text-foreground dark:text-foreground"}>
                           {fee.student_name}
                         </TableCell>
-                        <TableCell className={fee.is_deleted ? "text-gray-500 dark:text-gray-400" : ""}>
+                        <TableCell className={fee.is_deleted ? "px-3 py-3 text-muted-foreground dark:text-muted-foreground" : "px-3 py-3 text-foreground dark:text-foreground"}>
                           {fee.father_name}
                         </TableCell>
-                        <TableCell className={fee.is_deleted ? "text-gray-500 dark:text-gray-400" : ""}>
+                        <TableCell className={fee.is_deleted ? "px-3 py-3 text-muted-foreground dark:text-muted-foreground" : "px-3 py-3 text-foreground dark:text-foreground"}>
                           {fee.class_name}
                         </TableCell>
-                        <TableCell className={fee.is_deleted ? "text-gray-500 dark:text-gray-400" : ""}>
+                        <TableCell className={fee.is_deleted ? "px-3 py-3 text-muted-foreground dark:text-muted-foreground" : "px-3 py-3 text-foreground dark:text-foreground"}>
                           {fee.fee_amount}
                         </TableCell>
-                        <TableCell className={fee.is_deleted ? "text-gray-500 dark:text-gray-400" : ""}>
+                        <TableCell className={fee.is_deleted ? "px-3 py-3 text-muted-foreground dark:text-muted-foreground" : "px-3 py-3 text-foreground dark:text-foreground"}>
                           {fee.fee_month}
                         </TableCell>
-                        <TableCell className={fee.is_deleted ? "text-gray-500 dark:text-gray-400" : ""}>
+                        <TableCell className={fee.is_deleted ? "px-3 py-3 text-muted-foreground dark:text-muted-foreground" : "px-3 py-3 text-foreground dark:text-foreground"}>
                           {fee.fee_year}
                         </TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             fee.fee_status === "Paid" 
-                              ? "bg-green-100 text-green-800" 
+                              ? "bg-primary/10 text-green-800" 
                               : "bg-red-100 text-red-800"
                           }`}>
                             {fee.fee_status}
                           </span>
                         </TableCell>
-                        <TableCell className="no-print">
+                        <TableCell className="px-3 py-3 no-print">
                           <div className="flex items-center gap-2 justify-center">
                             <EditFees
                               feeId={fee.fee_id}
@@ -430,7 +430,7 @@ const filteredFeesData = feesData.filter((fee) => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-gray-500 py-4">
+                      <TableCell colSpan={8} className="py-6 text-center text-sm text-muted-foreground dark:text-muted-foreground">
                         No records found matching your search.
                       </TableCell>
                     </TableRow>

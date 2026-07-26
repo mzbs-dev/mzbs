@@ -11,26 +11,26 @@ interface CardProps {
 
 const Card: React.FC<CardProps> = ({ className, children, title, subtitle, footer }) => {
   return (
-    <div className={cn('border border-slate-200 dark:border-slate-800 rounded-lg shadow-md bg-white dark:bg-slate-950 overflow-hidden', className)}>
+    <div className={cn('overflow-hidden rounded-[24px] border border-border/80 bg-card/80 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl', className)}>
       {(title || subtitle) && (
-        <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="border-b border-border/80 px-4 py-4 sm:px-5 sm:py-4">
           {title && (
-            <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
+            <h3 className="text-base sm:text-lg font-semibold text-foreground">
               {title}
             </h3>
           )}
           {subtitle && (
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
+            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
               {subtitle}
             </p>
           )}
         </div>
       )}
-      <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
+      <div className="px-4 py-4 sm:px-5 sm:py-5 md:px-6 md:py-6">
         {children}
       </div>
       {footer && (
-        <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-t border-slate-200 dark:border-slate-800">
+        <div className="border-t border-border/80 px-4 py-4 sm:px-5">
           {footer}
         </div>
       )}
