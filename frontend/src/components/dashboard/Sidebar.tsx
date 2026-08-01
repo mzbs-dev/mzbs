@@ -23,6 +23,7 @@ import { GiExpense } from "react-icons/gi";
 import { useRole } from "@/context/RoleContext";
 import { canAccessSection, canAccessSubmenuItem } from "@/utils/rolePermissions";
 import axiosInstance from "@/api/axiosInterceptorInstance";
+import { useBranding } from "@/context/BrandingContext";
 
 type MenuItem = {
   id: number;
@@ -347,9 +348,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
   const router = useRouter();
   const { role, isLoading, clearRole, permissions } = useRole();
+  const { schoolName } = useBranding();
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [userData, setUserData] = useState<string | null>(null);
+  
   
   useEffect(() => {
     // This runs only in the browser
@@ -420,7 +423,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             color: `hsl(var(--foreground))`,
           }}
         >
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <Image
+              src="/logo.png"
+              alt="Logo"
+              width={56}
+              height={56}
+              className="rounded-full bg-white/90 p-1 object-cover"
+              unoptimized
+            />
+            <div>
+              <h2 className="text-sm font-semibold leading-tight" style={{ color: `hsl(var(--foreground))` }}>
+                Madrasah Management System
+              </h2>
+              <p className="mt-0.5 text-xs font-medium opacity-80" style={{ color: `hsl(var(--foreground))` }}>
+                 {schoolName}
+              </p>
+            </div>
+        </div>
+          {/* <div className="flex items-center gap-3">
             <Image
               src="/logo.png"
               alt="Logo"
@@ -430,12 +451,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               unoptimized
             />
             <div>
-              <p className="text-[10px] uppercase tracking-[0.24em]" style={{ color: `hsl(var(--foreground) / 0.7)` }}>MMS</p>
               <h2 className="text-sm font-semibold leading-tight" style={{ color: `hsl(var(--foreground))` }}>
-                Madrasah Management
+                Madrasah Management System
               </h2>
             </div>
-          </div>
+          </div> */}
         </div>
 
         <div 

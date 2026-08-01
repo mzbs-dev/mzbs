@@ -24,7 +24,9 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — handle 401 without silently nuking the session
+// Response interceptor — handle 401 (session expiry) without silently
+// nuking the session, AND handle timeouts/network failures so the UI
+// never just hangs with no feedback to the user.
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -41,6 +43,14 @@ axiosInstance.interceptors.response.use(
           window.location.href = redirectPath;
         }
       }
+    } else if (error.code === 'ECONNABORTED' || !error.response) {
+      // Timeout (30s ceiling above) or a network-level failure with no
+      // response at all — without this branch these fail silently, which
+      // is what makes a stuck request look like the app has "hung" rather
+      // than surfacing any error to the user.
+      console.error('Request failed with no response:', error.message);
+      // TODO: hook into your toast/notification system here so the
+      // user sees "Something went wrong, please retry" instead of a frozen UI
     }
     return Promise.reject(error);
   }

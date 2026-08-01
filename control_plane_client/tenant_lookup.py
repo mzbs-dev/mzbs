@@ -140,3 +140,48 @@ def evict_idle_cache_entries(max_idle_minutes: int = 30) -> None:
         stale = [tid for tid, (_, _, cached_at) in _tenant_cache.items() if cached_at < cutoff]
         for tid in stale:
             _tenant_cache.pop(tid, None)
+
+
+# ---------------------------------------------------------------------------
+# Branding lookup — public metadata only (school_name, logo_url, status).
+# Deliberately NEVER touches db_connection_secret, so this is safe to expose
+# via an unauthenticated route (needed pre-login, on the landing/login pages).
+# ---------------------------------------------------------------------------
+
+_branding_cache: dict[str, tuple[dict, datetime]] = {}
+_branding_cache_lock = threading.Lock()
+
+
+def get_tenant_branding(tenant_id: str) -> dict:
+    with _branding_cache_lock:
+        cached = _branding_cache.get(tenant_id)
+        if cached:
+            branding, cached_at = cached
+            if datetime.utcnow() - cached_at < _CACHE_TTL:
+                return branding
+            _branding_cache.pop(tenant_id, None)
+
+    with _engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT school_name, logo_url, status FROM tenants WHERE tenant_id = :tid"),
+            {"tid": tenant_id},
+        ).first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Unknown school")
+
+    branding = {
+        "school_name": row[0],
+        "logo_url": row[1],
+        "status": row[2],
+    }
+
+    with _branding_cache_lock:
+        _branding_cache[tenant_id] = (branding, datetime.utcnow())
+
+    return branding
+
+
+def invalidate_branding_cache(tenant_id: str) -> None:
+    with _branding_cache_lock:
+        _branding_cache.pop(tenant_id, None)

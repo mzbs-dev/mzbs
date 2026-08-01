@@ -9,6 +9,7 @@ import { LoginAPI } from "@/api/Login/Login"
 import { toast } from "sonner"
 import Image from "next/image"
 import { useRole } from "@/context/RoleContext"
+import { useBranding } from "@/context/BrandingContext"
 
 type FormData = {
   username: string
@@ -48,6 +49,7 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter()
   const { setRole } = useRole()
+  const { logoUrl } = useBranding()
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true)
@@ -89,7 +91,14 @@ export default function LoginForm() {
       <div className="w-full max-w-md rounded-[28px] border border-slate-200/80 bg-white/80 p-8 shadow-[0_30px_90px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl">
         <div className="flex justify-center">
           <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-3 shadow-lg">
-            <Image src="/logo.png" alt="logo" width={96} height={96} className="object-contain" />
+            <Image
+                  src={logoUrl || "/logo.png"}
+                  alt="logo"
+                  width={96}
+                  height={96}
+                  className="rounded-full object-cover"
+                  unoptimized
+                />
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-semibold tracking-tight text-slate-900">Welcome back</h2>

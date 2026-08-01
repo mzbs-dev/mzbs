@@ -42,6 +42,23 @@ def _normalize_database_url(raw_url: str) -> str:
 
     return raw_url
 
+
+def _mask_connection_string(url: str) -> str:
+    """Return the connection string with the password replaced by ***,
+    safe to print to logs. Never log a raw connection string — it's a
+    credential, and log output (local terminal, and Northflank's log
+    aggregation) isn't a secure place to keep it. If parsing fails for
+    any reason, fail safe and don't log the raw string at all."""
+    try:
+        parsed = urlparse(url)
+        if parsed.password:
+            masked_netloc = parsed.netloc.replace(f":{parsed.password}@", ":***@")
+            parsed = parsed._replace(netloc=masked_netloc)
+        return urlunparse(parsed)
+    except Exception:
+        return "<connection string, unparseable, not logged>"
+
+
 # Validate DATABASE_URL is configured
 if not CONN_STRING or CONN_STRING == "None":
     logger.error("DATABASE_URL is not configured! Please set DATABASE_URL environment variable.")
@@ -58,14 +75,14 @@ def get_engine(CONN_STRING):
     normalized_url = _normalize_database_url(CONN_STRING)
     engine = create_engine(
         normalized_url,
-        echo=True,
+        echo=False,
         connect_args=connect_args,
         pool_size=10,  # Number of connections to keep in pool
         max_overflow=20,  # Additional connections beyond pool_size
         pool_recycle=300,  # Recycle connections after 5 minutes to avoid stale connections
         pool_pre_ping=True  # Test connections before using to ensure they're still valid
     )
-    logger.info("Engine created successfully using %s", normalized_url)
+    logger.info("Engine created successfully using %s", _mask_connection_string(normalized_url))
     return engine
 
 engine = get_engine(CONN_STRING=CONN_STRING)
@@ -81,7 +98,7 @@ def get_control_plane_engine():
         raise RuntimeError("CONTROL_PLANE_DATABASE_URL is required for migration runner control-plane access")
 
     normalized_url = _normalize_database_url(control_plane_url)
-    logger.info("Control-plane engine created using %s", normalized_url)
+    logger.info("Control-plane engine created using %s", _mask_connection_string(normalized_url))
     return create_engine(
         normalized_url,
         connect_args={"connect_timeout": 10},

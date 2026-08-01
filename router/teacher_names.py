@@ -1,4 +1,3 @@
-
 from asyncio.log import logger
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,6 +6,7 @@ from sqlalchemy.exc import IntegrityError  # <-- Add this import
 
 from db import get_session
 from utils.cache import cache_get, cache_set, cache_invalidate
+from token_deps import TokenPayload, get_token_payload
 
 from schemas.teacher_names_model import TeacherNames, TeacherNamesCreate, TeacherNamesResponse
 from schemas.attendance_model import Attendance
@@ -28,14 +28,19 @@ async def root():
 
 
 @teachernames_router.post("/add_teacher_name/", response_model=TeacherNamesResponse)
-def create_teachernames( user: Annotated[User, Depends(require_permission("setup_teachers", "add"))],teachernames: TeacherNamesCreate, session: Session = Depends(get_session),):
+def create_teachernames(
+    user: Annotated[User, Depends(require_permission("setup_teachers", "add"))],
+    teachernames: TeacherNamesCreate,
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
+):
     db_teachernames = TeacherNames(**teachernames.model_dump())
     session.add(db_teachernames)
 
     try:
         session.commit()
         session.refresh(db_teachernames)
-        cache_invalidate("teacher_names")
+        cache_invalidate("teacher_names", payload.tenant_id)
     except IntegrityError as e:
         session.rollback()
         logger.error(f"Integrity error: {e}")
@@ -62,14 +67,15 @@ def create_teachernames( user: Annotated[User, Depends(require_permission("setup
 @teachernames_router.get("/teacher-names-all/", response_model=List[TeacherNamesResponse])
 def read_teachernames(
     current_user: Annotated[User, Depends(require_admin_teacher_principal_accountant())],
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
 ):
-    cached = cache_get("teacher_names")
+    cached = cache_get("teacher_names", payload.tenant_id)
     if cached is not None:
         return cached
     teachernames = session.exec(select(TeacherNames)).all()
     result = [TeacherNamesResponse.model_validate(t) for t in teachernames]
-    cache_set("teacher_names", result)
+    cache_set("teacher_names", payload.tenant_id, result)
     return result
 
 # # Returns teacher name of any specific teacher-name-id
@@ -88,7 +94,8 @@ def read_teachernames(current_user: Annotated[User, Depends(require_admin_teache
 def delete_teachernames(
     user: Annotated[User, Depends(require_permission("setup_teachers", "delete"))],
     teacher_name: str,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
 ):
     teachernames = session.exec(select(TeacherNames).where(
         TeacherNames.teacher_name == teacher_name)).first()
@@ -105,7 +112,7 @@ def delete_teachernames(
         )
     session.delete(teachernames)
     session.commit()
-    cache_invalidate("teacher_names")
+    cache_invalidate("teacher_names", payload.tenant_id)
     return {"message": "Teacher Name deleted successfully"}
 
 def _get_related_teacher_record_names(session: Session, teacher_id: int) -> list[str]:
@@ -133,7 +140,8 @@ def _get_related_teacher_record_names(session: Session, teacher_id: int) -> list
 def delete_teacher_by_id(
     user: Annotated[User, Depends(require_permission("setup_teachers", "delete"))],
     teacher_id: int,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
 ):
     """Delete a teacher by their ID"""
     teacher = session.get(TeacherNames, teacher_id)
@@ -154,7 +162,7 @@ def delete_teacher_by_id(
     try:
         session.delete(teacher)
         session.commit()
-        cache_invalidate("teacher_names")
+        cache_invalidate("teacher_names", payload.tenant_id)
         return {"message": f"Teacher with ID {teacher_id} deleted successfully"}
     except IntegrityError as e:
         session.rollback()
@@ -170,4 +178,3 @@ def delete_teacher_by_id(
             status_code=500,
             detail="Error deleting teacher"
         )
-

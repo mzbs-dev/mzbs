@@ -1,4 +1,3 @@
-
 from asyncio.log import logger
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,6 +6,7 @@ from sqlalchemy.exc import IntegrityError  # <-- Add this import
 
 from db import get_session
 from utils.cache import cache_get, cache_set, cache_invalidate
+from token_deps import TokenPayload, get_token_payload
 
 from schemas.expense_cat_names_model import ExpenseCatNames, ExpenseCatNamesCreate, ExpenseCatNamesResponse
 from user.user_crud import require_permission
@@ -27,14 +27,17 @@ async def root():
 @expense_cat_names_router.post("/add_expense_cat_name/", response_model=ExpenseCatNamesResponse)
 def create_expense_cat_name( 
     user: Annotated[User, Depends(require_permission("setup_expense_categories", "add"))],
-    expense_cat_name: ExpenseCatNamesCreate, session: Session = Depends(get_session),):
+    expense_cat_name: ExpenseCatNamesCreate,
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
+):
     db_expense_cat_name = ExpenseCatNames(**expense_cat_name.model_dump())
     session.add(db_expense_cat_name)
 
     try:
         session.commit()
         session.refresh(db_expense_cat_name)
-        cache_invalidate("expense_cats")
+        cache_invalidate("expense_cats", payload.tenant_id)
     except IntegrityError as e:
         session.rollback()
         logger.error(f"Integrity error: {e}")
@@ -58,14 +61,15 @@ def create_expense_cat_name(
 @expense_cat_names_router.get("/expense-cat-names-all/", response_model=List[ExpenseCatNamesResponse])
 def read_expense_cat_names(
     user: Annotated[User, Depends(require_permission("setup_expense_categories", "view"))],
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
 ):
-    cached = cache_get("expense_cats")
+    cached = cache_get("expense_cats", payload.tenant_id)
     if cached is not None:
         return cached
     expense_cat_names = session.exec(select(ExpenseCatNames)).all()
     result = [ExpenseCatNamesResponse.model_validate(c) for c in expense_cat_names]
-    cache_set("expense_cats", result)
+    cache_set("expense_cats", payload.tenant_id, result)
     return result
 
 @expense_cat_names_router.get("/{expense_cat_id}", response_model=ExpenseCatNamesResponse)
@@ -81,7 +85,10 @@ def read_expense_cat_name(
 @expense_cat_names_router.delete("/del/{expense_cat_id}", response_model=dict)
 def delete_expense_cat_name(
     user: Annotated[User, Depends(require_permission("setup_expense_categories", "delete"))],
-    expense_cat_id: int, session: Session = Depends(get_session)):
+    expense_cat_id: int,
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
+):
     expense_cat_name = session.get(ExpenseCatNames, expense_cat_id)
     if not expense_cat_name:
         raise HTTPException(
@@ -95,7 +102,5 @@ def delete_expense_cat_name(
         )
     session.delete(expense_cat_name)
     session.commit()
-    cache_invalidate("expense_cats")
+    cache_invalidate("expense_cats", payload.tenant_id)
     return {"message": "Expense Category Name deleted successfully"}
-
-

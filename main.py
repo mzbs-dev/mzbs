@@ -14,7 +14,9 @@ from slowapi.errors import RateLimitExceeded
 import asyncio
 from fastapi.openapi.utils import get_openapi
 
+
 # Router imports
+from router.appearance import appearance_router
 from router.attendance_value import attendancevalue_router
 from router.attendance_time import attendance_time_router
 from router.teacher_names import teachernames_router
@@ -37,6 +39,7 @@ from router.student_profile import student_profile_router
 from router.student_portal_auth import student_portal_auth_router
 from router.staff import staff_router
 from router.permissions import permissions_router
+from control_plane_client.tenant_branding import tenant_branding_router
 
 # User related imports
 from user.user_router import public_router, user_router, admin_router
@@ -108,6 +111,11 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         status_code=429,
         content={"detail": "Too many requests. Please try again later."}
     )
+    
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(f"UNHANDLED EXCEPTION on {request.method} {request.url}: {exc}", exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 # Security: Add HTTPS redirect middleware for production
 # This forces all HTTP requests to redirect to HTTPS
 # Only active when HTTPS is available (production)
@@ -145,6 +153,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(appearance_router)
 app.include_router(public_router)  # No prefix - routes will be at /login and /signup
 app.include_router(user_router)    # Routes will be at /auth/*
 app.include_router(admin_router)   # Routes will be at /admin/users/*
@@ -170,6 +179,7 @@ app.include_router(student_portal_auth_router)
 app.include_router(staff_router)
 app.include_router(permissions_router)
 app.include_router(adm_del_router)
+app.include_router(tenant_branding_router)
 
 @app.get("/", tags=["MMS Backend"])
 async def root():

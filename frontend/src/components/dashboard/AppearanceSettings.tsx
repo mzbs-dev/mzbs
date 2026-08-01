@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { PalettePicker } from "./PalettePicker";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { colorPalettes } from "@/config/colorPalettes";
@@ -12,14 +13,25 @@ import { colorPalettes } from "@/config/colorPalettes";
 export const AppearanceSettings: React.FC = () => {
   const { currentPalette, isLoaded, changePalette } = useThemePalette();
   const [selectedPalette, setSelectedPalette] = useState(currentPalette);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setSelectedPalette(currentPalette);
   }, [currentPalette]);
 
-  const handlePaletteChange = (paletteId: string) => {
+  const handlePaletteChange = async (paletteId: string) => {
     setSelectedPalette(paletteId);
-    changePalette(paletteId);
+    setIsSaving(true);
+    try {
+      await changePalette(paletteId);
+      toast.success("Theme updated for your school");
+    } catch {
+      // changePalette already reverted the hook's state; resync local UI state
+      setSelectedPalette(currentPalette);
+      toast.error("Failed to save theme. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!isLoaded) {
@@ -40,10 +52,12 @@ export const AppearanceSettings: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Palette Picker */}
-      <PalettePicker
-        selectedPaletteId={selectedPalette}
-        onPaletteChange={handlePaletteChange}
-      />
+      <fieldset disabled={isSaving} className="space-y-6">
+        <PalettePicker
+          selectedPaletteId={selectedPalette}
+          onPaletteChange={handlePaletteChange}
+        />
+      </fieldset>
 
       {/* Preview Section */}
       {currentPaletteData && (

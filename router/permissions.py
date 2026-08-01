@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 
 from db import get_session
 from utils.cache import cache_invalidate
+from token_deps import TokenPayload, get_token_payload
 from schemas.role_permission_model import (
     RolePermission,
     RolePermissionResponse,
@@ -34,7 +35,11 @@ def get_all_permissions(
     current_user: Annotated[User, Depends(require_admin())],
     session: Session = Depends(get_session),
 ):
-    """Full permission matrix — ADMIN only. Used by the Day 4 Setup screen."""
+    """Full permission matrix — ADMIN only. Used by the Day 4 Setup screen.
+
+    Note: this reads directly from the DB (session is already tenant-scoped
+    via get_session -> get_tenant_engine), not from the cache, so it doesn't
+    need tenant_id threaded through — it was never part of the bug."""
     rows = session.exec(select(RolePermission)).all()
     return rows
 
@@ -43,6 +48,7 @@ def get_all_permissions(
 def get_my_permissions(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
 ):
     """Current user's own resolved permissions — any authenticated user.
     Used by RoleContext.tsx after login, and by the sidebar to decide
@@ -50,7 +56,7 @@ def get_my_permissions(
     result: dict[str, dict[str, bool]] = {}
     for module in MODULES:
         result[module] = {
-            action: has_permission(current_user.role, module, action, session)
+            action: has_permission(current_user.role, module, action, session, payload.tenant_id)
             for action in ACTIONS
         }
     return result
@@ -64,10 +70,12 @@ def update_permission(
     payload: RolePermissionUpdate,
     current_user: Annotated[User, Depends(require_admin())],
     session: Session = Depends(get_session),
+    token_payload: TokenPayload = Depends(get_token_payload),
 ):
     """Toggle one cell — ADMIN only. Writes role_permissions +
-    permission_change_log, then invalidates the cache so the change
-    takes effect immediately (no backend restart needed)."""
+    permission_change_log, then invalidates ONLY this tenant's cache entry
+    so the change takes effect immediately for this school, without
+    forcing every other tenant to re-fetch on their next request."""
     if module not in MODULES:
         raise HTTPException(status_code=400, detail=f"Unknown module: {module}")
     if action not in ACTIONS:
@@ -106,6 +114,6 @@ def update_permission(
     session.commit()
     session.refresh(row)
 
-    cache_invalidate("role_permissions")
+    cache_invalidate("role_permissions", token_payload.tenant_id)
 
     return row

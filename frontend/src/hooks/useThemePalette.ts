@@ -1,62 +1,86 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { defaultPaletteId, getPaletteById } from "@/config/colorPalettes";
-
-const PALETTE_STORAGE_KEY = "theme-palette";
+import { getAppearance, updateAppearance } from "@/api/Appearance/AppearanceAPI";
 
 /**
- * Hook to manage color palette selection and persistence
- * Applies the palette via data-palette attribute on html element
+ * Hook to manage color palette selection and persistence.
+ *
+ * Persistence moved from localStorage to the tenant's own database
+ * (GET/PATCH /appearance) so that:
+ *  - the theme is shared by every role at a school (single row per tenant)
+ *  - it survives logout (it was never tied to the browser session)
+ *  - it's consistent across devices/browsers for that school
+ *
+ * Pre-login pages (e.g. /login) have no valid session, so GET /appearance
+ * will fail there -- that's expected and handled by falling back to
+ * defaultPaletteId, same "fail quiet" pattern as BrandingContext.
  */
 export const useThemePalette = () => {
   const [currentPalette, setCurrentPalette] = useState<string>(defaultPaletteId);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load palette from localStorage on mount
-  useEffect(() => {
-    const storedPalette = localStorage.getItem(PALETTE_STORAGE_KEY);
-    const paletteToUse = storedPalette || defaultPaletteId;
-
-    // Verify the palette exists
-    if (getPaletteById(paletteToUse)) {
-      setCurrentPalette(paletteToUse);
-      applyPalette(paletteToUse);
-    } else {
-      // Fallback to default if stored palette is invalid
-      setCurrentPalette(defaultPaletteId);
-      applyPalette(defaultPaletteId);
+  const applyPalette = (paletteId: string) => {
+    if (typeof window !== "undefined") {
+      document.documentElement.setAttribute("data-palette", paletteId);
     }
+  };
 
-    setIsLoaded(true);
+  useEffect(() => {
+    let cancelled = false;
+
+    // Apply the neutral default immediately to avoid a flash of unstyled
+    // content while the fetch is in flight.
+    applyPalette(defaultPaletteId);
+
+    getAppearance()
+      .then((data) => {
+        if (cancelled) return;
+        const paletteToUse = getPaletteById(data.theme_palette)
+          ? data.theme_palette
+          : defaultPaletteId;
+        setCurrentPalette(paletteToUse);
+        applyPalette(paletteToUse);
+      })
+      .catch(() => {
+        // Not logged in yet, or the request failed -- stay on default.
+        setCurrentPalette(defaultPaletteId);
+        applyPalette(defaultPaletteId);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoaded(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /**
-   * Apply palette by setting data-palette attribute on html element
+   * Change the current palette and persist it via the API.
+   * Applies optimistically for a snappy UI; reverts if the save fails
+   * (e.g. non-ADMIN somehow reaches this, or a network error).
    */
-  const applyPalette = (paletteId: string) => {
-    if (typeof window !== "undefined") {
-      const htmlElement = document.documentElement;
-      htmlElement.setAttribute("data-palette", paletteId);
-    }
-  };
+  const changePalette = useCallback(
+    async (paletteId: string) => {
+      const palette = getPaletteById(paletteId);
+      if (!palette) return;
 
-  /**
-   * Change the current palette and persist to localStorage
-   */
-  const changePalette = (paletteId: string) => {
-    const palette = getPaletteById(paletteId);
-    if (palette) {
+      const previousPalette = currentPalette;
       setCurrentPalette(paletteId);
       applyPalette(paletteId);
-      localStorage.setItem(PALETTE_STORAGE_KEY, paletteId);
-    }
-  };
 
-  /**
-   * Reset to default palette
-   */
-  const resetPalette = () => {
-    changePalette(defaultPaletteId);
-  };
+      try {
+        await updateAppearance(paletteId);
+      } catch (err) {
+        setCurrentPalette(previousPalette);
+        applyPalette(previousPalette);
+        throw err;
+      }
+    },
+    [currentPalette]
+  );
+
+  const resetPalette = () => changePalette(defaultPaletteId);
 
   return {
     currentPalette,

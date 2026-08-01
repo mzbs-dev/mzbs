@@ -1,4 +1,4 @@
-from asyncio.log import logger
+# from asyncio.log import logger
 from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError  # <-- Add this import
 
 from db import get_session
 from utils.cache import cache_get, cache_set, cache_invalidate
+from token_deps import TokenPayload, get_token_payload
 from schemas.class_names_model import ClassNames, ClassNamesCreate, ClassNamesResponse
 from schemas.attendance_model import Attendance
 from user.user_crud import require_permission, require_non_student
@@ -23,14 +24,19 @@ async def root():
     return {"message": "MMS-General service is running", "status": "Class Name Router Page running :-)"}
 
 @classnames_router.post("/add_class_name/", response_model=ClassNamesResponse)
-def create_classnames(user: Annotated[User, Depends(require_permission("setup_classes", "add"))],classnames: ClassNamesCreate, session: Session = Depends(get_session)):
+def create_classnames(
+    user: Annotated[User, Depends(require_permission("setup_classes", "add"))],
+    classnames: ClassNamesCreate,
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
+):
     db_classnames = ClassNames(**classnames.model_dump())
     session.add(db_classnames)
 
     try:
         session.commit()
         session.refresh(db_classnames)
-        cache_invalidate("class_names")
+        cache_invalidate("class_names", payload.tenant_id)
     except IntegrityError as e:
         session.rollback()
         logger.error(f"Integrity error: {e}")
@@ -62,14 +68,15 @@ def create_classnames(user: Annotated[User, Depends(require_permission("setup_cl
 @classnames_router.get("/class-names-all/", response_model=List[ClassNamesResponse])
 def read_classnames(
     current_user: Annotated[User, Depends(require_non_student())],
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
 ):
-    cached = cache_get("class_names")
+    cached = cache_get("class_names", payload.tenant_id)
     if cached is not None:
         return cached
     classnames = session.exec(select(ClassNames)).all()
     result = [ClassNamesResponse.model_validate(c) for c in classnames]
-    cache_set("class_names", result)
+    cache_set("class_names", payload.tenant_id, result)
     return result
 
 # # Returns class name of any specific class-name-id
@@ -86,7 +93,12 @@ def read_classname(current_user: Annotated[User, Depends(require_non_student())]
 
 
 @classnames_router.delete("/del/{class_name}", response_model=dict)
-def delete_classnames(user: Annotated[User, Depends(require_permission("setup_classes", "delete"))],class_name: str, session: Session = Depends(get_session)):
+def delete_classnames(
+    user: Annotated[User, Depends(require_permission("setup_classes", "delete"))],
+    class_name: str,
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
+):
     classnames = session.exec(select(ClassNames).where(
         ClassNames.class_name == class_name)).first()
     # Check for related records (adjust model and field as needed)
@@ -101,14 +113,15 @@ def delete_classnames(user: Annotated[User, Depends(require_permission("setup_cl
         )
     session.delete(classnames)
     session.commit()
-    cache_invalidate("class_names")
+    cache_invalidate("class_names", payload.tenant_id)
     return {"message": "Class Name deleted successfully"}
 
 @classnames_router.delete("/{class_name_id}", response_model=dict)
 def delete_classnames_by_id(
     user: Annotated[User, Depends(require_permission("setup_classes", "delete"))],
     class_name_id: int, 
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
 ):
     """Delete a class name by its ID"""
     classname = session.get(ClassNames, class_name_id)
@@ -127,7 +140,7 @@ def delete_classnames_by_id(
     try:
         session.delete(classname)
         session.commit()
-        cache_invalidate("class_names")
+        cache_invalidate("class_names", payload.tenant_id)
         return {"message": f"Class Name with ID {class_name_id} deleted successfully"}
     except Exception as e:
         session.rollback()

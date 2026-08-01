@@ -25,7 +25,7 @@ export default function HomePage() {
           animate={{ scale: 1 }}
           transition={{ delay: 0.15, duration: 0.4 }}
         >
-          <div className="rounded-[24px] bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-4 shadow-lg">
+          <div className="rounded-[24px] bg-gradient-to-br from-sky-100 via-blue-100 to-cyan-100 p-4 shadow-lg ring-1 ring-blue-200/70">
             <Image
               src="/logo.png"
               alt="Logo"
@@ -51,7 +51,7 @@ export default function HomePage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.35, duration: 0.4 }}
         >
-          Streamline admissions, attendance, fees, and daily school operations in one polished experience.
+          One platform, built for modern madrasahs and schools.
         </motion.p>
 
         <motion.button
