@@ -116,7 +116,7 @@ def recalculate_ledger_totals(
         )
     ).all()
     deduction_total = sum(total_deductions)
-    # Calculate total payments
+    # Calculate total payments and include allowances as already-paid amounts
     total_payments = db.exec(
         select(SalaryPayment.amount)
         .where(
@@ -124,7 +124,8 @@ def recalculate_ledger_totals(
             SalaryPayment.ledger_id == ledger.id
         )
     ).all()
-    total_paid = sum(total_payments)
+    salary_payments_total = sum(total_payments)
+    total_paid = salary_payments_total + allowance_total
     # Update ledger with recalculated totals
     ledger.allowance_total = allowance_total
     ledger.deduction_total = deduction_total
@@ -685,13 +686,13 @@ def create_salary_payment(
             amount=payment_data.amount,
             payment_date=payment_data.payment_date
         )
-        # Update ledger total_paid and remaining
-        ledger.total_paid += payment_data.amount
-        ledger.remaining = ledger.net_salary - ledger.total_paid
         db.add(new_payment)
-        db.add(ledger)
         db.commit()
         db.refresh(new_payment)
+        # Recalculate ledger totals so allowances are included in total_paid
+        recalculate_ledger_totals(db, ledger.teacher_id, ledger.month, ledger.year)
+        # Refresh ledger after recalculation
+        db.refresh(ledger)
         # Sync to expense record
         linked_expense_created = False
         try:
@@ -924,14 +925,11 @@ def create_allowance(
             amount=allowance_data.amount,
             reason=allowance_data.reason
         )
-        # Update corresponding ledger if it exists
-        ledger.allowance_total += allowance_data.amount
-        ledger.net_salary = ledger.base_salary + ledger.allowance_total - ledger.deduction_total
-        ledger.remaining = ledger.net_salary - ledger.total_paid
-        db.add(ledger)
         db.add(new_allowance)
         db.commit()
         db.refresh(new_allowance)
+        # Recalculate ledger totals after allowance creation so total_paid includes allowances
+        recalculate_ledger_totals(db, allowance_data.teacher_id, allowance_data.month, allowance_data.year)
         # Sync to expense record
         linked_expense_created = False
         try:

@@ -484,13 +484,13 @@ const SalarySummarySection: React.FC = () => {
             </div>
           </div>
 
-          {/* Total Paid */}
+          {/* Total Paid with Allowance */}
           <div className="bg-gradient-to-r from-cyan-50 to-cyan-100 p-4 rounded-xl shadow-sm min-w-0">
             <div className="flex flex-col items-start min-w-0">
               <div className="p-2 rounded-full bg-cyan-500 text-white mb-2">
                 <DollarSign className="h-5 w-5" />
               </div>
-              <p className="text-xs font-medium text-gray-600 truncate w-full">Total Paid</p>
+              <p className="text-xs font-medium text-gray-600 truncate w-full">Total Paid with Allowance</p>
               <p className="text-lg font-bold text-cyan-600 truncate w-full">
                 Rs.{salarySummary.totalActuallyPaid.toLocaleString()}
               </p>

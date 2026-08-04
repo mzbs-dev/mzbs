@@ -237,7 +237,8 @@ def calculate_teacher_salary_summary(
     paid_stmt = select(func.coalesce(func.sum(SalaryPayment.amount), 0)).where(
         SalaryPayment.teacher_id == teacher_id
     )
-    total_paid = session.scalar(paid_stmt) or Decimal(0)
+    total_salary_payments = session.scalar(paid_stmt) or Decimal(0)
+    total_paid = total_salary_payments + total_allowance
 
     # 5a. Fetch payment history details
     payments_stmt = (

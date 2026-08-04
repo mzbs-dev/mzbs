@@ -11,7 +11,8 @@ import {
   TeacherSalarySummary as ApiTeacherSalarySummary,
   SalaryPaymentResponse,
   TeacherSalaryResponse,
-  SalaryPeriod
+  SalaryPeriod,
+  AllowanceResponse
 } from "@/api/Salary/SalaryAPI";
 
 // Local interface for display purposes (extends API interface)
@@ -38,6 +39,7 @@ const ViewSalary = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [salaryHistory, setSalaryHistory] = useState<SalaryPeriod[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<SalaryPaymentResponse[]>([]);
+  const [allowanceHistory, setAllowanceHistory] = useState<AllowanceResponse[]>([]);
   const [isLoadingSalaryHistory, setIsLoadingSalaryHistory] = useState(false);
   const [expandedTeachers, setExpandedTeachers] = useState<Set<number>>(new Set());
 
@@ -384,14 +386,19 @@ const ViewSalary = () => {
   const fetchSalaryHistoryForTeacher = async (teacherId: number) => {
     try {
       setIsLoadingSalaryHistory(true);
-      const summary = await SalaryAPI.getTeacherSalarySummary(teacherId);
+      const [summary, allowances] = await Promise.all([
+        SalaryAPI.getTeacherSalarySummary(teacherId),
+        SalaryAPI.getTeacherAllowances(teacherId)
+      ]);
       setSalaryHistory(summary.salary_history);
       setPaymentHistory(summary.payment_history || []);
+      setAllowanceHistory(allowances || []);
     } catch (error) {
       console.error("Error fetching salary history:", error);
       toast.error("Failed to load salary history");
       setSalaryHistory([]);
       setPaymentHistory([]);
+      setAllowanceHistory([]);
     } finally {
       setIsLoadingSalaryHistory(false);
     }
@@ -702,8 +709,8 @@ const ViewSalary = () => {
                     <span className="font-medium text-cyan-600 dark:text-cyan-400">Rs. {Math.round(selectedSummary.totalPaid).toLocaleString("en-US")}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-neutral-600">
-                    <span className="text-gray-700 dark:text-gray-300">Payments Made</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{paymentHistory.length} {paymentHistory.length === 1 ? 'payment' : 'payments'}</span>
+                    <span className="text-gray-700 dark:text-gray-300">Payment Entries</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{paymentHistory.length + allowanceHistory.length} {(paymentHistory.length + allowanceHistory.length) === 1 ? 'entry' : 'entries'}</span>
                   </div>
                   <div className={`flex justify-between items-center py-3 px-3 rounded font-bold ${selectedSummary.remainingBalance >= 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-400'}`}>
                     <span>Balance {selectedSummary.remainingBalance >= 0 ? '(Remaining)' : '(Overpaid)'}</span>
@@ -711,7 +718,7 @@ const ViewSalary = () => {
                   </div>
                 </div>
 
-                {paymentHistory.length > 0 ? (
+                {(paymentHistory.length > 0 || allowanceHistory.length > 0) ? (
                   <div className="mt-4 border-t border-gray-200 dark:border-neutral-700 pt-4">
                     <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Payment Breakdown</h4>
                     <div className="overflow-x-auto">
@@ -719,16 +726,29 @@ const ViewSalary = () => {
                         <thead>
                           <tr className="border-b border-gray-200 dark:border-neutral-700">
                             <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">#</th>
-                            <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Payment Date</th>
-                            <th className="text-right py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Amount Paid</th>
+                            <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Type</th>
+                            <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Date / Period</th>
+                            <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Reason</th>
+                            <th className="text-right py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Amount</th>
                           </tr>
                         </thead>
                         <tbody>
                           {paymentHistory.map((payment, index) => (
-                            <tr key={payment.id} className="border-b border-gray-100 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-700">
+                            <tr key={`payment-${payment.id}`} className="border-b border-gray-100 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-700">
                               <td className="py-2 px-2 text-gray-900 dark:text-gray-100">{index + 1}</td>
+                              <td className="py-2 px-2 text-gray-900 dark:text-gray-100">Salary Payment</td>
                               <td className="py-2 px-2 text-gray-900 dark:text-gray-100">{formatDateToDDMMYY(payment.payment_date)}</td>
+                              <td className="py-2 px-2 text-gray-900 dark:text-gray-100">-</td>
                               <td className="py-2 px-2 text-right font-medium text-gray-900 dark:text-gray-100">Rs. {Math.round(payment.amount).toLocaleString("en-US")}</td>
+                            </tr>
+                          ))}
+                          {allowanceHistory.map((allowance, index) => (
+                            <tr key={`allowance-${allowance.id}`} className="border-b border-gray-100 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-700">
+                              <td className="py-2 px-2 text-gray-900 dark:text-gray-100">{paymentHistory.length + index + 1}</td>
+                              <td className="py-2 px-2 text-gray-900 dark:text-gray-100">Allowance Paid</td>
+                              <td className="py-2 px-2 text-gray-900 dark:text-gray-100">{allowance.month}/{allowance.year}</td>
+                              <td className="py-2 px-2 text-gray-900 dark:text-gray-100">{allowance.reason || 'Allowance'}</td>
+                              <td className="py-2 px-2 text-right font-medium text-green-600 dark:text-green-400">Rs. {Math.round(allowance.amount).toLocaleString("en-US")}</td>
                             </tr>
                           ))}
                         </tbody>
