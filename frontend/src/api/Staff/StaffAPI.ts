@@ -6,16 +6,24 @@ export namespace StaffAPI {
     return AxiosInstance.get("/staff/list", { params });
   };
 
-  export const getAttendanceRows = async (attendanceDate?: string) => {
-    const params = attendanceDate ? { attendance_date: attendanceDate } : {};
+  export const getAttendanceRows = async (attendanceDate?: string, attendanceTimeId?: number | null) => {
+    const params: Record<string, string | number> = {};
+    if (attendanceDate) params.attendance_date = attendanceDate;
+    if (attendanceTimeId != null) params.attendance_time_id = attendanceTimeId;
     return AxiosInstance.get("/staff/attendance", { params });
   };
 
-  export const submitAttendance = async (attendanceDate: string, records: Array<{ staff_id: number; attendance_status: string }>) => {
-    return AxiosInstance.post("/staff/attendance", {
+  export const submitAttendance = async (
+    attendanceDate: string,
+    records: Array<{ staff_id: number; attendance_status: string }>,
+    attendanceTimeId?: number | null
+  ) => {
+    const payload: any = {
       attendance_date: attendanceDate,
       records,
-    });
+    };
+    if (attendanceTimeId != null) payload.attendance_time_id = attendanceTimeId;
+    return AxiosInstance.post("/staff/attendance", payload);
   };
 
   export const getAttendanceHistory = async (staffId?: number, attendanceDate?: string) => {

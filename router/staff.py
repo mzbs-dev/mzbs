@@ -18,8 +18,10 @@ from schemas.staff_attendance_model import (
     StaffListItem,
 )
 from schemas.teacher_names_model import TeacherNames
+from schemas.attendance_time_model import AttendanceTime
 from user.user_crud import require_permission
 from user.user_models import User
+from utils.logging import logger
 
 staff_router = APIRouter(prefix="/staff", tags=["Staff"], responses={404: {"description": "Staff module"}})
 
@@ -80,36 +82,68 @@ def get_staff_list(
     return items
 
 
+@staff_router.get("/debug/list", response_model=List[StaffListItem])
+def debug_staff_list(session: Session = Depends(get_session)) -> List[StaffListItem]:
+    """Temporary debug endpoint (no auth) to verify backend connectivity."""
+    staff_members = session.exec(select(TeacherNames).order_by(TeacherNames.teacher_name)).all()
+    items: List[StaffListItem] = []
+    for member in staff_members:
+        created_at = member.created_at or datetime.utcnow()
+        items.append(
+            StaffListItem(
+                staff_id=member.teacher_name_id,
+                staff_name=member.teacher_name,
+                joining_date=created_at,
+                total_stay=_calculate_total_stay(created_at),
+            )
+        )
+    return items
+
+
 @staff_router.get("/attendance", response_model=List[StaffAttendanceRow])
 def get_staff_attendance_rows(
     current_user: Annotated[User, Depends(require_permission("staff", "view"))],
     session: Session = Depends(get_session),
     attendance_date: Optional[date] = Query(None),
+    attendance_time_id: Optional[int] = Query(None),
 ):
-    selected_date = attendance_date or date.today()
-    staff_members = session.exec(select(TeacherNames).order_by(TeacherNames.teacher_name)).all()
-    records = session.exec(
-        select(StaffAttendance).where(StaffAttendance.attendance_date == selected_date)
-    ).all()
+    try:
+        selected_date = attendance_date or date.today()
+        staff_members = session.exec(select(TeacherNames).order_by(TeacherNames.teacher_name)).all()
+        query = select(StaffAttendance).where(StaffAttendance.attendance_date == selected_date)
+        if attendance_time_id is not None:
+            query = query.where(StaffAttendance.attendance_time_id == attendance_time_id)
+        records = session.exec(query).all()
 
-    record_map = {record.staff_id: record for record in records}
-    rows: List[StaffAttendanceRow] = []
-    for member in staff_members:
-        record = record_map.get(member.teacher_name_id)
-        created_at = member.created_at or datetime.utcnow()
-        rows.append(
-            StaffAttendanceRow(
-                staff_id=member.teacher_name_id,
-                staff_name=member.teacher_name,
-                joining_date=created_at,
-                total_stay=_calculate_total_stay(created_at),
-                attendance_id=record.staff_attendance_id if record else None,
-                attendance_date=record.attendance_date if record else None,
-                attendance_status=record.attendance_status if record else None,
-                is_marked=record is not None,
+        record_map = {record.staff_id: record for record in records}
+        rows: List[StaffAttendanceRow] = []
+        for member in staff_members:
+            record = record_map.get(member.teacher_name_id)
+            created_at = member.created_at or datetime.utcnow()
+            attendance_time_name = None
+            attendance_time_id_val = None
+            if record and record.attendance_time_id:
+                attendance_time_id_val = record.attendance_time_id
+                at = session.get(AttendanceTime, record.attendance_time_id)
+                attendance_time_name = at.attendance_time if at else None
+            rows.append(
+                StaffAttendanceRow(
+                    staff_id=member.teacher_name_id,
+                    staff_name=member.teacher_name,
+                    joining_date=created_at,
+                    total_stay=_calculate_total_stay(created_at),
+                    attendance_id=record.staff_attendance_id if record else None,
+                    attendance_date=record.attendance_date if record else None,
+                    attendance_time_id=attendance_time_id_val,
+                    attendance_time=attendance_time_name,
+                    attendance_status=record.attendance_status if record else None,
+                    is_marked=record is not None,
+                )
             )
-        )
-    return rows
+        return rows
+    except Exception as e:
+        logger.exception("Error in get_staff_attendance_rows")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @staff_router.post("/attendance", response_model=StaffAttendanceBulkResponse)
@@ -130,6 +164,7 @@ def create_staff_attendance_bulk(
             select(StaffAttendance).where(
                 StaffAttendance.staff_id == record.staff_id,
                 StaffAttendance.attendance_date == payload.attendance_date,
+                StaffAttendance.attendance_time_id == payload.attendance_time_id,
             )
         ).first()
         if existing:
@@ -146,6 +181,7 @@ def create_staff_attendance_bulk(
             StaffAttendance(
                 staff_id=record.staff_id,
                 attendance_date=payload.attendance_date,
+                attendance_time_id=payload.attendance_time_id,
                 attendance_status=record.attendance_status,
             )
         )
@@ -153,13 +189,19 @@ def create_staff_attendance_bulk(
 
     session.commit()
 
-    saved = session.exec(
-        select(StaffAttendance).where(StaffAttendance.attendance_date == payload.attendance_date)
-    ).all()
+    query = select(StaffAttendance).where(StaffAttendance.attendance_date == payload.attendance_date)
+    if payload.attendance_time_id is not None:
+        query = query.where(StaffAttendance.attendance_time_id == payload.attendance_time_id)
+    saved = session.exec(query).all()
     staff_lookup = {member.teacher_name_id: member.teacher_name for member in session.exec(select(TeacherNames)).all()}
     response: List[StaffAttendanceResponse] = []
     for item in saved:
-        created_at = session.get(TeacherNames, item.staff_id).created_at if session.get(TeacherNames, item.staff_id) else datetime.utcnow()
+        teacher = session.get(TeacherNames, item.staff_id)
+        created_at = teacher.created_at if teacher else datetime.utcnow()
+        attendance_time_name = None
+        if item.attendance_time_id:
+            at = session.get(AttendanceTime, item.attendance_time_id)
+            attendance_time_name = at.attendance_time if at else None
         response.append(
             StaffAttendanceResponse(
                 staff_attendance_id=item.staff_attendance_id,
@@ -169,6 +211,8 @@ def create_staff_attendance_bulk(
                 staff_name=staff_lookup.get(item.staff_id, "Unknown"),
                 joining_date=created_at,
                 total_stay=_calculate_total_stay(created_at),
+                attendance_time_id=item.attendance_time_id,
+                attendance_time=attendance_time_name,
                 created_at=item.created_at,
                 updated_at=item.updated_at,
             )
@@ -189,18 +233,26 @@ def get_staff_attendance_history(
     session: Session = Depends(get_session),
     staff_id: Optional[int] = Query(None),
     attendance_date: Optional[date] = Query(None),
+    attendance_time_id: Optional[int] = Query(None),
 ):
     query = select(StaffAttendance)
     if staff_id is not None:
         query = query.where(StaffAttendance.staff_id == staff_id)
     if attendance_date is not None:
         query = query.where(StaffAttendance.attendance_date == attendance_date)
+    if attendance_time_id is not None:
+        query = query.where(StaffAttendance.attendance_time_id == attendance_time_id)
 
     records = session.exec(query.order_by(StaffAttendance.attendance_date.desc())).all()
     staff_lookup = {member.teacher_name_id: member.teacher_name for member in session.exec(select(TeacherNames)).all()}
     response: List[StaffAttendanceResponse] = []
     for item in records:
-        created_at = session.get(TeacherNames, item.staff_id).created_at if session.get(TeacherNames, item.staff_id) else datetime.utcnow()
+        teacher = session.get(TeacherNames, item.staff_id)
+        created_at = teacher.created_at if teacher else datetime.utcnow()
+        attendance_time_name = None
+        if item.attendance_time_id:
+            at = session.get(AttendanceTime, item.attendance_time_id)
+            attendance_time_name = at.attendance_time if at else None
         response.append(
             StaffAttendanceResponse(
                 staff_attendance_id=item.staff_attendance_id,
@@ -210,6 +262,8 @@ def get_staff_attendance_history(
                 staff_name=staff_lookup.get(item.staff_id, "Unknown"),
                 joining_date=created_at,
                 total_stay=_calculate_total_stay(created_at),
+                attendance_time_id=item.attendance_time_id,
+                attendance_time=attendance_time_name,
                 created_at=item.created_at,
                 updated_at=item.updated_at,
             )
@@ -233,6 +287,8 @@ def update_staff_attendance(
         record.attendance_status = payload.attendance_status
     if payload.attendance_date is not None:
         record.attendance_date = payload.attendance_date
+    if getattr(payload, "attendance_time_id", None) is not None:
+        record.attendance_time_id = payload.attendance_time_id
     record.updated_at = datetime.utcnow()
     session.add(record)
     session.commit()

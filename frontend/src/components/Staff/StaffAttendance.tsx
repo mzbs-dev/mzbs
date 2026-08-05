@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, LoaderCircle, Save } from "lucide-react";
 import { StaffAPI } from "@/api/Staff/StaffAPI";
+import { AttendanceTimeAPI } from "@/api/AttendaceTime/attendanceTimeAPI";
 import { useRole } from "@/context/RoleContext";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -16,6 +17,8 @@ interface StaffAttendanceRow {
   total_stay: string;
   attendance_id?: number;
   attendance_date?: string;
+  attendance_time_id?: number;
+  attendance_time?: string;
   attendance_status?: string;
   is_marked: boolean;
 }
@@ -45,6 +48,8 @@ export default function StaffAttendancePage() {
   const { role } = useRole();
   const [rows, setRows] = useState<StaffAttendanceRow[]>([]);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [timings, setTimings] = useState<Array<{ attendance_time_id: number; attendance_time: string }>>([]);
+  const [selectedTimingId, setSelectedTimingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,17 +58,42 @@ export default function StaffAttendancePage() {
       router.replace("/unauthorized");
       return;
     }
-    void loadAttendance(selectedDate);
-  }, [role, router, selectedDate]);
+    void (async () => {
+      // load available timings once
+      try {
+        const t = await AttendanceTimeAPI.Get();
+        const items = Array.isArray(t?.data) ? t.data : [];
+        setTimings(items.map((it: any) => ({ attendance_time_id: it.attendance_time_id, attendance_time: it.attendance_time })));
+        if (items.length && selectedTimingId == null) setSelectedTimingId(items[0].attendance_time_id);
+      } catch (e) {
+        // ignore
+      }
+      await loadAttendance(selectedDate);
+    })();
+  }, [role, router, selectedDate, selectedTimingId]);
 
   const loadAttendance = async (date: string) => {
     setLoading(true);
     try {
-      const response = await StaffAPI.getAttendanceRows(date);
+      const response = await StaffAPI.getAttendanceRows(date, selectedTimingId);
       setRows(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to load staff attendance");
+      console.error("Load attendance failed with timing", error);
+      // Retry without timing if timing was selected
+      if (selectedTimingId != null) {
+        try {
+          const response = await StaffAPI.getAttendanceRows(date);
+          setRows(Array.isArray(response.data) ? response.data : []);
+          return;
+        } catch (err2) {
+          console.error("Retry without timing failed", err2);
+          const msg = err2?.response?.data?.detail || err2?.message || "Failed to load staff attendance";
+          toast.error(String(msg));
+          return;
+        }
+      }
+      const msg = (error as any)?.response?.data?.detail || (error as any)?.message || "Failed to load staff attendance";
+      toast.error(String(msg));
     } finally {
       setLoading(false);
     }
@@ -98,7 +128,21 @@ export default function StaffAttendancePage() {
         staff_id: row.staff_id,
         attendance_status: row.attendance_status || "Unmarked",
       }));
-      const response = await StaffAPI.submitAttendance(selectedDate, payload);
+      let response;
+      try {
+        response = await StaffAPI.submitAttendance(selectedDate, payload, selectedTimingId ?? undefined);
+      } catch (err) {
+        console.error("Submit failed with timing", err);
+        if (selectedTimingId != null) {
+          try {
+            response = await StaffAPI.submitAttendance(selectedDate, payload);
+          } catch (err2) {
+            throw err2;
+          }
+        } else {
+          throw err;
+        }
+      }
       const summary = response?.data?.summary;
 
       if (summary) {
@@ -158,6 +202,18 @@ export default function StaffAttendancePage() {
                   onChange={(event) => setSelectedDate(event.target.value)}
                   className="bg-transparent outline-none"
                 />
+              </label>
+              <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm dark:border-border">
+                <select
+                  value={selectedTimingId ?? ""}
+                  onChange={(e) => setSelectedTimingId(e.target.value ? Number(e.target.value) : null)}
+                  className="bg-transparent outline-none"
+                >
+                  <option value="">Default</option>
+                  {timings.map((t) => (
+                    <option key={t.attendance_time_id} value={t.attendance_time_id}>{t.attendance_time}</option>
+                  ))}
+                </select>
               </label>
               <button
                 onClick={() => void handleSubmit()}
