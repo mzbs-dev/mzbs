@@ -12,7 +12,7 @@ from schemas.teacher_names_model import TeacherNames, TeacherNamesCreate, Teache
 from schemas.attendance_model import Attendance
 from schemas.exam_marks_model import ExamMark
 from schemas.salary_model import TeacherSalary, SalaryLedger, SalaryPayment, Allowance, Deduction
-from user.user_crud import require_permission, require_admin_teacher_principal_accountant
+from user.user_crud import require_permission
 from user.user_models import User
 
 teachernames_router = APIRouter(
@@ -66,7 +66,7 @@ def create_teachernames(
 
 @teachernames_router.get("/teacher-names-all/", response_model=List[TeacherNamesResponse])
 def read_teachernames(
-    current_user: Annotated[User, Depends(require_admin_teacher_principal_accountant())],
+    current_user: Annotated[User, Depends(require_permission("setup_teachers", "view"))],
     session: Session = Depends(get_session),
     payload: TokenPayload = Depends(get_token_payload),
 ):
@@ -82,7 +82,7 @@ def read_teachernames(
 
 
 @teachernames_router.get("/{teacher_name_id}", response_model=TeacherNamesResponse)
-def read_teachernames(current_user: Annotated[User, Depends(require_admin_teacher_principal_accountant())],teacher_name_id: int, session: Session = Depends(get_session)):
+def read_teachernames(current_user: Annotated[User, Depends(require_permission("setup_teachers", "view"))],teacher_name_id: int, session: Session = Depends(get_session)):
     teachernames = session.get(TeacherNames, teacher_name_id)
     if not teachernames:
         raise HTTPException(
