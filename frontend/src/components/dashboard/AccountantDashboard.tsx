@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRole } from "@/context/RoleContext";
 import { Header } from "@/components/dashboard/Header";
-import { DashboardAPI } from "@/api/Dashboard/dashboardAPI";
+import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
 import { CardsSkeleton, Skeleton } from "@/components/dashboard/Skeleton";
 import SalarySummarySection from "@/components/Salary/SalarySummarySection";
 import { RefreshCw } from "lucide-react";

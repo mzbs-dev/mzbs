@@ -6,7 +6,7 @@ import { Header } from "@/components/dashboard/Header";
 import { CardsSkeleton, ChartSkeleton } from "@/components/dashboard/Skeleton";
 import { motion } from "framer-motion";
 import { extractPayloadData } from "@/utils/apiResponse";
-import { DashboardAPI } from "@/api/Dashboard/dashboardAPI";
+import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
 import {
   BarChart,
   Bar,

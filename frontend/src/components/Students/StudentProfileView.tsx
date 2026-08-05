@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronFirst, ChevronLast } from 'lucide-react';
-import { ClassNameAPI } from '@/api/Classname/ClassNameAPI';
+import { ClassNameAPI } from '@/api/ClassName/ClassNameAPI';
 import AxiosInstance from '@/api/axiosInterceptorInstance';
 import { StudentProfileAPI } from '@/api/StudentProfile/StudentProfileAPI';
 import { Select } from '@/components/Select';

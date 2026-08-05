@@ -1,11 +1,11 @@
 "use client";
 
-import { MarkAttInput } from "@/models/markattendace/markattendance";
+import { MarkAttInput } from "@/models/markattendance/markattendance";
 import React, { useEffect, useState } from "react";
 import { Input } from "../ui/input";
 import { useForm } from "react-hook-form";
-import { ClassNameAPI as API } from "@/api/Classname/ClassNameAPI";
-import { AttendanceTimeAPI as API1 } from "@/api/AttendaceTime/attendanceTimeAPI";
+import { ClassNameAPI as API } from "@/api/ClassName/ClassNameAPI";
+import { AttendanceTimeAPI as API1 } from "@/api/AttendanceTime/attendanceTimeAPI";
 import { TeacherNameAPI as API2 } from "@/api/Teacher/TeacherAPI";
 import { StudentAPI as API3 } from "@/api/Student/StudentsAPI";
 import { Select, SelectOption as SelectComponentOption } from "../Select";

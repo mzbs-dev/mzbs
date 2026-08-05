@@ -1,5 +1,5 @@
 import AxiosInstance from "@/api/axiosInterceptorInstance";
-import {AddFeeModel} from "@/models/Fees/Fee";
+import {AddFeeModel} from "@/models/fees/Fee";
 
 export const FeeAPI = {
   Create: async (AddFee: AddFeeModel) => {

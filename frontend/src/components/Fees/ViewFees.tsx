@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "../Select";
 import { useForm } from "react-hook-form";
-import { ClassNameAPI as API2 } from "@/api/Classname/ClassNameAPI";
+import { ClassNameAPI as API2 } from "@/api/ClassName/ClassNameAPI";
 import { FeeAPI as API3 } from "@/api/Fees/AddFeeAPI"
-import { GetFeeModel} from "@/models/Fees/Fee";
+import { GetFeeModel} from "@/models/fees/Fee";
 import { toast } from "sonner";
 import { usePrint } from "@/components/print/usePrint";
 import { useRole } from "@/context/RoleContext";
@@ -74,7 +74,7 @@ const ViewFees: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(12);
   const [activeFilters, setActiveFilters] = useState<GetFeeModel | null>(null);
 
   useEffect(() => {
@@ -102,6 +102,8 @@ const ViewFees: React.FC = () => {
 
 const handleGetFees = async (data: GetFeeModel, page = 1) => {
   try {
+    const selectedYear = data.fee_year === "all" ? undefined : data.fee_year;
+
     if (!data.fee_year) {
       toast.error("Please select a year");
       return;
@@ -118,7 +120,7 @@ const handleGetFees = async (data: GetFeeModel, page = 1) => {
       fee_month: data.fee_month && data.fee_month !== "all"
         ? data.fee_month
         : undefined,
-      fee_year: data.fee_year,
+      fee_year: selectedYear,
       fee_status: data.fee_status && data.fee_status !== "all"
         ? data.fee_status
         : undefined,
@@ -238,6 +240,7 @@ const filteredFeesData = feesData.filter((fee) => {
             <Select
               label=""
               options={[
+                { id: "all", title: "All" },
                 { id: "2023", title: "2023" },
                 { id: "2024", title: "2024" },
                 { id: "2025", title: "2025" },

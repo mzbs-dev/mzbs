@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Header } from "@/components/dashboard/Header";
-import { DashboardAPI } from "@/api/Dashboard/dashboardAPI";
+import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
 import { CardsSkeleton } from "@/components/dashboard/Skeleton";
 import { RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";

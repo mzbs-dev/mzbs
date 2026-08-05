@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Header } from "@/components/dashboard/Header";
-import { getStudentPortalProfile } from "@/api/StudentPortal/studentPortalAPI";
+import { getStudentPortalProfile } from "@/api/StudentPortal/StudentPortalAPI";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 

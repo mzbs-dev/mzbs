@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, LoaderCircle, Save } from "lucide-react";
 import { StaffAPI } from "@/api/Staff/StaffAPI";
-import { AttendanceTimeAPI } from "@/api/AttendaceTime/attendanceTimeAPI";
+import { AttendanceTimeAPI } from "@/api/AttendanceTime/attendanceTimeAPI";
 import { useRole } from "@/context/RoleContext";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
-import { studentPortalLogin } from "@/api/StudentPortal/studentPortalAPI";
+import { studentPortalLogin } from "@/api/StudentPortal/StudentPortalAPI";
 
 export default function StudentLoginPage() {
   const [studentName, setStudentName] = useState("");

@@ -1,9 +1,9 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { ClassNameAPI } from '@/api/Classname/ClassNameAPI';
+import { ClassNameAPI } from '@/api/ClassName/ClassNameAPI';
 import { StudentAPI } from '@/api/Student/StudentsAPI';
-import { adminResetStudentPassword } from '@/api/StudentPortal/studentPortalAPI';
+import { adminResetStudentPassword } from '@/api/StudentPortal/StudentPortalAPI';
 import { Header } from '@/components/dashboard/Header';
 import { toast } from 'sonner';
 

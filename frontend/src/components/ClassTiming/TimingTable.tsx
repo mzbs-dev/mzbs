@@ -10,7 +10,7 @@ import {
   getFilteredRowModel,
 } from "@tanstack/react-table";
 import { Search, ChevronLeft, ChevronRight, LoaderIcon } from "lucide-react";
-import { AttendanceTimeAPI as API } from "@/api/AttendaceTime/attendanceTimeAPI";
+import { AttendanceTimeAPI as API } from "@/api/AttendanceTime/attendanceTimeAPI";
 import type { ClassTiming } from "@/models/classTiming/classTiming";
 
 import {

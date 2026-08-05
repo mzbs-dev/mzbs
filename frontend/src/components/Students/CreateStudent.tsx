@@ -16,7 +16,7 @@ import { extractArrayData } from "@/utils/apiResponse";
 import { StudentAPI as API } from "@/api/Student/StudentsAPI";
 import { CreateStudent } from "@/models/students/Student";
 import { Select, SelectOption as SelectComponentOption } from "../Select";
-import { ClassNameAPI as API1 } from "@/api/Classname/ClassNameAPI";
+import { ClassNameAPI as API1 } from "@/api/ClassName/ClassNameAPI";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const AddNewStudent = ({ onClassAdded }: { onClassAdded: () => void }) => {

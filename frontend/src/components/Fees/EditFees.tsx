@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -21,9 +21,9 @@ interface EditFeesProps {
   fatherName: string;
   className: string;
   feeStatus: string;
-  feeAmount: number;
-  feeMonth: string;
-  feeYear: number;
+  feeAmount?: number | null;
+  feeMonth?: string | null;
+  feeYear?: number | string | null;
   onUpdate: () => void;
 }
 
@@ -54,10 +54,18 @@ const EditFees = ({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [editFormData, setEditFormData] = useState({
-    fee_amount: feeAmount.toString(),
-    fee_month: feeMonth,
-    fee_year: feeYear.toString(),
+    fee_amount: feeAmount != null ? String(feeAmount) : "",
+    fee_month: feeMonth ?? "",
+    fee_year: feeYear != null ? String(feeYear) : "",
   });
+
+  useEffect(() => {
+    setEditFormData({
+      fee_amount: feeAmount != null ? String(feeAmount) : "",
+      fee_month: feeMonth ?? "",
+      fee_year: feeYear != null ? String(feeYear) : "",
+    });
+  }, [feeAmount, feeMonth, feeYear]);
 
   // Only show edit for paid fees
   if (feeStatus !== "Paid") {

@@ -7,7 +7,7 @@ import { CardsSkeleton, ChartSkeleton, Skeleton } from "@/components/dashboard/S
 import SalarySummarySection from "@/components/Salary/SalarySummarySection";
 import { motion } from "framer-motion";
 import { extractPayloadData } from "@/utils/apiResponse";
-import { DashboardAPI } from "@/api/Dashboard/dashboardAPI";
+import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
 import {
   BarChart,
   Bar,

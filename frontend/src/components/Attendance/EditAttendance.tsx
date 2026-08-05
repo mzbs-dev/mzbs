@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { LoaderIcon } from "lucide-react";
 import { AttendanceAPI as API } from "@/api/Attendance/AttendanceAPI";
 import { FaRegEdit } from "react-icons/fa";
-import { MarkAttUpdate } from "@/models/markattendace/markattendance";
+import { MarkAttUpdate } from "@/models/markattendance/markattendance";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

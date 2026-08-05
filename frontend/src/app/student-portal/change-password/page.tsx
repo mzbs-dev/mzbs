@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { studentPortalChangePassword } from "@/api/StudentPortal/studentPortalAPI";
+import { studentPortalChangePassword } from "@/api/StudentPortal/StudentPortalAPI";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function StudentPortalChangePasswordPage() {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
 import { AttendanceAPI } from "@/api/Attendance/AttendanceAPI";
-import { ClassNameAPI } from "@/api/Classname/ClassNameAPI";
+import { ClassNameAPI } from "@/api/ClassName/ClassNameAPI";
 import AxiosInstance from "@/api/axiosInterceptorInstance";
 import Loader from "@/components/Loader";
 

@@ -44,7 +44,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { StudentModel } from "@/models/students/Student";
 import { Select, SelectOption as SelectComponentOption } from "@/components/Select";
-import { ClassNameAPI } from "@/api/Classname/ClassNameAPI";
+import { ClassNameAPI } from "@/api/ClassName/ClassNameAPI";
 import { useEffect, useState } from "react";
 import AddNewStudent from "./CreateStudent";
 import DeleteStudentModal from "./DeleteStudentModal";

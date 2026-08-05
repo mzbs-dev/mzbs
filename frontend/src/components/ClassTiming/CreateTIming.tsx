@@ -12,7 +12,7 @@ import { Input } from "../ui/input";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { LoaderIcon } from "lucide-react";
-import { AttendanceTimeAPI as API } from "@/api/AttendaceTime/attendanceTimeAPI";
+import { AttendanceTimeAPI as API } from "@/api/AttendanceTime/attendanceTimeAPI";
 import { CreateTiming } from "@/models/classTiming/classTiming";
 
 const AddClassTime = ({ onClassAdded }: { onClassAdded: () => void }) => {

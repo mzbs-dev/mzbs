@@ -10,7 +10,7 @@ import {
   getFilteredRowModel,
 } from "@tanstack/react-table";
 import { Search, ChevronLeft, ChevronRight, LoaderIcon } from "lucide-react";
-import { ClassNameAPI as API } from "@/api/Classname/ClassNameAPI";
+import { ClassNameAPI as API } from "@/api/ClassName/ClassNameAPI";
 import ClassName from "@/components/ClassName/CreateClass";
 import { format } from "date-fns";
 import {

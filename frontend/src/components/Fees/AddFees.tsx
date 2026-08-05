@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/Select";
 import { useForm } from "react-hook-form";
-import { ClassNameAPI } from "@/api/Classname/ClassNameAPI";
+import { ClassNameAPI } from "@/api/ClassName/ClassNameAPI";
 import { StudentAPI } from "@/api/Student/StudentsAPI";
 import { FeeAPI } from "@/api/Fees/AddFeeAPI";
 import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
 import { ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/libs/utils";
-import { AddFeeModel } from "@/models/Fees/Fee";
+import { AddFeeModel } from "@/models/fees/Fee";
 import {
   Command,
   CommandEmpty,

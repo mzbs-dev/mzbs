@@ -1,4 +1,4 @@
-import { MarkAttInput, MarkAttUpdate } from "@/models/markattendace/markattendance";
+import { MarkAttInput, MarkAttUpdate } from "@/models/markattendance/markattendance";
 import AxiosInstance from "@/api/axiosInterceptorInstance";
 import { GetActionDetail } from "@/models/EntityBase";
 

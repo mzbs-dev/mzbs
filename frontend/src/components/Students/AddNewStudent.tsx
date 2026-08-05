@@ -13,7 +13,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { LoaderIcon } from "lucide-react";
 import { Select } from "../Select";
-import { ClassNameAPI as API } from "@/api/Classname/ClassNameAPI";
+import { ClassNameAPI as API } from "@/api/ClassName/ClassNameAPI";
 
 const extractArrayData = <T,>(response: unknown): T[] => {
   const payload = (response as { data?: unknown }).data;

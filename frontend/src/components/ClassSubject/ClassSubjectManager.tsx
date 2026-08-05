@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClassNameAPI } from "@/api/Classname/ClassNameAPI";
+import { ClassNameAPI } from "@/api/ClassName/ClassNameAPI";
 import { ClassSubjectAPI } from "@/api/ClassSubject/ClassSubjectAPI";
 import { ClassNameModel } from "@/models/className/className";
 import { ClassSubjectModel } from "@/models/classSubject/classSubject";

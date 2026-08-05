@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
 import { Select, SelectOption } from "@/components/Select";
-import { ClassNameAPI } from "@/api/Classname/ClassNameAPI";
+import { ClassNameAPI } from "@/api/ClassName/ClassNameAPI";
 import { ClassSubjectAPI } from "@/api/ClassSubject/ClassSubjectAPI";
 import { StudentAPI } from "@/api/Student/StudentsAPI";
 import { ExamMarksAPI } from "@/api/ExamMarks/ExamMarksAPI";
