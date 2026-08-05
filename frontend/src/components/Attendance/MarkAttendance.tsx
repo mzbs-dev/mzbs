@@ -398,7 +398,7 @@ const MarkAttendance = () => {
   const HandleSubmitForStudentGet = async (formData: MarkAttInput) => {
     try {
       setIsLoading(true);
-      const response = await API3.GetStudentbyFilter(formData.class_name_id);
+      const response = await API3.GetStudentsByFilter(formData.class_name_id);
       const students = extractArrayData<StudentResponse>(response);
       if (students.length > 0) {
         setStudentByFilter(

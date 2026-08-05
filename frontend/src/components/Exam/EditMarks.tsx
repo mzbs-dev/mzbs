@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/dashboard/Header";
@@ -45,7 +45,7 @@ const extractArrayData = <T,>(response: unknown): T[] => {
 };
 
 const EditMarks = () => {
-  const { role } = useRole();
+  const { role, permissions, permissionsLoaded } = useRole();
   const [classOptions, setClassOptions] = useState<SelectOption[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [sessions, setSessions] = useState<ExamSessionSummary[]>([]);
@@ -63,13 +63,29 @@ const EditMarks = () => {
     void loadClasses();
   }, []);
 
+  const loadStudentsForClass = useCallback(async () => {
+    if (!selectedClassId) return;
+
+    try {
+      const response = await StudentAPI.GetStudentsByFilter(Number(selectedClassId));
+      const students = extractArrayData<StudentResponse>(response);
+      const map = students.reduce<Record<number, string>>((acc, student) => {
+        acc[student.student_id] = student.student_name;
+        return acc;
+      }, {});
+      setStudentNames(map);
+    } catch (error) {
+      console.error("Failed to load student names", error);
+    }
+  }, [selectedClassId]);
+
   useEffect(() => {
     if (!selectedClassId) {
       setStudentNames({});
       return;
     }
     void loadStudentsForClass();
-  }, [selectedClassId]);
+  }, [selectedClassId, loadStudentsForClass]);
 
   const loadClasses = async () => {
     try {
@@ -79,22 +95,6 @@ const EditMarks = () => {
     } catch (error) {
       console.error("Failed to load classes", error);
       toast.error("Failed to load classes");
-    }
-  };
-
-  const loadStudentsForClass = async () => {
-    if (!selectedClassId) return;
-
-    try {
-      const response = await StudentAPI.GetStudentbyFilter(Number(selectedClassId));
-      const students = extractArrayData<StudentResponse>(response);
-      const map = students.reduce<Record<number, string>>((acc, student) => {
-        acc[student.student_id] = student.student_name;
-        return acc;
-      }, {});
-      setStudentNames(map);
-    } catch (error) {
-      console.error("Failed to load student names", error);
     }
   };
 
@@ -210,8 +210,15 @@ const EditMarks = () => {
     }
   };
 
-  const canEdit = role === "ADMIN" || role === "CHIEF_PRINCIPAL" || role === "PRINCIPAL" || role === "TEACHER";
-  const canDelete = role === "ADMIN" || role === "CHIEF_PRINCIPAL" || role === "PRINCIPAL";
+  const canViewExam = permissionsLoaded
+    ? !!permissions?.exam?.view
+    : role === "ADMIN" || role === "CHIEF_PRINCIPAL" || role === "PRINCIPAL" || role === "TEACHER";
+  const canEdit = permissionsLoaded
+    ? !!permissions?.exam?.edit
+    : role === "ADMIN" || role === "CHIEF_PRINCIPAL" || role === "PRINCIPAL" || role === "TEACHER";
+  const canDelete = permissionsLoaded
+    ? !!permissions?.exam_session?.delete
+    : role === "ADMIN" || role === "CHIEF_PRINCIPAL" || role === "PRINCIPAL";
 
   return (
     <div className="space-y-6">
@@ -263,15 +270,17 @@ const EditMarks = () => {
                     <td className="px-4 py-3 text-sm text-foreground dark:text-foreground">{session.student_count}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void loadSessionDetails(session, "view")}
-                          className="rounded p-1 text-muted-foreground transition hover:bg-muted"
-                          title="View"
-                          aria-label="View exam results"
-                        >
-                          <Eye size={16} />
-                        </button>
+                        {canViewExam && (
+                          <button
+                            type="button"
+                            onClick={() => void loadSessionDetails(session, "view")}
+                            className="rounded p-1 text-muted-foreground transition hover:bg-muted"
+                            title="View"
+                            aria-label="View exam results"
+                          >
+                            <Eye size={16} />
+                          </button>
+                        )}
                         {canEdit && (
                           <button
                             type="button"

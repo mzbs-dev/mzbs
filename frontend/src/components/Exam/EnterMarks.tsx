@@ -153,7 +153,7 @@ const EnterMarks = () => {
 
     try {
       setLoading(true);
-      const response = await StudentAPI.GetStudentbyFilter(Number(selectedClassId));
+      const response = await StudentAPI.GetStudentsByFilter(Number(selectedClassId));
       const studentsData = extractArrayData<StudentResponse>(response);
       setStudents(studentsData);
       setEntries(

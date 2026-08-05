@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Printer,
 } from "lucide-react";
+import { useRole } from "@/context/RoleContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectOption as SelectComponentOption } from "../Select";
@@ -160,6 +161,14 @@ const AttendanceTable: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [activeFilters, setActiveFilters] = useState<FilteredAttendance | null>(null);
+  const { role, permissions, permissionsLoaded } = useRole();
+
+  const canEditAttendance = permissionsLoaded
+    ? !!permissions?.attendance?.edit
+    : role === "ADMIN" || role === "CHIEF_PRINCIPAL" || role === "PRINCIPAL" || role === "TEACHER";
+  const canDeleteAttendance = permissionsLoaded
+    ? !!permissions?.attendance?.delete
+    : role === "ADMIN";
 
   // ── Fetch Records ────────────────────────────────────────────────────────────
   // Define HandleSubmitForStudentGet first so handleAttendanceUpdate can reference it
@@ -376,18 +385,22 @@ const AttendanceTable: React.FC = () => {
         header: "Actions",
         cell: ({ row }) => (
           <div className="no-print flex justify-center items-center gap-2">
-            <EditAttendance
-              attendanceId={row.original.attendance_id}
-              onUpdate={handleAttendanceUpdate}
-            />
-            <DelConfirmMsg
-              rowId={row.original.attendance_id}
-              OnDelete={(confirmed) => {
-                if (confirmed) {
-                  handleDeleteAttendance(row.original.attendance_id);
-                }
-              }}
-            />
+            {canEditAttendance && (
+              <EditAttendance
+                attendanceId={row.original.attendance_id}
+                onUpdate={handleAttendanceUpdate}
+              />
+            )}
+            {canDeleteAttendance && (
+              <DelConfirmMsg
+                rowId={row.original.attendance_id}
+                OnDelete={(confirmed) => {
+                  if (confirmed) {
+                    handleDeleteAttendance(row.original.attendance_id);
+                  }
+                }}
+              />
+            )}
           </div>
         ),
       },

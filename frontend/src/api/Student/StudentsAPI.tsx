@@ -98,7 +98,7 @@ export namespace StudentAPI {
     }
   }
 
-  export async function GetStudentbyFilter(class_id: number) {
+  export async function GetStudentsByFilter(class_id: number) {
     try {
       const response = await AxiosInstance.get(
         `/students/by_class_id/?class_id=${class_id}`

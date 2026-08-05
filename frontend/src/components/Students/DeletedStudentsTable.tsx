@@ -32,8 +32,13 @@ export default function DeletedStudentsTable({
   students,
   onRestoreSuccess,
 }: DeletedStudentsTableProps) {
-  const { role } = useRole();
-  const isAdmin = role === 'ADMIN';
+  const { role, permissions, permissionsLoaded } = useRole();
+  const canRestore = permissionsLoaded
+    ? !!permissions?.deleted_students?.edit
+    : ['ADMIN', 'CHIEF_PRINCIPAL', 'PRINCIPAL'].includes(role);
+  const canDelete = permissionsLoaded
+    ? !!permissions?.deleted_students?.delete
+    : role === 'ADMIN';
   const [restoringId, setRestoringId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState('');
@@ -79,17 +84,17 @@ export default function DeletedStudentsTable({
     <div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>
+        <div className="mb-4 p-3 rounded bg-destructive/10 text-destructive">{error}</div>
       )}
 
       {students.length === 0 ? (
-        <p className="text-gray-500 text-sm">No deleted students found.</p>
+        <p className="text-muted-foreground text-sm">No deleted students found.</p>
       ) : (
         <>
-          <div className="hidden sm:block w-full overflow-x-auto">
+          <div className="hidden sm:block w-full overflow-x-auto rounded-3xl border border-border bg-card shadow-sm">
             <table className="w-full min-w-[920px] table-fixed border-collapse">
               <thead>
-                <tr className="bg-black text-white">
+                <tr className="bg-primary text-primary-foreground">
                   <th className="py-3 px-4 text-left text-sm font-semibold w-16">Sr. No</th>
                   <th className="py-3 px-4 text-left text-sm font-semibold">Student Name</th>
                   <th className="py-3 px-4 text-left text-sm font-semibold">Class</th>
@@ -101,37 +106,37 @@ export default function DeletedStudentsTable({
               </thead>
               <tbody>
                 {students.map((student, index) => (
-                  <tr key={student.student_id} className="border-b border-gray-200">
-                    <td className="py-4 px-4 text-sm text-gray-700">{index + 1}</td>
-                    <td className="py-4 px-4 text-sm text-gray-700">{student.student_name}</td>
-                    <td className="py-4 px-4 text-sm text-gray-700">{student.class_name}</td>
-                    <td className="py-4 px-4 text-sm text-gray-700">{student.reason}</td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                  <tr key={student.student_id} className="border-b border-border/60">
+                    <td className="py-4 px-4 text-sm text-foreground">{index + 1}</td>
+                    <td className="py-4 px-4 text-sm text-foreground">{student.student_name}</td>
+                    <td className="py-4 px-4 text-sm text-foreground">{student.class_name}</td>
+                    <td className="py-4 px-4 text-sm text-foreground">{student.reason}</td>
+                    <td className="py-4 px-4 text-sm text-foreground">
                       {student.deleted_by_name || `User #${student.deleted_by}`}
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">{formatDate(student.deleted_at)}</td>
+                    <td className="py-4 px-4 text-sm text-foreground">{formatDate(student.deleted_at)}</td>
                     <td className="py-4 px-4 text-sm">
                       <div className="flex gap-2 items-center">
                         <button
                           onClick={() => setViewingStudent(student)}
                           title="View student details"
-                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                          className="text-primary hover:text-primary/80 transition-colors"
                         >
                           <Eye size={16} />
                         </button>
                         <button
                           onClick={() => handleRestore(student.student_id, student.student_name)}
-                          disabled={restoringId === student.student_id || deletingId === student.student_id}
-                          className="text-green-600 text-sm hover:underline disabled:opacity-50"
+                          disabled={!canRestore || restoringId === student.student_id || deletingId === student.student_id}
+                          className="text-success text-sm hover:underline disabled:opacity-50"
                         >
                           {restoringId === student.student_id ? 'Restoring...' : 'Restore'}
                         </button>
-                        {isAdmin && (
+                        {canDelete && (
                           <button
                             onClick={() => handlePermanentlyDelete(student.student_id, student.student_name)}
                             disabled={deletingId === student.student_id || restoringId === student.student_id}
                             title="Permanently delete this student record"
-                            className="text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors"
+                            className="text-destructive hover:text-destructive/80 disabled:opacity-50 transition-colors"
                           >
                             {deletingId === student.student_id ? (
                               <span className="text-xs">Deleting...</span>
@@ -150,16 +155,16 @@ export default function DeletedStudentsTable({
 
           <div className="sm:hidden space-y-3">
             {students.map((student, index) => (
-              <div key={student.student_id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <div key={student.student_id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sr. No</p>
-                    <p className="text-sm font-semibold text-gray-900">{index + 1}. {student.student_name}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sr. No</p>
+                    <p className="text-sm font-semibold text-foreground">{index + 1}. {student.student_name}</p>
                   </div>
                   <button
                     onClick={() => setViewingStudent(student)}
                     title="View student details"
-                    className="rounded-full border border-blue-100 bg-blue-50 p-2 text-blue-600"
+                    className="rounded-full border border-primary/20 bg-primary/10 p-2 text-primary transition-colors hover:bg-primary/20"
                   >
                     <Eye size={16} />
                   </button>
@@ -167,37 +172,37 @@ export default function DeletedStudentsTable({
 
                 <div className="mt-4 grid grid-cols-1 gap-3 text-sm">
                   <div>
-                    <p className="text-xs text-gray-500">Class</p>
-                    <p className="font-medium text-gray-800">{student.class_name}</p>
+                    <p className="text-xs text-muted-foreground">Class</p>
+                    <p className="font-medium text-foreground">{student.class_name}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Reason</p>
-                    <p className="font-medium text-gray-800 break-words">{student.reason}</p>
+                    <p className="text-xs text-muted-foreground">Reason</p>
+                    <p className="font-medium text-foreground break-words">{student.reason}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Deleted By</p>
-                    <p className="font-medium text-gray-800">{student.deleted_by_name || `User #${student.deleted_by}`}</p>
+                    <p className="text-xs text-muted-foreground">Deleted By</p>
+                    <p className="font-medium text-foreground">{student.deleted_by_name || `User #${student.deleted_by}`}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Deletion Date</p>
-                    <p className="font-medium text-gray-800">{formatDate(student.deleted_at)}</p>
+                    <p className="text-xs text-muted-foreground">Deletion Date</p>
+                    <p className="font-medium text-foreground">{formatDate(student.deleted_at)}</p>
                   </div>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     onClick={() => handleRestore(student.student_id, student.student_name)}
-                    disabled={restoringId === student.student_id || deletingId === student.student_id}
-                    className="rounded-full border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-50"
+                    disabled={!canRestore || restoringId === student.student_id || deletingId === student.student_id}
+                    className="rounded-full border border-success/20 bg-success/10 px-3 py-2 text-sm font-medium text-success disabled:opacity-50"
                   >
                     {restoringId === student.student_id ? 'Restoring...' : 'Restore'}
                   </button>
 
-                  {isAdmin && (
+                  {canDelete && (
                     <button
                       onClick={() => handlePermanentlyDelete(student.student_id, student.student_name)}
                       disabled={deletingId === student.student_id || restoringId === student.student_id}
-                      className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 disabled:opacity-50"
+                      className="rounded-full border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive disabled:opacity-50"
                     >
                       {deletingId === student.student_id ? 'Deleting...' : 'Delete Permanently'}
                     </button>

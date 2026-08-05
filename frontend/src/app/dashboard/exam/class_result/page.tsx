@@ -180,7 +180,7 @@ const ClassResultPage = () => {
       const classId = Number(selectedClassId);
       const [subjects, studentResponse, marksResponse] = await Promise.all([
         loadSubjects(classId),
-        StudentAPI.GetStudentbyFilter(classId),
+        StudentAPI.GetStudentsByFilter(classId),
         ExamMarksAPI.GetByFilters({ class_name_id: classId, exam_type: selectedExamType }),
       ]);
 
