@@ -44,20 +44,21 @@ const MODULE_GROUPS: { label: string; modules: { key: string; label: string }[] 
       { key: "deleted_students", label: "Deleted Students" },
     ],
   },
-  {
-    label: "Setup",
-    modules: [
-      { key: "setup_classes", label: "Class Name" },
-      { key: "setup_class_subjects", label: "Class Subjects" },
-      { key: "setup_timings", label: "Class Timings" },
-      { key: "setup_attendance_values", label: "Attendance Values" },
-      { key: "setup_teachers", label: "Teachers" },
-      { key: "setup_income_categories", label: "Income Categories" },
-      { key: "setup_expense_categories", label: "Expense Categories" },
-      { key: "setup_users", label: "Manage Users" },
-      { key: "setup_reset_student_password", label: "Reset Student Password" },
-    ],
-  },
+      {
+        label: "Setup",
+        modules: [
+          { key: "setup_classes", label: "Class Name" },
+          { key: "setup_class_subjects", label: "Class Subjects" },
+          { key: "setup_timings", label: "Class Timings" },
+          // `Attendance Values` is hard-coded in the system and is omitted
+          // from the editable permissions matrix.
+          { key: "setup_teachers", label: "Teachers" },
+          { key: "setup_income_categories", label: "Income Categories" },
+          { key: "setup_expense_categories", label: "Expense Categories" },
+          // Note: `Manage Users` and `Reset Student Password` are admin-only
+          // and intentionally omitted from this permissions editing UI.
+        ],
+      },
 ];
 
 // Nested lookup: matrix[module][role][action] = allowed
@@ -77,7 +78,7 @@ const ManageRolePermissions: React.FC = () => {
   const [matrix, setMatrix] = useState<Matrix>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [openModules, setOpenModules] = useState<Set<string>>(new Set());
+  const [openRoles, setOpenRoles] = useState<Set<string>>(new Set());
   const [pendingCell, setPendingCell] = useState<string | null>(null); // "module:role:action" while a PATCH is in flight
 
   useEffect(() => {
@@ -95,11 +96,11 @@ const ManageRolePermissions: React.FC = () => {
     })();
   }, []);
 
-  const toggleModule = (moduleKey: string) => {
-    setOpenModules((prev) => {
+  const toggleRole = (role: string) => {
+    setOpenRoles((prev) => {
       const next = new Set(prev);
-      if (next.has(moduleKey)) next.delete(moduleKey);
-      else next.add(moduleKey);
+      if (next.has(role)) next.delete(role);
+      else next.add(role);
       return next;
     });
   };
@@ -158,38 +159,49 @@ const ManageRolePermissions: React.FC = () => {
         </div>
       )}
 
-      {MODULE_GROUPS.map((group) => (
-        <div key={group.label}>
-          <h3 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-2 mt-4">
-            {group.label}
-          </h3>
-
-          {group.modules.map(({ key: moduleKey, label: moduleLabel }) => {
-            const isOpen = openModules.has(moduleKey);
-            return (
-              <div
-                key={moduleKey}
-                className="border border-gray-200 dark:border-gray-700 rounded-lg mb-2 overflow-hidden"
+      {ROLES.map((role) => {
+        const isStudent = role === "STUDENT";
+        const isOpen = openRoles.has(role);
+        return (
+          <div
+            key={role}
+            className="border border-gray-200 dark:border-gray-700 rounded-lg mb-2 overflow-hidden"
+          >
+            <button
+              onClick={() => toggleRole(role)}
+              className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-neutral-900 hover:bg-gray-100 dark:hover:bg-neutral-800 transition"
+            >
+              <span
+                className={`font-medium text-sm ${
+                  isStudent
+                    ? "text-gray-400 dark:text-gray-600"
+                    : "text-gray-700 dark:text-gray-200"
+                }`}
               >
-                <button
-                  onClick={() => toggleModule(moduleKey)}
-                  className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-neutral-900 hover:bg-gray-100 dark:hover:bg-neutral-800 transition"
-                >
-                  <span className="font-medium text-sm text-gray-700 dark:text-gray-200">
-                    {moduleLabel}
+                {role}
+                {isStudent && (
+                  <span className="ml-2 text-xs font-normal">
+                    (fixed — not editable here)
                   </span>
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform ${
-                      isOpen ? "rotate-180" : "rotate-0"
-                    }`}
-                  />
-                </button>
+                )}
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 transition-transform ${
+                  isOpen ? "rotate-180" : "rotate-0"
+                }`}
+              />
+            </button>
 
-                {isOpen && (
+            {isOpen &&
+              MODULE_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <h4 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 px-3 pt-3 pb-1">
+                    {group.label}
+                  </h4>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Role</TableHead>
+                        <TableHead>Module</TableHead>
                         {ACTIONS.map((action) => (
                           <TableHead key={action} className="text-center capitalize">
                             {action}
@@ -198,56 +210,41 @@ const ManageRolePermissions: React.FC = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {ROLES.map((role) => {
-                        const isStudent = role === "STUDENT";
-                        return (
-                          <TableRow key={role}>
-                            <TableCell
-                              className={`font-medium text-sm ${
-                                isStudent ? "text-gray-400 dark:text-gray-600" : ""
-                              }`}
-                            >
-                              {role}
-                              {isStudent && (
-                                <span className="block text-xs font-normal">
-                                  (fixed — not editable here)
-                                </span>
-                              )}
-                            </TableCell>
-                            {ACTIONS.map((action) => {
-                              const cellKey = `${moduleKey}:${role}:${action}`;
-                              const allowed =
-                                matrix[moduleKey]?.[role]?.[action] ?? false;
-                              return (
-                                <TableCell key={action} className="text-center">
-                                  <Checkbox
-                                    checked={allowed}
-                                    disabled={
-                                      isStudent || pendingCell === cellKey
-                                    }
-                                    onCheckedChange={(checked) =>
-                                      handleToggle(
-                                        moduleKey,
-                                        role,
-                                        action,
-                                        checked === true
-                                      )
-                                    }
-                                  />
-                                </TableCell>
-                              );
-                            })}
-                          </TableRow>
-                        );
-                      })}
+                      {group.modules.map(({ key: moduleKey, label: moduleLabel }) => (
+                        <TableRow key={moduleKey}>
+                          <TableCell className="font-medium text-sm">
+                            {moduleLabel}
+                          </TableCell>
+                          {ACTIONS.map((action) => {
+                            const cellKey = `${moduleKey}:${role}:${action}`;
+                            const allowed =
+                              matrix[moduleKey]?.[role]?.[action] ?? false;
+                            return (
+                              <TableCell key={action} className="text-center">
+                                <Checkbox
+                                  checked={allowed}
+                                  disabled={isStudent || pendingCell === cellKey}
+                                  onCheckedChange={(checked) =>
+                                    handleToggle(
+                                      moduleKey,
+                                      role,
+                                      action,
+                                      checked === true
+                                    )
+                                  }
+                                />
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ))}
+                </div>
+              ))}
+          </div>
+        );
+      })}
     </div>
   );
 };

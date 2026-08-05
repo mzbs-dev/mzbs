@@ -352,6 +352,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [userData, setUserData] = useState<string | null>(null);
+  const isAdmin = !!(role && typeof role === "string" && role.toLowerCase() === "admin");
   
   
   useEffect(() => {
@@ -571,6 +572,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   {item.submenu
                     ?.filter((subItem) => {
                       const section = getMenuItemSection(subItem.path);
+                      const adminOnlyPaths = [
+                        "/dashboard/setup/role_permissions",
+                        "/dashboard/setup/manage_user",
+                        "/dashboard/setup/appearance",
+                      ];
+                      // Enforce ADMIN-only visibility for specific setup pages
+                      if (adminOnlyPaths.includes(subItem.path.toLowerCase())) {
+                        return isAdmin;
+                      }
+
                       return canAccessSection(role, section, permissions) && canAccessSubmenuItem(role, subItem.path, permissions);
                     })
                     .map((subItem) => (
