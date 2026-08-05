@@ -27,11 +27,16 @@ import AddIncomeCategory from "./CreateIncomeCat";
 import { IncomeCategory} from "@/models/income/income";
 import DelConfirmMsg from "../DelConfMsg";
 import { toast } from "sonner";
+import { useRole } from "@/context/RoleContext";
 
 export default function IncomeCat() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState<IncomeCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const { permissions, permissionsLoaded } = useRole();
+
+  const canAddIncomeCat = permissionsLoaded && !!permissions?.setup_income_categories?.add;
+  const canDeleteIncomeCat = permissionsLoaded && !!permissions?.setup_income_categories?.delete;
 
   // Fetch data from API
   useEffect(() => {
@@ -76,7 +81,7 @@ export default function IncomeCat() {
     }
   };
 
-  const columns: ColumnDef<IncomeCategory>[] = [
+  const baseColumns: ColumnDef<IncomeCategory>[] = [
     {
       id: "sr_no",
       header: "Sr. No",
@@ -95,17 +100,23 @@ export default function IncomeCat() {
         return <div>{formattedDate}</div>;
       }
     },
-    {
-      id: "delete",
-      header: "Delete",
-      cell: ({ row }) => (
-        <DelConfirmMsg
-          rowId={row.original.income_cat_name_id}
-          OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
-        />
-      ),
-    },
   ];
+
+  const columns: ColumnDef<IncomeCategory>[] = canDeleteIncomeCat
+    ? [
+        ...baseColumns,
+        {
+          id: "delete",
+          header: "Delete",
+          cell: ({ row }) => (
+            <DelConfirmMsg
+              rowId={row.original.income_cat_name_id}
+              OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+            />
+          ),
+        },
+      ]
+    : baseColumns;
   
   const table = useReactTable({
     data,
@@ -122,7 +133,7 @@ export default function IncomeCat() {
 
   return (
     <div className=" mt-7 ml-3 p-6 w-[98%] bg-card dark:bg-transparent dark:border-border dark:border rounded-lg shadow-lg">
-      <AddIncomeCategory onIncomeCatAdd={GetData}/>
+      {canAddIncomeCat && <AddIncomeCategory onIncomeCatAdd={GetData}/>}
       <div className="flex items-center justify-between mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
@@ -227,3 +238,4 @@ export default function IncomeCat() {
     </div>
   );
 }
+

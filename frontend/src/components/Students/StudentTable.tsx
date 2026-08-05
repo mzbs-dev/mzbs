@@ -76,8 +76,30 @@ export default function ModernStudentTable() {
   const [selectedStudent, setSelectedStudent] = useState<StudentModel | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [modalStudent, setModalStudent] = useState<{ id: number; name: string } | null>(null);
-  const { role } = useRole();
+  const { role, permissions, permissionsLoaded } = useRole();
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+  // Permission checks for the Students module, sourced from GET /permissions/me
+  // (Phase 1 self-service permissions). While the fetch is still in flight we
+  // hide these actions to avoid a flash of buttons that then disappear. If the
+  // fetch failed outright (permissions === null after permissionsLoaded is
+  // true), fall back to the pre-Phase-1 hardcoded rule as a safety net so the
+  // school isn't fully locked out of these actions during a backend hiccup.
+  const canAddStudent = !permissionsLoaded
+    ? false
+    : permissions
+    ? !!permissions.students?.add
+    : role === "ADMIN" || role === "PRINCIPAL";
+  const canEditStudent = !permissionsLoaded
+    ? false
+    : permissions
+    ? !!permissions.students?.edit
+    : role === "ADMIN" || role === "PRINCIPAL";
+  const canDeleteStudent = !permissionsLoaded
+    ? false
+    : permissions
+    ? !!permissions.students?.delete
+    : role === "ADMIN";
   const [classNameList, setClassNameList] = useState<SelectComponentOption[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
@@ -252,9 +274,6 @@ export default function ModernStudentTable() {
       accessorKey: "Action",
       header: "Action",
       cell: ({ row }) => {
-        const canEdit   = role === "ADMIN" || role === "PRINCIPAL";
-        const canDelete = role === "ADMIN";
-
         return (
           <div className="flex gap-2 items-center no-print">
             {/* View — all roles */}
@@ -269,8 +288,8 @@ export default function ModernStudentTable() {
               <Eye size={16} />
             </button>
 
-            {/* Edit — ADMIN and PRINCIPAL */}
-            {canEdit && (
+            {/* Edit — gated by students.edit permission */}
+            {canEditStudent && (
               <button
                 onClick={() => handleEditClick(row.original)}
                 className="p-1 text-blue-600 hover:bg-blue-100 rounded transition"
@@ -280,8 +299,8 @@ export default function ModernStudentTable() {
               </button>
             )}
 
-            {/* Delete — ADMIN only */}
-            {canDelete && (
+            {/* Delete — gated by students.delete permission */}
+            {canDeleteStudent && (
               <button
                 onClick={() => setModalStudent({ id: Number(row.original.student_id), name: row.original.student_name })}
                 className="p-1 text-red-600 hover:bg-red-100 rounded transition"
@@ -354,7 +373,7 @@ export default function ModernStudentTable() {
 
   return (
     <Card className="mt-2 w-full max-w-full overflow-x-auto overflow-y-visible p-3 sm:p-6 bg-white dark:bg-background rounded-[24px] shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)]">
-      {(role === "ADMIN" || role === "PRINCIPAL") && <AddNewStudent onClassAdded={GetData} />}
+      {canAddStudent && <AddNewStudent onClassAdded={GetData} />}
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex gap-2 items-center">
           <div className="relative flex-1">
@@ -531,7 +550,7 @@ export default function ModernStudentTable() {
                       <Eye size={16} />
                     </button>
 
-                    {(role === "ADMIN" || role === "PRINCIPAL") && (
+                    {canEditStudent && (
                       <button
                         onClick={() => handleEditClick(row.original)}
                         className="rounded-lg p-1.5 text-blue-600 transition hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-950/40"
@@ -541,7 +560,7 @@ export default function ModernStudentTable() {
                       </button>
                     )}
 
-                    {role === "ADMIN" && (
+                    {canDeleteStudent && (
                       <button
                         onClick={() => setModalStudent({ id: Number(row.original.student_id), name: row.original.student_name })}
                         className="rounded-lg p-1.5 text-rose-600 transition hover:bg-rose-100 dark:text-rose-400 dark:hover:bg-rose-950/40"

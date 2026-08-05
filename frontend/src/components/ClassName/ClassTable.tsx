@@ -27,6 +27,7 @@ import { ClassNameModel } from "@/models/className/className";
 import { useEffect, useState } from "react";
 import DelConfirmMsg from "../DelConfMsg";
 import { toast } from "sonner";
+import { useRole } from "@/context/RoleContext";
 
 const extractArrayData = <T,>(response: unknown): T[] => {
   const payload = (response as { data?: unknown }).data;
@@ -49,6 +50,15 @@ export default function ModernStudentTable() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState<ClassNameModel[]>([]);
   const [loading, setLoading] = useState(true);
+  const { permissions, permissionsLoaded } = useRole();
+
+  // setup_classes is ADMIN-only by default in the seed matrix, but ADMIN can
+  // open it up to other roles via Manage Role Permissions (view is already
+  // opened to several roles today) — so this must read the real permission,
+  // not assume ADMIN-only. Hidden while permissions are still loading to
+  // avoid a flash of controls that then disappear.
+  const canAddClass = permissionsLoaded && !!permissions?.setup_classes?.add;
+  const canDeleteClass = permissionsLoaded && !!permissions?.setup_classes?.delete;
 
   const GetData = async () => {
     setLoading(true);
@@ -88,7 +98,7 @@ export default function ModernStudentTable() {
     }
   };
 
-  const columns: ColumnDef<ClassNameModel>[] = [
+  const baseColumns: ColumnDef<ClassNameModel>[] = [
     {
       id: "sr_no",
       header: "Sr. No",
@@ -111,17 +121,23 @@ export default function ModernStudentTable() {
         return <div className="text-muted-foreground dark:text-foreground">{format(date, "dd/MM/yyyy")}</div>;
       },
     },
-    {
-      id: "delete",
-      header: "Delete",
-      cell: ({ row }) => (
-        <DelConfirmMsg
-          rowId={row.original.class_name_id}
-          OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
-        />
-      ),
-    },
   ];
+
+  const columns: ColumnDef<ClassNameModel>[] = canDeleteClass
+    ? [
+        ...baseColumns,
+        {
+          id: "delete",
+          header: "Delete",
+          cell: ({ row }) => (
+            <DelConfirmMsg
+              rowId={row.original.class_name_id}
+              OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+            />
+          ),
+        },
+      ]
+    : baseColumns;
 
   useEffect(() => {
     GetData();
@@ -142,7 +158,7 @@ export default function ModernStudentTable() {
 
   return (
     <div className="mt-4 w-full rounded-[24px] border border-border/80 bg-card/80 p-3 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-border dark:bg-background/70 sm:mt-7 sm:p-6">
-      <ClassName onClassAdded={GetData} />
+      {canAddClass && <ClassName onClassAdded={GetData} />}
       <div className="flex flex-col gap-4 mb-6">
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 sm:h-5 sm:w-5" />
@@ -241,13 +257,15 @@ export default function ModernStudentTable() {
                   {new Date(row.original.created_at).toLocaleDateString("en-GB")}
                 </p>
               </div>
-              {/* ✅ Delete button on mobile */}
-              <div className="flex justify-end pt-1">
-                <DelConfirmMsg
-                  rowId={row.original.class_name_id}
-                  OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
-                />
-              </div>
+              {/* Delete button on mobile — gated on setup_classes.delete */}
+              {canDeleteClass && (
+                <div className="flex justify-end pt-1">
+                  <DelConfirmMsg
+                    rowId={row.original.class_name_id}
+                    OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+                  />
+                </div>
+              )}
             </div>
           ))
         ) : (
@@ -292,3 +310,4 @@ export default function ModernStudentTable() {
     </div>
   );
 }
+

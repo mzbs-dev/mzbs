@@ -26,11 +26,16 @@ import { useEffect, useState } from "react";
 import AddNewTeacher from "./CreateTeacher";
 import DelConfirmMsg from "../DelConfMsg";
 import { toast } from "sonner";
+import { useRole } from "@/context/RoleContext";
 
 export default function TeacherTable() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState<TeacherModel[]>([]);
   const [loading, setLoading] = useState(true);
+  const { permissions, permissionsLoaded } = useRole();
+
+  const canAddTeacher = permissionsLoaded && !!permissions?.setup_teachers?.add;
+  const canDeleteTeacher = permissionsLoaded && !!permissions?.setup_teachers?.delete;
 
   useEffect(() => {
     GetData();
@@ -70,7 +75,7 @@ export default function TeacherTable() {
     }
   };
 
-  const columns: ColumnDef<TeacherModel>[] = [
+  const baseColumns: ColumnDef<TeacherModel>[] = [
     {
       id: "sr_no",
       header: "Sr. No",
@@ -90,17 +95,23 @@ export default function TeacherTable() {
         return <div>{date.toLocaleDateString("en-GB")}</div>;
       },
     },
-    {
-      id: "delete",
-      header: "Delete",
-      cell: ({ row }) => (
-        <DelConfirmMsg
-          rowId={row.original.teacher_name_id}
-          OnDelete={(confirmed) => handleDelete(confirmed, row.original)}
-        />
-      ),
-    },
   ];
+
+  const columns: ColumnDef<TeacherModel>[] = canDeleteTeacher
+    ? [
+        ...baseColumns,
+        {
+          id: "delete",
+          header: "Delete",
+          cell: ({ row }) => (
+            <DelConfirmMsg
+              rowId={row.original.teacher_name_id}
+              OnDelete={(confirmed) => handleDelete(confirmed, row.original)}
+            />
+          ),
+        },
+      ]
+    : baseColumns;
 
   const table = useReactTable<TeacherModel>({
     data,
@@ -117,7 +128,7 @@ export default function TeacherTable() {
 
   return (
     <div className="ml-3 mt-7 p-6 w-[98%] bg-card dark:bg-transparent dark:border-border dark:border rounded-lg shadow-lg">
-      <AddNewTeacher onClassAdded={GetData} />
+      {canAddTeacher && <AddNewTeacher onClassAdded={GetData} />}
       <div className="flex items-center justify-between mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
@@ -222,3 +233,4 @@ export default function TeacherTable() {
     </div>
   );
 }
+

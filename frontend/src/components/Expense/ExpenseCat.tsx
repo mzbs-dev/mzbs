@@ -27,11 +27,16 @@ import AddExpenseCategory from "./CreateExpenseCat";
 import { ExpenseCategory} from "@/models/expense/expense";
 import DelConfirmMsg from "../DelConfMsg";
 import { toast } from "sonner";
+import { useRole } from "@/context/RoleContext";
 
 export default function ExpenseCat() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const { permissions, permissionsLoaded } = useRole();
+
+  const canAddExpenseCat = permissionsLoaded && !!permissions?.setup_expense_categories?.add;
+  const canDeleteExpenseCat = permissionsLoaded && !!permissions?.setup_expense_categories?.delete;
 
   // Fetch data from API
   useEffect(() => {
@@ -77,7 +82,7 @@ export default function ExpenseCat() {
   };
 
   // Define columns
-  const columns: ColumnDef<ExpenseCategory>[] = [
+  const baseColumns: ColumnDef<ExpenseCategory>[] = [
     {
       id: "sr_no",
       header: "Sr. No",
@@ -98,17 +103,23 @@ export default function ExpenseCat() {
         return <div>{formattedDate}</div>;
       }
     },
-    {
-      id: "delete",
-      header: "Delete",
-      cell: ({ row }) => (
-        <DelConfirmMsg
-          rowId={row.original.expense_cat_name_id}
-          OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
-        />
-      ),
-    },
   ];
+
+  const columns: ColumnDef<ExpenseCategory>[] = canDeleteExpenseCat
+    ? [
+        ...baseColumns,
+        {
+          id: "delete",
+          header: "Delete",
+          cell: ({ row }) => (
+            <DelConfirmMsg
+              rowId={row.original.expense_cat_name_id}
+              OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+            />
+          ),
+        },
+      ]
+    : baseColumns;
 
   const table = useReactTable({
     data,
@@ -125,7 +136,7 @@ export default function ExpenseCat() {
 
   return (
     <div className=" mt-7 ml-3 p-6 w-[98%] bg-card dark:bg-transparent dark:border-border dark:border rounded-lg shadow-lg">
-      <AddExpenseCategory onExpenseCatAdd={GetData}/>
+      {canAddExpenseCat && <AddExpenseCategory onExpenseCatAdd={GetData}/>}
       <div className="flex items-center justify-between mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
@@ -230,3 +241,4 @@ export default function ExpenseCat() {
     </div>
   );
 }
+

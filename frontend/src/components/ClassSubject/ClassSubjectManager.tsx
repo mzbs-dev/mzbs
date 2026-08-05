@@ -10,6 +10,7 @@ import { ClassNameAPI } from "@/api/Classname/ClassNameAPI";
 import { ClassSubjectAPI } from "@/api/ClassSubject/ClassSubjectAPI";
 import { ClassNameModel } from "@/models/className/className";
 import { ClassSubjectModel } from "@/models/classSubject/classSubject";
+import { useRole } from "@/context/RoleContext";
 
 export default function ClassSubjectManager() {
   const [classes, setClasses] = useState<ClassNameModel[]>([]);
@@ -19,6 +20,15 @@ export default function ClassSubjectManager() {
   const [newSubject, setNewSubject] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { permissions, permissionsLoaded } = useRole();
+
+  // This screen has no separate add/delete backend calls — everything is
+  // persisted via a single ClassSubjectAPI.Set() that replaces the whole
+  // subject list for a class. That maps most closely to "edit", so the
+  // entire edit surface (Save, remove, add-subject panel) is gated on
+  // setup_class_subjects.edit. Roles with view-only access still see the
+  // read-only subject list.
+  const canEditClassSubjects = permissionsLoaded && !!permissions?.setup_class_subjects?.edit;
 
   const selectedClass = useMemo(
     () => classes.find((item) => String(item.class_name_id) === selectedClassId),
@@ -116,16 +126,18 @@ export default function ClassSubjectManager() {
           <LoaderIcon className="h-6 w-6 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+        <div className={`mt-6 grid gap-6 ${canEditClassSubjects ? "lg:grid-cols-[1.3fr_0.7fr]" : "lg:grid-cols-1"}`}>
           <div className="rounded-xl border border-border p-4 dark:border-border">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-foreground dark:text-foreground">
                 {selectedClass ? `${selectedClass.class_name} subjects` : "Subjects"}
               </h3>
-              <Button onClick={saveSubjects} disabled={saving} className="bg-primary text-white">
-                {saving ? <LoaderIcon className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save
-              </Button>
+              {canEditClassSubjects && (
+                <Button onClick={saveSubjects} disabled={saving} className="bg-primary text-white">
+                  {saving ? <LoaderIcon className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save
+                </Button>
+              )}
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
@@ -133,9 +145,11 @@ export default function ClassSubjectManager() {
                 draftSubjects.map((subject) => (
                   <div key={subject} className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2 dark:border-border dark:bg-card">
                     <span className="text-sm font-medium text-foreground dark:text-foreground">{subject}</span>
-                    <button onClick={() => removeSubject(subject)} className="text-red-500 hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {canEditClassSubjects && (
+                      <button onClick={() => removeSubject(subject)} className="text-red-500 hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 ))
               ) : (
@@ -146,28 +160,31 @@ export default function ClassSubjectManager() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border p-4 dark:border-border">
-            <h3 className="text-lg font-semibold text-foreground dark:text-foreground">Add subject</h3>
-            <div className="mt-4 space-y-3">
-              <Input
-                placeholder="Enter subject name"
-                value={newSubject}
-                onChange={(event) => setNewSubject(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    addSubject();
-                  }
-                }}
-              />
-              <Button onClick={addSubject} className="w-full bg-primary text-white">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Subject
-              </Button>
+          {canEditClassSubjects && (
+            <div className="rounded-xl border border-border p-4 dark:border-border">
+              <h3 className="text-lg font-semibold text-foreground dark:text-foreground">Add subject</h3>
+              <div className="mt-4 space-y-3">
+                <Input
+                  placeholder="Enter subject name"
+                  value={newSubject}
+                  onChange={(event) => setNewSubject(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addSubject();
+                    }
+                  }}
+                />
+                <Button onClick={addSubject} className="w-full bg-primary text-white">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Subject
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+

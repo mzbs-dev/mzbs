@@ -27,11 +27,16 @@ import { useEffect, useState } from "react";
 import AddClassTime from "./CreateTIming";
 import DelConfirmMsg from "../DelConfMsg";
 import { toast } from "sonner";
+import { useRole } from "@/context/RoleContext";
 
 export default function ClassTiming() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState<ClassTiming[]>([]);
   const [loading, setLoading] = useState(true);
+  const { permissions, permissionsLoaded } = useRole();
+
+  const canAddTiming = permissionsLoaded && !!permissions?.setup_timings?.add;
+  const canDeleteTiming = permissionsLoaded && !!permissions?.setup_timings?.delete;
 
   // Fetch data from API
   useEffect(() => {
@@ -77,7 +82,7 @@ export default function ClassTiming() {
   };
 
   // Define columns
-  const columns: ColumnDef<ClassTiming>[] = [
+  const baseColumns: ColumnDef<ClassTiming>[] = [
     {
       id: "sr_no",
       header: "Sr. No",
@@ -98,17 +103,23 @@ export default function ClassTiming() {
         return <div>{formattedDate}</div>;
       }
     },
-    {
-      id: "delete",
-      header: "Delete",
-      cell: ({ row }) => (
-        <DelConfirmMsg
-          rowId={row.original.attendance_time_id}
-          OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
-        />
-      ),
-    },
   ];
+
+  const columns: ColumnDef<ClassTiming>[] = canDeleteTiming
+    ? [
+        ...baseColumns,
+        {
+          id: "delete",
+          header: "Delete",
+          cell: ({ row }) => (
+            <DelConfirmMsg
+              rowId={row.original.attendance_time_id}
+              OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+            />
+          ),
+        },
+      ]
+    : baseColumns;
 
   const table = useReactTable({
     data,
@@ -125,7 +136,7 @@ export default function ClassTiming() {
 
   return (
     <div className="mt-4 sm:mt-7 ml-1 sm:ml-3 p-3 sm:p-6 w-full sm:w-[98%] bg-card dark:bg-transparent dark:border-border dark:border rounded-lg shadow-lg">
-      <AddClassTime onClassAdded={GetData}/>
+      {canAddTiming && <AddClassTime onClassAdded={GetData}/>}
       <div className="flex flex-col gap-4 mb-6">
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 sm:h-5 sm:w-5" />
@@ -227,13 +238,15 @@ export default function ClassTiming() {
                   {new Date(row.original.created_at).toLocaleDateString("en-GB")}
                 </p>
               </div>
-              {/* ✅ Delete button on mobile */}
-              <div className="flex justify-end pt-1">
-                <DelConfirmMsg
-                  rowId={row.original.attendance_time_id}
-                  OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
-                />
-              </div>
+              {/* Delete button on mobile — gated on setup_timings.delete */}
+              {canDeleteTiming && (
+                <div className="flex justify-end pt-1">
+                  <DelConfirmMsg
+                    rowId={row.original.attendance_time_id}
+                    OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+                  />
+                </div>
+              )}
             </div>
           ))
         ) : (
@@ -278,3 +291,4 @@ export default function ClassTiming() {
     </div>
   );
 }
+
