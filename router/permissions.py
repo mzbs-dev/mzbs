@@ -21,7 +21,7 @@ permissions_router = APIRouter(
 )
 
 MODULES = [
-    "students", "attendance", "exam", "exam_session", "staff", "fees", "income", "expenses", "salary",
+    "students", "attendance", "exam", "exam_session", "staff", "fees", "income", "debit", "expenses", "salary",
     "admissions", "deleted_students",
     "setup_classes", "setup_class_subjects", "setup_timings", "setup_attendance_values", "setup_teachers",
     "setup_income_categories", "setup_expense_categories", "setup_users",

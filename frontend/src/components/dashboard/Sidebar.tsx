@@ -257,6 +257,27 @@ const menuList: MenuItem[] = [
     ],
   },
   {
+    id: 28,
+    name: "Debit",
+    icon: Banknote,
+    path: "/dashboard/debit",
+    hasSubmenu: true,
+    submenu: [
+      {
+        id: 29,
+        name: "Manage Debit",
+        icon: GoDotFill,
+        path: "/dashboard/debit/manage",
+      },
+      {
+        id: 30,
+        name: "View Debit",
+        icon: GoDotFill,
+        path: "/dashboard/debit/view",
+      },
+    ],
+  },
+  {
     id: 4,
     name: "Setup",
     icon: UserCog2,
@@ -336,6 +357,7 @@ const getMenuItemSection = (path: string): string => {
   if (lowerPath.includes("/fees")) return "fees";
   if (lowerPath.includes("/salary")) return "salary";
   if (lowerPath.includes("/income")) return "income";
+  if (lowerPath.includes("/debit")) return "dashboard";
   if (lowerPath.includes("/expense")) return "expenses";
   if (lowerPath.includes("/setup") || lowerPath.includes("/settings")) return "setup";
   if (lowerPath.includes("/exam")) return "exam";
@@ -352,7 +374,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [userData, setUserData] = useState<string | null>(null);
-  const isAdmin = !!(role && typeof role === "string" && role.toLowerCase() === "admin");
+  const normalizedRole = role?.toUpperCase() ?? null;
+  const isAdmin = normalizedRole === "ADMIN";
   
   
   useEffect(() => {
@@ -577,9 +600,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                         "/dashboard/setup/manage_user",
                         "/dashboard/setup/appearance",
                       ];
+                      const isDebitSubmenuPath = subItem.path.includes("/dashboard/debit") || subItem.path.includes("/debit/");
+
                       // Enforce ADMIN-only visibility for specific setup pages
                       if (adminOnlyPaths.includes(subItem.path.toLowerCase())) {
                         return isAdmin;
+                      }
+
+                      if (isDebitSubmenuPath) {
+                        return normalizedRole === "ADMIN" || normalizedRole === "ACCOUNTANT" || permissions?.debit?.view === true;
                       }
 
                       return canAccessSection(role, section, permissions) && canAccessSubmenuItem(role, subItem.path, permissions);

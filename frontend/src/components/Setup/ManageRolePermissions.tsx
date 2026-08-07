@@ -39,6 +39,7 @@ const MODULE_GROUPS: { label: string; modules: { key: string; label: string }[] 
       { key: "fees", label: "Fees" },
       { key: "income", label: "Income" },
       { key: "expenses", label: "Expenses" },
+      { key: "debit", label: "Debit" },
       { key: "salary", label: "Salary" },
       { key: "admissions", label: "Admissions" },
       { key: "deleted_students", label: "Deleted Students" },

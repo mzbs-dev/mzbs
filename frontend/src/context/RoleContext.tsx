@@ -22,6 +22,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<MyPermissions | null>(null);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
+  const normalizeRole = (incomingRole: string) => incomingRole.trim().toUpperCase();
+
   const loadPermissions = useCallback(async () => {
     try {
       const response = await PermissionsAPI.GetMy();
@@ -46,7 +48,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     const storedRole = sessionStorage.getItem("userRole");
 
     if (storedRole) {
-      setRole(storedRole);
+      setRole(normalizeRole(storedRole));
       setIsLoading(false);
       loadPermissions();
       return;
@@ -60,10 +62,11 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       try {
         const user = JSON.parse(storedUser);
         if (user?.role) {
-          console.log("RoleContext - Recovered role from localStorage:", user.role);
-          setRole(user.role);
+          const recoveredRole = normalizeRole(user.role);
+          console.log("RoleContext - Recovered role from localStorage:", recoveredRole);
+          setRole(recoveredRole);
           // Sync into sessionStorage so subsequent checks are fast
-          sessionStorage.setItem("userRole", user.role);
+          sessionStorage.setItem("userRole", recoveredRole);
           loadPermissions();
         } else {
           console.warn("RoleContext - user object in localStorage has no role field:", user);
@@ -79,15 +82,16 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   }, [loadPermissions]);
 
   const setRoleAndStore = (newRole: string) => {
-    setRole(newRole);
+    const normalizedRole = normalizeRole(newRole);
+    setRole(normalizedRole);
     // Write to BOTH storages so either path works on next load
-    sessionStorage.setItem("userRole", newRole);
+    sessionStorage.setItem("userRole", normalizedRole);
     // Also update the role field inside the stored user object
     try {
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
         const user = JSON.parse(storedUser);
-        user.role = newRole;
+        user.role = normalizedRole;
         localStorage.setItem("user", JSON.stringify(user));
       }
     } catch {

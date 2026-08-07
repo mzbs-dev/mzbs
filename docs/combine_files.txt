@@ -1,0 +1,4600 @@
+================================================================================
+CONSOLIDATED FILE CONTENT
+Generated: 2026-08-06 23:12:34
+Project Root: F:\2_PROJECTS\A_MMS\mzbs
+Output File: F:\2_PROJECTS\A_MMS\mzbs\docs\combine_files.txt
+Target Files: 10
+================================================================================
+
+
+--------------------------------------------------------------------------------
+FILE [1/10]: frontend/src/api/Salary/SalaryAPI.ts
+Size: 13,350 bytes
+--------------------------------------------------------------------------------
+import axiosInstance from "@/api/axiosInterceptorInstance";
+
+// ============================================================================
+// NEW PAYROLL SYSTEM INTERFACES
+// ============================================================================
+
+export interface TeacherSalaryResponse {
+  id: number;
+  teacher_id: number;
+  teacher_name?: string;
+  base_salary: number;
+  effective_from: string;
+  effective_till?: string | null;  // NULL = currently active
+  created_at: string;
+}
+
+export interface TeacherSalaryCreate {
+  teacher_id: number;
+  base_salary: number;
+  effective_from: string;
+}
+
+// New interfaces for salary history feature
+export interface SalaryPeriod {
+  id: number;
+  base_salary: number;
+  effective_from: string;
+  effective_till: string | null;  // null = currently active
+  days: number;
+  period_payable: number;
+}
+
+export interface TeacherSalarySummary {
+  teacher_id: number;
+  teacher_name: string;
+  current_base_salary: number;
+  latest_effective_from: string;
+  total_payable: number;
+  total_allowance: number;
+  total_deduction: number;
+  total_net_salary: number;
+  total_paid: number;
+  remaining: number;
+  salary_history: SalaryPeriod[];
+  payment_history: SalaryPaymentResponse[];
+}
+
+export interface SalaryLedgerResponse {
+  id: number;
+  teacher_id: number;
+  teacher_name?: string;
+  month: number;
+  year: number;
+  base_salary: number;
+  allowance_total: number;
+  deduction_total: number;
+  net_salary: number;
+  total_paid: number;
+  remaining: number;
+  created_at: string;
+}
+
+export interface SalaryPaymentResponse {
+  id: number;
+  teacher_id: number;
+  teacher_name?: string;
+  ledger_id: number;
+  amount: number;
+  payment_date: string;
+  created_at: string;
+}
+
+export interface SalaryPaymentCreate {
+  teacher_id: number;
+  ledger_id: number;
+  amount: number;
+  payment_date: string;
+}
+
+export interface AllowanceResponse {
+  id: number;
+  teacher_id: number;
+  teacher_name?: string;
+  month: number;
+  year: number;
+  amount: number;
+  reason?: string;
+  created_at: string;
+}
+
+export interface AllowanceCreate {
+  teacher_id: number;
+  month: number;
+  year: number;
+  amount: number;
+  reason?: string;
+}
+
+export interface DeductionResponse {
+  id: number;
+  teacher_id: number;
+  teacher_name?: string;
+  month: number;
+  year: number;
+  amount: number;
+  type: string;
+  reason?: string;
+  created_at: string;
+}
+
+export interface DeductionCreate {
+  teacher_id: number;
+  month: number;
+  year: number;
+  amount: number;
+  type: string;
+  reason?: string;
+}
+
+export namespace SalaryAPI {
+  // ============================================================================
+  // NEW PAYROLL SYSTEM API METHODS
+  // ============================================================================
+
+  // Teacher Salary Management
+  export const getAllTeacherSalaries = async (opts?: { fetchAll?: boolean; pageSize?: number }): Promise<TeacherSalaryResponse[]> => {
+    const fetchAll = opts?.fetchAll ?? false;
+    const pageSize = opts?.pageSize ?? 50;
+    if (!fetchAll) {
+      try {
+        const response = await axiosInstance.get("/salary/teacher-salary/all");
+      const result = response.data?.data ?? response.data;
+      return Array.isArray(result) ? result : [];
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    // Fetch all records from the backend using all=true
+    try {
+      const response = await axiosInstance.get("/salary/teacher-salary/all", { params: { all: true } });
+      const result = response.data?.data ?? response.data;
+      return Array.isArray(result) ? result : [];
+    } catch (error: any) {
+      // Temporary debug logging to capture failed responses
+      try {
+        console.error('[SalaryAPI] Error fetching all teacher salaries:', {
+          message: error?.message ?? String(error),
+          stack: error?.stack,
+        });
+      } catch (e) {
+        // ignore logging errors
+      }
+      throw error;
+    }
+  };
+
+  export const createTeacherSalary = async (data: TeacherSalaryCreate): Promise<TeacherSalaryResponse> => {
+    try {
+      const response = await axiosInstance.post<TeacherSalaryResponse>("/salary/teacher-salary/add", data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const updateTeacherSalary = async (
+    salaryId: number,
+    data: Partial<TeacherSalaryCreate>
+  ): Promise<TeacherSalaryResponse> => {
+    try {
+      const response = await axiosInstance.put<TeacherSalaryResponse>(
+        `/salary/teacher-salary/${salaryId}`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const getTeacherSalarySummary = async (teacherId: number): Promise<TeacherSalarySummary> => {
+    try {
+      const response = await axiosInstance.get<TeacherSalarySummary>(`/salary/teacher-summary/${teacherId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const getTeacherSalaryHistory = async (teacherId: number): Promise<TeacherSalaryResponse[]> => {
+    try {
+      const response = await axiosInstance.get<TeacherSalaryResponse[]>(`/salary/teacher-salary/${teacherId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const deleteTeacherSalary = async (salaryId: number): Promise<void> => {
+    try {
+      await axiosInstance.delete(`/salary/teacher-salary/${salaryId}`);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Salary Ledger Management
+  export const getAllSalaryLedgers = async (opts?: { fetchAll?: boolean; pageSize?: number }): Promise<SalaryLedgerResponse[]> => {
+    const fetchAll = opts?.fetchAll ?? false;
+    const pageSize = opts?.pageSize ?? 50;
+    if (!fetchAll) {
+      try {
+        const response = await axiosInstance.get("/salary/ledger/all");
+        return response.data?.data ?? response.data;
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    // Fetch all records from the backend using all=true
+    try {
+      const response = await axiosInstance.get("/salary/ledger/all", { params: { all: true } });
+      return response.data?.data ?? response.data;
+    } catch (error: any) {
+      try {
+        console.error('[SalaryAPI] Error fetching all salary ledgers:', {
+          message: error?.message ?? String(error),
+          stack: error?.stack,
+        });
+      } catch (e) {
+        // ignore
+      }
+      throw error;
+    }
+  };
+
+  export const createSalaryLedger = async (data: { teacher_id: number; month: number; year: number }): Promise<SalaryLedgerResponse> => {
+    try {
+      const response = await axiosInstance.post<SalaryLedgerResponse>("/salary/ledger/add", data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const ensureTeacherLedger = async (
+    teacherId: number,
+    month: number,
+    year: number
+  ): Promise<SalaryLedgerResponse> => {
+    try {
+      const response = await axiosInstance.post<SalaryLedgerResponse>(
+        `/salary/ledger/ensure/${teacherId}/${month}/${year}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const deleteSalaryLedger = async (ledgerId: number): Promise<void> => {
+    try {
+      await axiosInstance.delete(`/salary/ledger/${ledgerId}`);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const updateSalaryLedger = async (ledgerId: number, data: Partial<SalaryLedgerResponse>): Promise<SalaryLedgerResponse> => {
+    try {
+      const response = await axiosInstance.put<SalaryLedgerResponse>(`/salary/ledger/${ledgerId}`, data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Payment Management
+  export const createSalaryPayment = async (data: SalaryPaymentCreate): Promise<SalaryPaymentResponse> => {
+    try {
+      const response = await axiosInstance.post<SalaryPaymentResponse>("/salary/payment/add", data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const getLedgerPayments = async (ledgerId: number): Promise<SalaryPaymentResponse[]> => {
+    try {
+      const response = await axiosInstance.get<SalaryPaymentResponse[]>(`/salary/payment/ledger/${ledgerId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const getAllSalaryPayments = async (): Promise<SalaryPaymentResponse[]> => {
+    try {
+      const response = await axiosInstance.get<SalaryPaymentResponse[]>("/salary/payment/all");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Allowance Management
+  export const createAllowance = async (data: AllowanceCreate): Promise<AllowanceResponse> => {
+    try {
+      const response = await axiosInstance.post<AllowanceResponse>("/salary/allowance/add", data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const getTeacherAllowances = async (
+    teacherId: number,
+    month?: number,
+    year?: number
+  ): Promise<AllowanceResponse[]> => {
+    try {
+      const params = new URLSearchParams();
+      if (month) params.append('month', month.toString());
+      if (year) params.append('year', year.toString());
+
+      const url = `/salary/allowance/teacher/${teacherId}${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await axiosInstance.get<AllowanceResponse[]>(url);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const getAllAllowances = async (): Promise<AllowanceResponse[]> => {
+    try {
+      const response = await axiosInstance.get<AllowanceResponse[]>("/salary/allowance/all");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Deduction Management
+  export const createDeduction = async (data: DeductionCreate): Promise<DeductionResponse> => {
+    try {
+      const response = await axiosInstance.post<DeductionResponse>("/salary/deduction/add", data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const getTeacherDeductions = async (
+    teacherId: number,
+    month?: number,
+    year?: number
+  ): Promise<DeductionResponse[]> => {
+    try {
+      const params = new URLSearchParams();
+      if (month) params.append('month', month.toString());
+      if (year) params.append('year', year.toString());
+
+      const url = `/salary/deduction/teacher/${teacherId}${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await axiosInstance.get<DeductionResponse[]>(url);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const getAllDeductions = async (): Promise<DeductionResponse[]> => {
+    try {
+      const response = await axiosInstance.get("/salary/deduction/all");
+      return response.data?.data ?? response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Delete Methods
+  export const deleteSalaryPayment = async (paymentId: number): Promise<void> => {
+    try {
+      await axiosInstance.delete(`/salary/payment/${paymentId}`);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const updateSalaryPayment = async (
+    paymentId: number,
+    data: Partial<SalaryPaymentResponse>
+  ): Promise<SalaryPaymentResponse> => {
+    try {
+      const response = await axiosInstance.put<SalaryPaymentResponse>(
+        `/salary/payment/${paymentId}`,
+        {
+          amount: data.amount,
+          payment_date: data.payment_date,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const deleteAllowance = async (allowanceId: number): Promise<void> => {
+    try {
+      await axiosInstance.delete(`/salary/allowance/${allowanceId}`);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const updateAllowance = async (
+    allowanceId: number,
+    data: Partial<AllowanceResponse>
+  ): Promise<AllowanceResponse> => {
+    try {
+      const response = await axiosInstance.put<AllowanceResponse>(
+        `/salary/allowance/${allowanceId}`,
+        {
+          amount: data.amount,
+          reason: data.reason,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const deleteDeduction = async (deductionId: number): Promise<void> => {
+    try {
+      await axiosInstance.delete(`/salary/deduction/${deductionId}`);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  export const updateDeduction = async (
+    deductionId: number,
+    data: Partial<DeductionResponse>
+  ): Promise<DeductionResponse> => {
+    try {
+      const response = await axiosInstance.put<DeductionResponse>(
+        `/salary/deduction/${deductionId}`,
+        {
+          amount: data.amount,
+          type: data.type,
+          reason: data.reason,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+}
+
+--------------------------------------------------------------------------------
+FILE [2/10]: frontend/src/components/Salary/ManageSalary.tsx
+Size: 26,976 bytes
+--------------------------------------------------------------------------------
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Header } from "@/components/dashboard/Header";
+import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { TeacherNameAPI } from "@/api/Teacher/TeacherAPI";
+import { TeacherModel } from "@/models/teacher/Teacher";
+import { SalaryAPI, SalaryPaymentCreate, AllowanceCreate, DeductionCreate } from "@/api/Salary/SalaryAPI";
+import { ChevronDown, ChevronUp } from "lucide-react";
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+const DEDUCTION_TYPES = [
+  "Late Fine",
+  "Leave Deduction",
+  "Advance Adjustment",
+  "Loan Deduction",
+  "Other"
+];
+
+interface PaySalaryForm {
+  teacher_id: string;
+  amount: string;
+  payment_date: string;
+}
+
+interface PayAllowanceForm {
+  teacher_id: string;
+  month: string;
+  year: string;
+  amount: string;
+  reason: string;
+}
+
+interface DeductAmountForm {
+  teacher_id: string;
+  month: string;
+  year: string;
+  amount: string;
+  type: string;
+  reason: string;
+}
+
+const ManageSalary = () => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<PaySalaryForm>();
+
+  const {
+    register: registerAllowance,
+    handleSubmit: handleSubmitAllowance,
+    reset: resetAllowance,
+    formState: { errors: errorsAllowance },
+  } = useForm<PayAllowanceForm>({
+    defaultValues: {
+      year: new Date().getFullYear().toString(),
+      month: (new Date().getMonth() + 1).toString(),
+    },
+  });
+
+  const {
+    register: registerDeduction,
+    handleSubmit: handleSubmitDeduction,
+    reset: resetDeduction,
+    formState: { errors: errorsDeduction },
+  } = useForm<DeductAmountForm>({
+    defaultValues: {
+      year: new Date().getFullYear().toString(),
+      month: (new Date().getMonth() + 1).toString(),
+      type: "",
+      reason: "",
+    },
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingAllowance, setIsLoadingAllowance] = useState(false);
+  const [isLoadingDeduction, setIsLoadingDeduction] = useState(false);
+  const [teachers, setTeachers] = useState<TeacherModel[]>([]);
+  const [isFetchingTeachers, setIsFetchingTeachers] = useState(true);
+
+  // Section expand/collapse states
+  const [isPaySalaryExpanded, setIsPaySalaryExpanded] = useState(true);
+  const [isPayAllowanceExpanded, setIsPayAllowanceExpanded] = useState(false);
+  const [isDeductAmountExpanded, setIsDeductAmountExpanded] = useState(false);
+
+  const fetchTeachers = async () => {
+    try {
+      setIsFetchingTeachers(true);
+      const response = await TeacherNameAPI.Get();
+      console.log("Teacher API Response:", response);
+      
+      if (response && response.data) {
+        let teachersList: TeacherModel[] = [];
+        
+        if (Array.isArray(response.data)) {
+          teachersList = response.data;
+        } else if (response.data && typeof response.data === 'object') {
+          teachersList = [response.data as TeacherModel];
+        }
+        
+        console.log("Processed Teachers List:", teachersList);
+        setTeachers(teachersList);
+        
+        if (teachersList.length === 0) {
+          toast.warning("No teachers found");
+        }
+      } else {
+        console.warn("No data in response:", response);
+        toast.error("Failed to load teachers");
+      }
+    } catch (error) {
+      console.error("Error fetching teachers:", error);
+      toast.error("Failed to load teachers");
+      setTeachers([]);
+    } finally {
+      setIsFetchingTeachers(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeachers();
+  }, []);
+
+  const onSubmit = async (data: PaySalaryForm) => {
+    setIsLoading(true);
+    try {
+      const selectedTeacher = teachers.find(
+        (t) => t.teacher_name_id.toString() === data.teacher_id
+      );
+
+      if (!selectedTeacher) {
+        toast.error("Please select a valid teacher");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data.amount || isNaN(parseFloat(data.amount)) || !Number.isInteger(Number(data.amount))) {
+        toast.error("Please enter a valid integer payment amount");
+        setIsLoading(false);
+        return;
+      }
+
+      // Ensure ledger exists for current month/year, or create it
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-based
+      const currentYear = currentDate.getFullYear();
+
+      // Ensure ledger exists for this teacher/month/year
+      const ledger = await SalaryAPI.ensureTeacherLedger(
+        parseInt(data.teacher_id),
+        currentMonth,
+        currentYear
+      );
+
+      // Create salary payment
+      const paymentData: SalaryPaymentCreate = {
+        teacher_id: parseInt(data.teacher_id),
+        ledger_id: ledger.id,
+        amount: parseFloat(data.amount),
+        payment_date: data.payment_date,
+      };
+
+      await SalaryAPI.createSalaryPayment(paymentData);
+      toast.success("Salary payment recorded successfully!");
+
+      // Reset form
+      reset();
+    } catch (error) {
+      console.error("Error recording salary payment:", error);
+      toast.error("Failed to record salary payment");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onAllowanceSubmit = async (data: PayAllowanceForm) => {
+    setIsLoadingAllowance(true);
+    try {
+      const selectedTeacher = teachers.find(
+        (t) => t.teacher_name_id.toString() === data.teacher_id
+      );
+
+      if (!selectedTeacher) {
+        toast.error("Please select a valid teacher");
+        setIsLoadingAllowance(false);
+        return;
+      }
+
+      if (!data.amount || isNaN(parseFloat(data.amount)) || !Number.isInteger(Number(data.amount))) {
+        toast.error("Please enter a valid integer allowance amount");
+        setIsLoadingAllowance(false);
+        return;
+      }
+
+      // Create allowance record
+      const allowanceData: AllowanceCreate = {
+        teacher_id: parseInt(data.teacher_id),
+        month: parseInt(data.month),
+        year: parseInt(data.year),
+        amount: parseFloat(data.amount),
+        reason: data.reason || undefined,
+      };
+
+      await SalaryAPI.createAllowance(allowanceData);
+      toast.success("Allowance recorded successfully!");
+
+      // Reset form
+      resetAllowance({
+        year: new Date().getFullYear().toString(),
+        month: (new Date().getMonth() + 1).toString()
+      });
+    } catch (error) {
+      console.error("Error recording allowance:", error);
+      toast.error("Failed to record allowance");
+    } finally {
+      setIsLoadingAllowance(false);
+    }
+  };
+
+  const onDeductionSubmit = async (data: DeductAmountForm) => {
+    setIsLoadingDeduction(true);
+    try {
+      const selectedTeacher = teachers.find(
+        (t) => t.teacher_name_id.toString() === data.teacher_id
+      );
+
+      if (!selectedTeacher) {
+        toast.error("Please select a valid teacher");
+        setIsLoadingDeduction(false);
+        return;
+      }
+
+      if (!data.amount || isNaN(parseFloat(data.amount)) || !Number.isInteger(Number(data.amount))) {
+        toast.error("Please enter a valid integer deduction amount");
+        setIsLoadingDeduction(false);
+        return;
+      }
+
+      if (!data.type) {
+        toast.error("Please select a deduction type");
+        setIsLoadingDeduction(false);
+        return;
+      }
+
+      // Create deduction record
+      const deductionData: DeductionCreate = {
+        teacher_id: parseInt(data.teacher_id),
+        month: parseInt(data.month),
+        year: parseInt(data.year),
+        amount: parseFloat(data.amount),
+        type: data.type,
+        reason: data.reason || undefined,
+      };
+
+      await SalaryAPI.createDeduction(deductionData);
+      toast.success("Deduction applied successfully!");
+
+      // Reset form
+      resetDeduction({
+        year: new Date().getFullYear().toString(),
+        month: (new Date().getMonth() + 1).toString(),
+        type: "",
+        reason: "",
+      });
+    } catch (error) {
+      console.error("Error applying deduction:", error);
+      toast.error("Failed to apply deduction");
+    } finally {
+      setIsLoadingDeduction(false);
+    }
+  };
+
+  return (
+    <div className="w-full">
+      <Header value="Manage Salary" />
+      
+      <div className="p-4 sm:p-6 space-y-6">
+        {/* Pay Salary Section */}
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
+          <button
+            onClick={() => setIsPaySalaryExpanded(!isPaySalaryExpanded)}
+            className="w-full flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-lg p-2 -m-2 mb-4"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Pay Salary
+            </h3>
+            {isPaySalaryExpanded ? (
+              <ChevronUp className="h-5 w-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-gray-500" />
+            )}
+          </button>
+          
+          {isPaySalaryExpanded && (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Teacher Name Dropdown */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Teacher Name
+              </label>
+              <select
+                {...register("teacher_id", {
+                  required: "Teacher is required",
+                })}
+                disabled={isFetchingTeachers}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {isFetchingTeachers ? "Loading teachers..." : teachers.length === 0 ? "No teachers available" : "Choose a teacher"}
+                </option>
+                {teachers && teachers.length > 0 && teachers.map((teacher) => (
+                  <option 
+                    key={teacher.teacher_name_id} 
+                    value={String(teacher.teacher_name_id)}
+                  >
+                    {teacher.teacher_name}
+                  </option>
+                ))}
+              </select>
+              {errors.teacher_id && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.teacher_id.message}
+                </p>
+              )}
+            </div>
+
+            {/* Payment Amount */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Payment Amount
+              </label>
+              <Input
+                type="number"
+                step="1"
+                placeholder="Enter payment amount"
+                {...register("amount", {
+                  required: "Payment amount is required",
+                  pattern: {
+                    value: /^[0-9]+$/,
+                    message: "Amount must be a valid integer",
+                  },
+                })}
+                className="w-full"
+              />
+              {errors.amount && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.amount.message}
+                </p>
+              )}
+            </div>
+
+            {/* Payment Date */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Payment Date
+              </label>
+              <Input
+                type="date"
+                {...register("payment_date", {
+                  required: "Payment date is required",
+                })}
+                className="w-full"
+              />
+              {errors.payment_date && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.payment_date.message}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Payment will be recorded for the current month ({new Date().toLocaleString('default', { month: 'long', year: 'numeric' })})
+              </p>
+            </div>
+
+            {/* Button */}
+            <div className="flex gap-4">
+              <Button type="submit" disabled={isLoading || isFetchingTeachers} className="px-6">
+                {isLoading ? "Recording..." : "Pay"}
+              </Button>
+            </div>
+          </form>
+          )}
+        </div>
+
+        {/* Pay Allowance Section */}
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
+          <button
+            onClick={() => setIsPayAllowanceExpanded(!isPayAllowanceExpanded)}
+            className="w-full flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-lg p-2 -m-2 mb-4"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Pay Allowance
+            </h3>
+            {isPayAllowanceExpanded ? (
+              <ChevronUp className="h-5 w-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-gray-500" />
+            )}
+          </button>
+          
+          {isPayAllowanceExpanded && (
+            <form onSubmit={handleSubmitAllowance(onAllowanceSubmit)} className="space-y-4">
+            {/* Teacher Name Dropdown */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Teacher Name
+              </label>
+              <select
+                {...registerAllowance("teacher_id", {
+                  required: "Teacher is required",
+                })}
+                disabled={isFetchingTeachers}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {isFetchingTeachers ? "Loading teachers..." : teachers.length === 0 ? "No teachers available" : "Choose a teacher"}
+                </option>
+                {teachers && teachers.length > 0 && teachers.map((teacher) => (
+                  <option 
+                    key={teacher.teacher_name_id} 
+                    value={String(teacher.teacher_name_id)}
+                  >
+                    {teacher.teacher_name}
+                  </option>
+                ))}
+              </select>
+              {errorsAllowance.teacher_id && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errorsAllowance.teacher_id.message}
+                </p>
+              )}
+            </div>
+
+            {/* Month Dropdown */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Month
+              </label>
+              <select
+                {...registerAllowance("month", {
+                  required: "Month is required",
+                })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Select a month</option>
+                {MONTHS.map((month, index) => (
+                  <option key={index} value={(index + 1).toString()}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+              {errorsAllowance.month && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errorsAllowance.month.message}
+                </p>
+              )}
+            </div>
+
+            {/* Year Field */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Year
+              </label>
+              <Input
+                type="number"
+                placeholder="Enter year"
+                {...registerAllowance("year", {
+                  required: "Year is required",
+                  pattern: {
+                    value: /^\d{4}$/,
+                    message: "Please enter a valid year (YYYY)",
+                  },
+                })}
+                className="w-full"
+              />
+              {errorsAllowance.year && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errorsAllowance.year.message}
+                </p>
+              )}
+            </div>
+
+            {/* Allowance Amount */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Allowance Amount
+              </label>
+              <Input
+                type="number"
+                step="1"
+                placeholder="Enter allowance amount"
+                {...registerAllowance("amount", {
+                  required: "Allowance amount is required",
+                  pattern: {
+                    value: /^[0-9]+$/,
+                    message: "Amount must be a valid integer",
+                  },
+                })}
+                className="w-full"
+              />
+              {errorsAllowance.amount && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errorsAllowance.amount.message}
+                </p>
+              )}
+            </div>
+
+            {/* Reason */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Reason (Optional)
+              </label>
+              <Input
+                type="text"
+                placeholder="Enter reason for allowance"
+                {...registerAllowance("reason")}
+                className="w-full"
+              />
+            </div>
+
+            {/* Button */}
+            <div className="flex gap-4">
+              <Button type="submit" disabled={isLoadingAllowance || isFetchingTeachers} className="px-6">
+                {isLoadingAllowance ? "Recording..." : "Pay"}
+              </Button>
+            </div>
+          </form>
+          )}
+        </div>
+
+        {/* Deduct Amount Section */}
+        <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
+          <button
+            onClick={() => setIsDeductAmountExpanded(!isDeductAmountExpanded)}
+            className="w-full flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-lg p-2 -m-2 mb-4"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Deduct Amount
+            </h3>
+            {isDeductAmountExpanded ? (
+              <ChevronUp className="h-5 w-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-gray-500" />
+            )}
+          </button>
+          
+          {isDeductAmountExpanded && (
+            <form onSubmit={handleSubmitDeduction(onDeductionSubmit)} className="space-y-4">
+            {/* Teacher Name Dropdown */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Teacher Name
+              </label>
+              <select
+                {...registerDeduction("teacher_id", {
+                  required: "Teacher is required",
+                })}
+                disabled={isFetchingTeachers}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {isFetchingTeachers ? "Loading teachers..." : teachers.length === 0 ? "No teachers available" : "Choose a teacher"}
+                </option>
+                {teachers && teachers.length > 0 && teachers.map((teacher) => (
+                  <option 
+                    key={teacher.teacher_name_id} 
+                    value={String(teacher.teacher_name_id)}
+                  >
+                    {teacher.teacher_name}
+                  </option>
+                ))}
+              </select>
+              {errorsDeduction.teacher_id && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errorsDeduction.teacher_id.message}
+                </p>
+              )}
+            </div>
+
+            {/* Month Dropdown */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Month
+              </label>
+              <select
+                {...registerDeduction("month", {
+                  required: "Month is required",
+                })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Select a month</option>
+                {MONTHS.map((month, index) => (
+                  <option key={index} value={(index + 1).toString()}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+              {errorsDeduction.month && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errorsDeduction.month.message}
+                </p>
+              )}
+            </div>
+
+            {/* Year Field */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Year
+              </label>
+              <Input
+                type="number"
+                placeholder="Enter year"
+                {...registerDeduction("year", {
+                  required: "Year is required",
+                  pattern: {
+                    value: /^\d{4}$/,
+                    message: "Please enter a valid year (YYYY)",
+                  },
+                })}
+                className="w-full"
+              />
+              {errorsDeduction.year && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errorsDeduction.year.message}
+                </p>
+              )}
+            </div>
+
+            {/* Deduction Amount */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Deduction Amount
+              </label>
+              <Input
+                type="number"
+                step="1"
+                placeholder="Enter deduction amount"
+                {...registerDeduction("amount", {
+                  required: "Deduction amount is required",
+                  pattern: {
+                    value: /^[0-9]+$/,
+                    message: "Amount must be a valid integer",
+                  },
+                })}
+                className="w-full"
+              />
+              {errorsDeduction.amount && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errorsDeduction.amount.message}
+                </p>
+              )}
+            </div>
+
+            {/* Deduction Type Dropdown */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Deduction Type
+              </label>
+              <select
+                {...registerDeduction("type", {
+                  required: "Deduction type is required",
+                })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Select deduction type</option>
+                {DEDUCTION_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+              {errorsDeduction.type && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errorsDeduction.type.message}
+                </p>
+              )}
+            </div>
+
+            {/* Reason / Description - Optional */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Reason / Description
+                <span className="text-gray-500 ml-1">(Optional)</span>
+              </label>
+              <textarea
+                {...registerDeduction("reason")}
+                placeholder="Example: Absent for 3 days / Advance salary recovery"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                rows={3}
+              />
+            </div>
+
+            {/* Button */}
+            <div className="flex gap-4">
+              <Button type="submit" disabled={isLoadingDeduction || isFetchingTeachers} className="px-6">
+                {isLoadingDeduction ? "Applying..." : "Apply Deduction"}
+              </Button>
+            </div>
+          </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ManageSalary;
+
+--------------------------------------------------------------------------------
+FILE [3/10]: frontend/src/components/Setup/ManageRolePermissions.tsx
+Size: 8,670 bytes
+--------------------------------------------------------------------------------
+"use client";
+
+import React, { useEffect, useState, useCallback } from "react";
+import { ChevronDown } from "lucide-react";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { PermissionsAPI } from "@/api/Permissions/PermissionsAPI";
+import { RolePermission } from "@/models/permissions/Permission";
+
+const ROLES = [
+  "ADMIN",
+  "CHIEF_PRINCIPAL",
+  "PRINCIPAL",
+  "TEACHER",
+  "STAFF",
+  "ACCOUNTANT",
+  "FEE_MANAGER",
+  "STUDENT",
+] as const;
+
+const ACTIONS = ["view", "add", "edit", "delete"] as const;
+
+const MODULE_GROUPS: { label: string; modules: { key: string; label: string }[] }[] = [
+  {
+    label: "Core",
+    modules: [
+      { key: "students", label: "Students" },
+      { key: "attendance", label: "Attendance" },
+      { key: "exam", label: "Exam" },
+      { key: "exam_session", label: "Exam (Bulk Session Delete)" },
+      { key: "staff", label: "Staff" },
+      { key: "fees", label: "Fees" },
+      { key: "income", label: "Income" },
+      { key: "expenses", label: "Expenses" },
+      { key: "salary", label: "Salary" },
+      { key: "admissions", label: "Admissions" },
+      { key: "deleted_students", label: "Deleted Students" },
+    ],
+  },
+      {
+        label: "Setup",
+        modules: [
+          { key: "setup_classes", label: "Class Name" },
+          { key: "setup_class_subjects", label: "Class Subjects" },
+          { key: "setup_timings", label: "Class Timings" },
+          // `Attendance Values` is hard-coded in the system and is omitted
+          // from the editable permissions matrix.
+          { key: "setup_teachers", label: "Teachers" },
+          { key: "setup_income_categories", label: "Income Categories" },
+          { key: "setup_expense_categories", label: "Expense Categories" },
+          // Note: `Manage Users` and `Reset Student Password` are admin-only
+          // and intentionally omitted from this permissions editing UI.
+        ],
+      },
+];
+
+// Nested lookup: matrix[module][role][action] = allowed
+type Matrix = Record<string, Record<string, Record<string, boolean>>>;
+
+function buildMatrix(rows: RolePermission[]): Matrix {
+  const matrix: Matrix = {};
+  for (const row of rows) {
+    if (!matrix[row.module]) matrix[row.module] = {};
+    if (!matrix[row.module][row.role]) matrix[row.module][row.role] = {};
+    matrix[row.module][row.role][row.action] = row.allowed;
+  }
+  return matrix;
+}
+
+const ManageRolePermissions: React.FC = () => {
+  const [matrix, setMatrix] = useState<Matrix>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openRoles, setOpenRoles] = useState<Set<string>>(new Set());
+  const [pendingCell, setPendingCell] = useState<string | null>(null); // "module:role:action" while a PATCH is in flight
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await PermissionsAPI.GetAll();
+        setMatrix(buildMatrix(response.data));
+      } catch {
+        setError(
+          "Could not load the permissions matrix. Please refresh the page or try again shortly."
+        );
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const toggleRole = (role: string) => {
+    setOpenRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(role)) next.delete(role);
+      else next.add(role);
+      return next;
+    });
+  };
+
+  const handleToggle = useCallback(
+    async (module: string, role: string, action: string, newValue: boolean) => {
+      const cellKey = `${module}:${role}:${action}`;
+
+      // Optimistic update
+      setMatrix((prev) => ({
+        ...prev,
+        [module]: {
+          ...prev[module],
+          [role]: {
+            ...prev[module]?.[role],
+            [action]: newValue,
+          },
+        },
+      }));
+      setPendingCell(cellKey);
+      setError(null);
+
+      try {
+        await PermissionsAPI.Update(role, module, action, newValue);
+      } catch {
+        // Revert on failure
+        setMatrix((prev) => ({
+          ...prev,
+          [module]: {
+            ...prev[module],
+            [role]: {
+              ...prev[module]?.[role],
+              [action]: !newValue,
+            },
+          },
+        }));
+        setError(
+          `Failed to update ${role} / ${module} / ${action}. Change was not saved — please try again.`
+        );
+      } finally {
+        setPendingCell(null);
+      }
+    },
+    []
+  );
+
+  if (loading) {
+    return <div className="p-4 text-sm text-gray-500">Loading permissions…</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">
+          {error}
+        </div>
+      )}
+
+      {ROLES.map((role) => {
+        const isStudent = role === "STUDENT";
+        const isOpen = openRoles.has(role);
+        return (
+          <div
+            key={role}
+            className="border border-gray-200 dark:border-gray-700 rounded-lg mb-2 overflow-hidden"
+          >
+            <button
+              onClick={() => toggleRole(role)}
+              className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-neutral-900 hover:bg-gray-100 dark:hover:bg-neutral-800 transition"
+            >
+              <span
+                className={`font-medium text-sm ${
+                  isStudent
+                    ? "text-gray-400 dark:text-gray-600"
+                    : "text-gray-700 dark:text-gray-200"
+                }`}
+              >
+                {role}
+                {isStudent && (
+                  <span className="ml-2 text-xs font-normal">
+                    (fixed — not editable here)
+                  </span>
+                )}
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 transition-transform ${
+                  isOpen ? "rotate-180" : "rotate-0"
+                }`}
+              />
+            </button>
+
+            {isOpen &&
+              MODULE_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <h4 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 px-3 pt-3 pb-1">
+                    {group.label}
+                  </h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Module</TableHead>
+                        {ACTIONS.map((action) => (
+                          <TableHead key={action} className="text-center capitalize">
+                            {action}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.modules.map(({ key: moduleKey, label: moduleLabel }) => (
+                        <TableRow key={moduleKey}>
+                          <TableCell className="font-medium text-sm">
+                            {moduleLabel}
+                          </TableCell>
+                          {ACTIONS.map((action) => {
+                            const cellKey = `${moduleKey}:${role}:${action}`;
+                            const allowed =
+                              matrix[moduleKey]?.[role]?.[action] ?? false;
+                            return (
+                              <TableCell key={action} className="text-center">
+                                <Checkbox
+                                  checked={allowed}
+                                  disabled={isStudent || pendingCell === cellKey}
+                                  onCheckedChange={(checked) =>
+                                    handleToggle(
+                                      moduleKey,
+                                      role,
+                                      action,
+                                      checked === true
+                                    )
+                                  }
+                                />
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default ManageRolePermissions;
+
+--------------------------------------------------------------------------------
+FILE [4/10]: frontend/src/components/dashboard/Sidebar.tsx
+Size: 19,977 bytes
+--------------------------------------------------------------------------------
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { GoDotFill } from "react-icons/go";
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import {
+  GraduationCap,
+  Hand,
+  LayoutDashboard,
+  Moon,
+  Sun,
+  UserCog2,
+  LogOut,
+  ChevronDown,
+  Banknote,
+  BookOpen,
+} from "lucide-react";
+import { RiCashLine } from "react-icons/ri";
+import { BsCashCoin } from "react-icons/bs";
+import { GiExpense } from "react-icons/gi";
+import { useRole } from "@/context/RoleContext";
+import { canAccessSection, canAccessSubmenuItem } from "@/utils/rolePermissions";
+import axiosInstance from "@/api/axiosInterceptorInstance";
+import { useBranding } from "@/context/BrandingContext";
+
+type MenuItem = {
+  id: number;
+  name: string;
+  icon: React.ElementType;
+  path: string;
+  hasSubmenu?: boolean;
+  submenu?: {
+    id: number;
+    name: string;
+    path: string;
+    icon: React.ElementType;
+  }[];
+};
+
+type SidebarProps = {
+  isOpen: boolean;
+  onClose: () => void;
+};
+
+const menuList: MenuItem[] = [
+  { id: 1, name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+  {
+    id: 2,
+    name: "Student",
+    icon: GraduationCap,
+    path: "/dashboard/students",
+    hasSubmenu: true,
+    submenu: [
+      {
+        id: 21,
+        name: "All Students",
+        icon: GoDotFill,
+        path: "/dashboard/students",
+      },
+      {
+        id: 22,
+        name: "Student Profile",
+        icon: GoDotFill,
+        path: "/dashboard/students/profile",
+      },
+      {
+        id: 23,
+        name: "Deleted Students",
+        icon: GoDotFill,
+        path: "/dashboard/students/deleted",
+      },
+    ],
+  },
+  {
+    id: 3,
+    name: "Attendance",
+    icon: Hand,
+    path: "/dashboard/attendance",
+    hasSubmenu: true,
+    submenu: [
+      {
+        id: 8,
+        name: "Mark Attendance",
+        icon: GoDotFill,
+        path: "/dashboard/attendance/mark_attendance",
+      },
+      {
+        id: 9,
+        name: "View Attendance",
+        icon: GoDotFill,
+        path: "/dashboard/attendance/view_attendance",
+      },
+      {
+        id: 31,
+        name: "Attendance Summary",
+        icon: GoDotFill,
+        path: "/dashboard/attendance/attendance_status_summary",
+      },
+    ],
+  },
+  {
+    id: 36,
+    name: "Exam",
+    icon: BookOpen,
+    path: "/dashboard/exam",
+    hasSubmenu: true,
+    submenu: [
+      {
+        id: 361,
+        name: "Enter Marks",
+        icon: GoDotFill,
+        path: "/dashboard/exam/enter_marks",
+      },
+      {
+        id: 362,
+        name: "View Marks",
+        icon: GoDotFill,
+        path: "/dashboard/exam/view_marks",
+      },
+      {
+        id: 363,
+        name: "Edit Marks",
+        icon: GoDotFill,
+        path: "/dashboard/exam/edit_marks",
+      },
+      {
+        id: 364,
+        name: "Class Result",
+        icon: GoDotFill,
+        path: "/dashboard/exam/class_result",
+      },
+      {
+        id: 365,
+        name: "Exam Sheet",
+        icon: GoDotFill,
+        path: "/dashboard/exam/exam_sheet",
+      },
+    ],
+  },
+  {
+    id: 10,
+    name: "Fees",
+    icon: RiCashLine,
+    path: "/dashboard/fees",
+    hasSubmenu: true,
+    submenu: [
+      {
+        id: 11,
+        name: "Add Fees",
+        icon: GoDotFill,
+        path: "/dashboard/fees/add_fees",
+      },
+      {
+        id: 12,
+        name: "View Fees",
+        icon: GoDotFill,
+        path: "/dashboard/fees/view_fees",
+      },
+    ],
+  },
+  {
+    id: 37,
+    name: "Staff",
+    icon: UserCog2,
+    path: "/dashboard/staff",
+    hasSubmenu: true,
+    submenu: [
+      {
+        id: 371,
+        name: "View Staff",
+        icon: GoDotFill,
+        path: "/dashboard/staff/view_staff",
+      },
+      {
+        id: 372,
+        name: "Staff Attendance",
+        icon: GoDotFill,
+        path: "/dashboard/staff/attendance",
+      },
+    ],
+  },
+  {
+    id: 32,
+    name: "Salary",
+    icon: Banknote,
+    path: "/dashboard/salary",
+    hasSubmenu: true,
+    submenu: [
+      {
+        id: 33,
+        name: "Set Salary",
+        icon: GoDotFill,
+        path: "/dashboard/salary/set",
+      },
+      {
+        id: 34,
+        name: "Manage Salary",
+        icon: GoDotFill,
+        path: "/dashboard/salary/manage",
+      },
+      {
+        id: 35,
+        name: "Salary Logs",
+        icon: GoDotFill,
+        path: "/dashboard/salary/logs",
+      },
+      {
+        id: 32.1,
+        name: "View Salary",
+        icon: GoDotFill,
+        path: "/dashboard/salary/index",
+      },
+    ],
+  },
+  {
+    id: 13,
+    name: "Income",
+    icon: BsCashCoin,
+    path: "/dashboard/income",
+    hasSubmenu: true,
+    submenu: [
+      {
+        id: 14,
+        name: "Add Income",
+        icon: GoDotFill,
+        path: "/dashboard/income/add_income",
+      },
+      {
+        id: 15,
+        name: "View Income",
+        icon: GoDotFill,
+        path: "/dashboard/income/view_income",
+      },
+    ],
+  },
+  {
+    id: 17,
+    name: "Expense",
+    icon: GiExpense,
+    path: "/dashboard/Expense",
+    hasSubmenu: true,
+    submenu: [
+      {
+        id: 18,
+        name: "Add Expense",
+        icon: GoDotFill,
+        path: "/dashboard/expense/add_expense",
+      },
+      {
+        id: 19,
+        name: "View Expense",
+        icon: GoDotFill,
+        path: "/dashboard/expense/view_expense",
+      },
+    ],
+  },
+  {
+    id: 4,
+    name: "Setup",
+    icon: UserCog2,
+    path: "/dashboard/settings",
+    hasSubmenu: true,
+    submenu: [
+      {
+        id: 5,
+        name: "Class Name",
+        icon: GoDotFill,
+        path: "/dashboard/setup/class_name",
+      },
+      {
+        id: 23,
+        name: "Role Permissions",
+        icon: GoDotFill,
+        path: "/dashboard/setup/role_permissions",
+      },
+      {
+        id: 6,
+        name: "Class Subjects",
+        icon: GoDotFill,
+        path: "/dashboard/setup/class_subject",
+      },
+      {
+        id: 7,
+        name: "Class Timings",
+        icon: GoDotFill,
+        path: "/dashboard/setup/class_timings",
+      },
+      {
+        id: 8,
+        name: "Teacher",
+        icon: GoDotFill,
+        path: "/dashboard/setup/teacher",
+      },
+      {
+        id: 16,
+        name: "Income Category",
+        icon: GoDotFill,
+        path: "/dashboard/setup/income_category",
+      },
+      {
+        id: 17,
+        name: "Expense Category",
+        icon: GoDotFill,
+        path: "/dashboard/setup/expense_category",
+      },
+      {
+        id: 21,
+        name: "Manage User",
+        icon: GoDotFill,
+        path: "/dashboard/setup/manage_user",
+      },
+      {
+        id: 22,
+        name: "Student Password",
+        icon: GoDotFill,
+        path: "/dashboard/setup/reset_student_password",
+      },
+      {
+        id: 24,
+        name: "Appearance",
+        icon: GoDotFill,
+        path: "/dashboard/setup/appearance",
+      },
+    ],
+  },
+  { id: 5, name: "Logout", icon: LogOut, path: "/login" },
+];
+
+// Map menu item paths to role access sections
+const getMenuItemSection = (path: string): string => {
+  const lowerPath = path.toLowerCase();
+  if (lowerPath.includes("/students")) return "students";
+  if (lowerPath.includes("/attendance")) return "attendance";
+  if (lowerPath.includes("/fees")) return "fees";
+  if (lowerPath.includes("/salary")) return "salary";
+  if (lowerPath.includes("/income")) return "income";
+  if (lowerPath.includes("/expense")) return "expenses";
+  if (lowerPath.includes("/setup") || lowerPath.includes("/settings")) return "setup";
+  if (lowerPath.includes("/exam")) return "exam";
+  if (lowerPath.includes("/staff")) return "staff";
+  if (lowerPath.includes("/dashboard")) return "dashboard";
+  return "dashboard";
+};
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { role, isLoading, clearRole, permissions } = useRole();
+  const { schoolName } = useBranding();
+  const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [userData, setUserData] = useState<string | null>(null);
+  const isAdmin = !!(role && typeof role === "string" && role.toLowerCase() === "admin");
+  
+  
+  useEffect(() => {
+    // This runs only in the browser
+    const storedUser = localStorage.getItem("user");
+    setUserData(storedUser);
+  }, []);
+
+  // Filter menu items based on user role
+  const visibleMenuItems = menuList.filter((item) => {
+    // Logout is always visible
+    if (item.name === "Logout") return true;
+
+    // Check if role can access this section
+    const section = getMenuItemSection(item.path);
+    return canAccessSection(role, section, permissions);
+  });
+
+  const toggleSubmenu = (id: number) =>
+    setOpenSubmenu(openSubmenu === id ? null : id);
+
+  const handleLogout = async () => {
+    try {
+      await axiosInstance.post("/auth/logout");  // clears HTTPOnly cookies server-side
+    } catch {
+      // proceed with local cleanup even if the call fails
+    } finally {
+      clearRole();            // clears sessionStorage + localStorage via context
+      localStorage.clear();   // belt-and-suspenders
+      sessionStorage.clear();
+      router.replace("/login");
+    }
+  };
+
+  // Helper function to safely check if pathname starts with a path
+  const isActivePath = (path: string): boolean => {
+    if (!pathname) return false;
+    return pathname.startsWith(path);
+  };
+
+  // Helper function to check if pathname exactly matches a path
+  const isExactPath = (path: string): boolean => {
+    if (!pathname) return false;
+    return pathname === path;
+  };
+
+  return (
+    <>
+      {/* Mobile Overlay */}
+      <div
+        className={`fixed inset-0 bg-black bg-opacity-70 z-40 md:hidden transition-opacity ${
+          isOpen ? "opacity-100 visible" : "opacity-0 invisible -z-10"
+        }`}
+        onClick={onClose}
+      />
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed z-50 top-0 left-0 h-screen w-72 bg-white/90 dark:bg-neutral-950/90 border-r border-slate-200/80 dark:border-neutral-800 p-4 flex flex-col transform transition-all duration-300 shadow-[12px_0_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl
+          ${
+            isOpen ? "translate-x-0" : "-translate-x-full"
+          } md:translate-x-0 md:static md:z-auto`}
+      >
+        <div 
+          className="rounded-2xl border p-3 shadow-lg"
+          style={{
+            borderColor: `hsl(var(--sidebar-border))`,
+            backgroundImage: `linear-gradient(to bottom right, hsl(var(--sidebar-primary) / 0.9), hsl(var(--sidebar-accent) / 0.8))`,
+            color: `hsl(var(--foreground))`,
+          }}
+        >
+        <div className="flex flex-col items-center gap-2 text-center">
+          <Image
+              src="/logo.png"
+              alt="Logo"
+              width={56}
+              height={56}
+              className="rounded-full bg-white/90 p-1 object-cover"
+              unoptimized
+            />
+            <div>
+              <h2 className="text-sm font-semibold leading-tight" style={{ color: `hsl(var(--foreground))` }}>
+                Madrasah Management System
+              </h2>
+              <p className="mt-0.5 text-xs font-medium opacity-80" style={{ color: `hsl(var(--foreground))` }}>
+                 {schoolName}
+              </p>
+            </div>
+        </div>
+          {/* <div className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="Logo"
+              width={44}
+              height={44}
+              className="rounded-xl bg-white/90 p-1 dark:invert"
+              unoptimized
+            />
+            <div>
+              <h2 className="text-sm font-semibold leading-tight" style={{ color: `hsl(var(--foreground))` }}>
+                Madrasah Management System
+              </h2>
+            </div>
+          </div> */}
+        </div>
+
+        <div 
+          className="mt-4 rounded-2xl border p-3 shadow-sm"
+          style={{
+            borderColor: `hsl(var(--sidebar-border))`,
+            backgroundColor: `hsl(var(--sidebar-background) / 0.8)`,
+          }}
+        >
+          <div className="flex items-center space-x-3">
+            <Image
+              src="/image.png"
+              alt="User"
+              width={42}
+              height={42}
+              className="rounded-full border"
+              style={{
+                borderColor: `hsl(var(--sidebar-border))`,
+              }}
+            />
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-semibold uppercase" style={{ color: `hsl(var(--sidebar-foreground))` }}>
+                {userData ? JSON.parse(userData).username : "Guest"}
+              </h2>
+              <p className="truncate text-xs font-medium uppercase" style={{ color: `hsl(var(--muted-foreground))` }}>
+                {role || "Loading..."}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="mt-4 flex-1 space-y-1 overflow-y-auto pr-1">
+          {visibleMenuItems.map((item) => (
+            <div key={item.id}>
+              {item.hasSubmenu ? (
+                <button
+                  onClick={() => toggleSubmenu(item.id)}
+                  className="group flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all"
+                  style={{
+                    borderColor: isActivePath(item.path) ? `hsl(var(--sidebar-ring) / 0.3)` : 'transparent',
+                    backgroundColor: isActivePath(item.path) ? `hsl(var(--sidebar-primary) / 0.15)` : 'transparent',
+                    color: isActivePath(item.path) ? `hsl(var(--sidebar-primary))` : `hsl(var(--sidebar-foreground))`,
+                    boxShadow: isActivePath(item.path) ? `0 1px 3px hsl(var(--sidebar-ring) / 0.1)` : 'none',
+                  }}
+                >
+                  <div className="flex items-center">
+                    <span 
+                      className="mr-3 rounded-lg p-1.5"
+                      style={{
+                        backgroundColor: isActivePath(item.path) ? `hsl(var(--sidebar-primary) / 0.25)` : `hsl(var(--muted) / 0.5)`,
+                        color: isActivePath(item.path) ? `hsl(var(--sidebar-primary))` : `hsl(var(--muted-foreground))`,
+                      }}
+                    >
+                      <item.icon className="h-4 w-4" />
+                    </span>
+                    <span>{item.name}</span>
+                  </div>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      openSubmenu === item.id ? "rotate-180" : "rotate-0"
+                    }`}
+                  />
+                </button>
+              ) : item.name === "Logout" ? (
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center rounded-xl border border-transparent px-3 py-2.5 text-left text-sm font-medium transition-all hover:border-destructive/30 hover:bg-destructive/10"
+                  style={{
+                    color: `hsl(var(--sidebar-foreground))`,
+                  }}
+                >
+                  <span 
+                    className="mr-3 rounded-lg p-1.5"
+                    style={{
+                      backgroundColor: `hsl(var(--destructive) / 0.15)`,
+                      color: `hsl(var(--destructive))`,
+                    }}
+                  >
+                    <item.icon className="h-4 w-4" />
+                  </span>
+                  <span>{item.name}</span>
+                </button>
+              ) : (
+                <Link
+                  href={item.path}
+                  className="flex items-center rounded-xl border px-3 py-2.5 text-sm font-medium transition-all"
+                  style={{
+                    borderColor: isExactPath(item.path) ? `hsl(var(--sidebar-ring) / 0.3)` : 'transparent',
+                    backgroundColor: isExactPath(item.path) ? `hsl(var(--sidebar-primary) / 0.15)` : 'transparent',
+                    color: isExactPath(item.path) ? `hsl(var(--sidebar-primary))` : `hsl(var(--sidebar-foreground))`,
+                    boxShadow: isExactPath(item.path) ? `0 1px 3px hsl(var(--sidebar-ring) / 0.1)` : 'none',
+                  }}
+                >
+                  <span 
+                    className="mr-3 rounded-lg p-1.5"
+                    style={{
+                      backgroundColor: isExactPath(item.path) ? `hsl(var(--sidebar-primary) / 0.25)` : `hsl(var(--muted) / 0.5)`,
+                      color: isExactPath(item.path) ? `hsl(var(--sidebar-primary))` : `hsl(var(--muted-foreground))`,
+                    }}
+                  >
+                    <item.icon className="h-4 w-4" />
+                  </span>
+                  <span>{item.name}</span>
+                </Link>
+              )}
+              {item.hasSubmenu && openSubmenu === item.id && (
+                <div 
+                  className="ml-6 mt-1 space-y-1 border-l pl-3"
+                  style={{
+                    borderColor: `hsl(var(--sidebar-border))`,
+                  }}
+                >
+                  {item.submenu
+                    ?.filter((subItem) => {
+                      const section = getMenuItemSection(subItem.path);
+                      const adminOnlyPaths = [
+                        "/dashboard/setup/role_permissions",
+                        "/dashboard/setup/manage_user",
+                        "/dashboard/setup/appearance",
+                      ];
+                      // Enforce ADMIN-only visibility for specific setup pages
+                      if (adminOnlyPaths.includes(subItem.path.toLowerCase())) {
+                        return isAdmin;
+                      }
+
+                      return canAccessSection(role, section, permissions) && canAccessSubmenuItem(role, subItem.path, permissions);
+                    })
+                    .map((subItem) => (
+                      <Link
+                        key={subItem.id}
+                        href={subItem.path}
+                        className="flex rounded-lg px-2 py-2 text-sm transition hover:bg-sidebar-accent/50"
+                        style={{
+                          color: `hsl(var(--sidebar-accent-foreground))`,
+                        }}
+                      >
+                        <subItem.icon className="mr-2 mt-0.5 h-3.5 w-3.5" />
+                        {subItem.name}
+                      </Link>
+                    ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </nav>
+
+        <button
+          onClick={() => {
+            setIsDarkMode(!isDarkMode);
+            document.documentElement.classList.toggle("dark");
+          }}
+          className="mt-auto flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition"
+          style={{
+            borderColor: `hsl(var(--sidebar-border))`,
+            backgroundColor: `hsl(var(--sidebar-background))`,
+            color: `hsl(var(--sidebar-foreground))`,
+          }}
+        >
+          {isDarkMode ? (
+            <Sun className="h-4 w-4" />
+          ) : (
+            <Moon className="h-4 w-4" />
+          )}
+          <span>{isDarkMode ? "Light mode" : "Dark mode"}</span>
+        </button>
+      </aside>
+    </>
+  );
+};
+
+export default Sidebar;
+
+--------------------------------------------------------------------------------
+FILE [5/10]: frontend/src/utils/rolePermissions.ts
+Size: 9,455 bytes
+--------------------------------------------------------------------------------
+import { MyPermissions } from "@/models/permissions/Permission";
+
+// Role-based access control mapping
+export type UserRole =
+  | "ADMIN"
+  | "CHIEF_PRINCIPAL"
+  | "PRINCIPAL"
+  | "TEACHER"
+  | "STAFF"
+  | "ACCOUNTANT"
+  | "FEE_MANAGER"
+  | "STUDENT";
+
+export type Section =
+  | "dashboard"
+  | "attendance"
+  | "students"
+  | "teachers"
+  | "fees"
+  | "expenses"
+  | "income"
+  | "salary"
+  | "setup"
+  | "exam"
+  | "staff";
+
+// Role to accessible sections mapping
+// STATIC FALLBACK ONLY — used when the dynamic /permissions/me fetch fails.
+// Do not edit this to reflect new business rules going forward; make the
+// change in the role_permissions table instead (via the Setup screen).
+const ROLE_PERMISSIONS: Record<UserRole, Section[]> = {
+  ADMIN: [
+    "dashboard",
+    "attendance",
+    "students",
+    "teachers",
+    "fees",
+    "expenses",
+    "income",
+    "salary",
+    "setup",
+    "exam",
+    "staff",
+  ],
+  CHIEF_PRINCIPAL: [
+    "dashboard",
+    "attendance",
+    "students",
+    "teachers",
+    "fees",
+    "exam",
+    "staff",
+  ],
+  PRINCIPAL: [
+    "dashboard",
+    "attendance",
+    "students",
+    "teachers",
+    "fees",
+    "exam",
+  ],
+  TEACHER: ["attendance", "students", "dashboard", "exam"],
+  STAFF: ["attendance", "students", "dashboard"],
+  ACCOUNTANT: ["expenses", "fees", "income", "dashboard", "salary"],
+  FEE_MANAGER: ["fees", "dashboard", "students"],
+  STUDENT: ["dashboard"], // Students can access own attendance & fees through filtered endpoints
+};
+
+// Maps a nav Section to the backend module name checked for its "view"
+// permission. Sections not listed here (e.g. "dashboard") are always
+// accessible once logged in — they aren't gated by a specific module.
+const SECTION_TO_MODULE: Partial<Record<Section, string>> = {
+  students: "students",
+  attendance: "attendance",
+  fees: "fees",
+  income: "income",
+  expenses: "expenses",
+  salary: "salary",
+  exam: "exam",
+  staff: "staff",
+};
+
+// Maps specific Setup submenu paths (and a couple of other narrowly-scoped
+// items like "/fees/add_fees") to their backend module + action. Anything
+// not listed here falls through to the default (true) at the end of
+// canAccessSubmenuItemDynamic — i.e. visible as long as its parent section
+// is accessible.
+const SUBMENU_MODULE_MAP: { match: string; module: string; action: string }[] = [
+  { match: "/fees/add_fees", module: "fees", action: "add" },
+  { match: "/students/deleted", module: "deleted_students", action: "view" },
+  { match: "/setup/manage_user", module: "setup_users", action: "view" },
+  { match: "/setup/class_name", module: "setup_classes", action: "view" },
+  { match: "/setup/class_subject", module: "setup_class_subjects", action: "view" },
+  { match: "/setup/class_timings", module: "setup_timings", action: "view" },
+  { match: "/setup/teacher", module: "setup_teachers", action: "view" },
+  { match: "/setup/income_category", module: "setup_income_categories", action: "view" },
+  { match: "/setup/expense_category", module: "setup_expense_categories", action: "view" },
+  { match: "/setup/reset_student_password", module: "setup_reset_student_password", action: "view" },
+];
+
+/**
+ * Check if a user with a given role can access a section.
+ * Dynamic-first: if `permissions` (from GET /permissions/me) is available,
+ * resolve entirely from that. Only falls back to the static ROLE_PERMISSIONS
+ * object if the fetch itself failed (permissions === null/undefined).
+ */
+export function canAccessSection(
+  role: string | null,
+  section: string,
+  permissions?: MyPermissions | null
+): boolean {
+  if (!role) return false;
+  if (!isValidRole(role)) return false;
+
+  if (permissions) {
+    return canAccessSectionDynamic(role, section, permissions);
+  }
+  return canAccessSectionStatic(role, section);
+}
+
+function canAccessSectionDynamic(
+  role: string,
+  section: string,
+  permissions: MyPermissions
+): boolean {
+  // Dashboard has no permission gate — any authenticated user sees it.
+  if (section === "dashboard") return true;
+
+  // "setup" is a single frontend nav section, but backed by 8+ granular
+  // setup_* modules. Show the Setup nav item if the role can view ANY of them.
+  if (section === "setup") {
+    return Object.keys(permissions).some(
+      (module) => module.startsWith("setup_") && permissions[module]?.view
+    );
+  }
+
+  const module = SECTION_TO_MODULE[section as Section];
+  if (!module) return false; // unknown/unmapped section — deny by default
+
+  return permissions[module]?.view ?? false;
+}
+
+function canAccessSectionStatic(role: string, section: string): boolean {
+  const sections = ROLE_PERMISSIONS[role as UserRole];
+  return sections.includes(section as Section);
+}
+
+/**
+ * Get all accessible sections for a role (static fallback list only —
+ * used for things like initial nav skeletons before permissions load).
+ */
+export function getAccessibleSections(role: string | null): Section[] {
+  if (!role || !isValidRole(role)) return [];
+  return ROLE_PERMISSIONS[role as UserRole];
+}
+
+/**
+ * Check if a user can access a given route path (unchanged — still purely
+ * a path-to-section mapper, section access itself now goes through
+ * canAccessSection above).
+ */
+export function canAccessRoute(role: string | null, pathname: string): boolean {
+  if (!role) return false;
+
+  const parts = pathname.split("/").filter(Boolean);
+
+  if (parts[0] !== "dashboard") {
+    return true;
+  }
+
+  if (parts.length === 1) {
+    return canAccessSection(role, "dashboard");
+  }
+
+  const sectionMap: Record<string, string> = { expense: "expenses" };
+  const raw = parts[1];
+  const section = sectionMap[raw] ?? raw;
+  return canAccessSection(role, section);
+}
+
+/**
+ * Validate if a string is a valid role
+ */
+export function isValidRole(role: string): boolean {
+  return ["ADMIN", "CHIEF_PRINCIPAL", "PRINCIPAL", "TEACHER", "STAFF", "ACCOUNTANT", "FEE_MANAGER", "STUDENT"].includes(
+    role
+  );
+}
+
+/**
+ * Get display name for a role
+ */
+export function getRoleDisplayName(role: string | null): string {
+  if (!role) return "Unknown";
+
+  const displayNames: Record<UserRole, string> = {
+    ADMIN: "Administrator",
+    CHIEF_PRINCIPAL: "Chief Principal",
+    PRINCIPAL: "Principal",
+    TEACHER: "Teacher",
+    STAFF: "Staff",
+    ACCOUNTANT: "Accountant",
+    FEE_MANAGER: "Fee Manager",
+    STUDENT: "Student",
+  };
+
+  return displayNames[role as UserRole] || role;
+}
+
+/**
+ * Check if a submenu item should be visible for a given role.
+ * Dynamic-first, same rule as canAccessSection.
+ */
+export function canAccessSubmenuItem(
+  role: string | null,
+  submenuPath: string,
+  permissions?: MyPermissions | null
+): boolean {
+  if (!role) return false;
+
+  if (permissions) {
+    return canAccessSubmenuItemDynamic(role, submenuPath, permissions);
+  }
+  return canAccessSubmenuItemStatic(role, submenuPath);
+}
+
+function canAccessSubmenuItemDynamic(
+  role: string,
+  submenuPath: string,
+  permissions: MyPermissions
+): boolean {
+  // TEACHER/STAFF nav-narrowing: this is a UX scoping rule (which submenu
+  // items make sense to show), not a security boundary — the backend
+  // already enforces the real permission on every endpoint regardless.
+  // Preserved here so the nav doesn't get noisier than before for these
+  // two roles once dynamic permissions come online.
+  if (role === "TEACHER" || role === "STAFF") {
+    const allowed =
+      submenuPath.includes("/attendance/mark_attendance") ||
+      submenuPath.includes("/attendance/view_attendance") ||
+      submenuPath.includes("/exam") ||
+      (submenuPath.includes("/students") && !submenuPath.includes("/deleted"));
+    if (!allowed) return false;
+  }
+
+  // The Role Permissions screen itself is gated by a hardcoded require_admin()
+  // on the backend (deliberately outside the dynamic system — see Phase 1
+  // guardrails), so it's always ADMIN-only here too, never toggle-able.
+  if (submenuPath.includes("/setup/role_permissions")) {
+    return role === "ADMIN";
+  }
+
+  const mapping = SUBMENU_MODULE_MAP.find((m) => submenuPath.includes(m.match));
+  if (mapping) {
+    return permissions[mapping.module]?.[mapping.action] ?? false;
+  }
+
+  // No specific mapping — visible as long as its parent section is accessible
+  // (already checked separately by the Sidebar before this function runs).
+  return true;
+}
+
+function canAccessSubmenuItemStatic(role: string, submenuPath: string): boolean {
+  const isPrincipalLikeRole = role === "PRINCIPAL" || role === "CHIEF_PRINCIPAL";
+
+  if (isPrincipalLikeRole && submenuPath.includes("/fees/add_fees")) {
+    return false;
+  }
+
+  if (submenuPath.includes("/students/deleted")) {
+    return role === "ADMIN" || isPrincipalLikeRole;
+  }
+
+  if (submenuPath.includes("/setup/manage_user")) {
+    return role === "ADMIN";
+  }
+
+  if (submenuPath.includes("/setup/role_permissions")) {
+    return role === "ADMIN";
+  }
+
+  if (role === "TEACHER" || role === "STAFF") {
+    return (
+      submenuPath.includes("/attendance/mark_attendance") ||
+      submenuPath.includes("/attendance/view_attendance") ||
+      submenuPath.includes("/exam") ||
+      (submenuPath.includes("/students") && !submenuPath.includes("/deleted"))
+    );
+  }
+
+  return true;
+}
+
+--------------------------------------------------------------------------------
+FILE [6/10]: migrations/0002_add_appearance_settings.py
+Size: 3,544 bytes
+--------------------------------------------------------------------------------
+"""
+Migration script to create the appearance_settings table (Merge & Cutover
+follow-up work, post Phase 5).
+
+Single-row table (id=1, enforced via CHECK constraint) living inside each
+tenant's own database. Seeded once with the default palette; ADMIN then
+PATCHes it in place via the API. No history table -- last write wins.
+
+Run this script standalone (one tenant):
+    python 0002_add_appearance_settings.py
+    python 0002_add_appearance_settings.py --database-url "postgresql://..."
+
+If --database-url is omitted, falls back to setting.DATABASE_URL, same
+convention as add_effective_till_column.py and 0001.
+
+Or fan out across all tenants via migrations/run_all_tenants.py, which
+calls upgrade() below directly.
+"""
+
+import argparse
+
+from sqlmodel import Session, select, create_engine, SQLModel
+import setting
+
+from schemas.appearance_model import AppearanceSettings
+
+# Matches frontend's defaultPaletteId in frontend/src/config/colorPalettes.ts
+DEFAULT_PALETTE_ID = "slate-professional"
+
+MIGRATION_ID = "0002_add_appearance_settings"
+
+
+def create_tables(bind) -> None:
+    print("Creating appearance_settings table (if not exists)...")
+    SQLModel.metadata.create_all(bind, tables=[AppearanceSettings.__table__])
+    print("✓ Table ready")
+
+
+def seed_default_row(session: Session, commit: bool = True) -> None:
+    print("\nSeeding appearance_settings with default palette...")
+    existing = session.exec(select(AppearanceSettings).where(AppearanceSettings.id == 1)).first()
+    if existing:
+        print(f"✓ Row already exists (theme_palette={existing.theme_palette!r}), skipping")
+        return
+    session.add(AppearanceSettings(id=1, theme_palette=DEFAULT_PALETTE_ID))
+    if commit:
+        session.commit()
+    print(f"✓ Seeded id=1, theme_palette={DEFAULT_PALETTE_ID!r}")
+
+
+def print_summary(session: Session) -> None:
+    row = session.exec(select(AppearanceSettings).where(AppearanceSettings.id == 1)).first()
+    if row:
+        print(f"\n✓ appearance_settings row confirmed: theme_palette={row.theme_palette!r}")
+    else:
+        print("\n⚠️  No appearance_settings row found — investigate before proceeding.")
+
+
+def upgrade(session: Session) -> None:
+    """Entry point used by migrations/run_all_tenants.py.
+
+    Does not commit. runner_core.py's apply_migration() commits the
+    upgrade and the schema_migrations tracking row together, atomically.
+    """
+    create_tables(session.connection())
+    seed_default_row(session, commit=False)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Create + seed appearance_settings table")
+    parser.add_argument(
+        "--database-url",
+        default=None,
+        help="Target DB connection string. Defaults to setting.DATABASE_URL (local .env) if omitted.",
+    )
+    args = parser.parse_args()
+
+    conn_string = args.database_url or str(setting.DATABASE_URL)
+    print(f"Target database: {conn_string.split('@')[-1]}")
+
+    engine = create_engine(conn_string, connect_args={"connect_timeout": 10})
+
+    create_tables(engine)
+
+    with Session(engine) as session:
+        seed_default_row(session)
+        print_summary(session)
+
+    print("\n✅ Migration completed successfully!")
+
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("APPEARANCE SETTINGS TABLE MIGRATION")
+    print("=" * 60)
+    print("\nThis script will:")
+    print("1. Create appearance_settings table")
+    print("2. Seed it with the default palette (single row, id=1)")
+    print("\nPress Ctrl+C to cancel, or Enter to continue...")
+    input()
+
+    main()
+
+--------------------------------------------------------------------------------
+FILE [7/10]: router/salary.py
+Size: 55,919 bytes
+--------------------------------------------------------------------------------
+from datetime import datetime, date
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
+from sqlmodel import Session, select, delete
+from typing import List, Annotated
+from db import get_session
+from schemas.salary_model import (
+    TeacherSalary, TeacherSalaryCreate, TeacherSalaryResponse, TeacherSalaryUpdate,
+    SalaryLedger, SalaryLedgerCreate, SalaryLedgerResponse, SalaryLedgerUpdate,
+    SalaryPayment, SalaryPaymentCreate, SalaryPaymentResponse, SalaryPaymentUpdate,
+    Allowance, AllowanceCreate, AllowanceResponse, AllowanceUpdate,
+    Deduction, DeductionCreate, DeductionResponse, DeductionUpdate
+)
+from schemas.teacher_names_model import TeacherNames
+from user.user_crud import require_permission
+from user.user_models import User
+from services.salary_service import (
+    close_previous_active_record,
+    reconnect_neighbors_after_delete,
+    recalculate_all_effective_till,
+    calculate_teacher_salary_summary,
+    validate_salary_timeline
+)
+from services.finance_sync_service import (
+    sync_expense_for_salary_payment,
+    delete_expense_for_salary_payment,
+    sync_expense_for_allowance,
+    delete_expense_for_allowance
+)
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+def ensure_salary_ledger_exists(
+    db: Session,
+    teacher_id: int,
+    month: int,
+    year: int
+) -> SalaryLedger:
+    """
+    Ensure a salary ledger exists for the given teacher/month/year.
+    If it doesn't exist, create it using the teacher's current base salary.
+    """
+    # Check if ledger already exists
+    existing_ledger = db.exec(
+        select(SalaryLedger)
+        .where(
+            SalaryLedger.teacher_id == teacher_id,
+            SalaryLedger.month == month,
+            SalaryLedger.year == year
+        )
+    ).first()
+    if existing_ledger:
+        return existing_ledger
+    # Get the APPLICABLE base salary for this month
+    # Find the salary record with maximum effective_from date <= first day of this month
+    first_day_of_month = date(year, month, 1).isoformat()
+    teacher_salary = db.exec(
+        select(TeacherSalary)
+        .where(
+            TeacherSalary.teacher_id == teacher_id,
+            TeacherSalary.effective_from <= first_day_of_month
+        )
+        .order_by(TeacherSalary.effective_from.desc())
+    ).first()
+    if not teacher_salary:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No base salary configured for teacher ID {teacher_id} before {first_day_of_month}"
+        )
+    # Create new ledger entry
+    base_salary = teacher_salary.base_salary
+    new_ledger = SalaryLedger(
+        teacher_id=teacher_id,
+        month=month,
+        year=year,
+        base_salary=base_salary,
+        allowance_total=0,
+        deduction_total=0,
+        net_salary=base_salary,  # Initially net = base (allowances/deductions will adjust)
+        total_paid=0,
+        remaining=base_salary
+    )
+    db.add(new_ledger)
+    db.commit()
+    db.refresh(new_ledger)
+    return new_ledger
+def recalculate_ledger_totals(
+    db: Session,
+    teacher_id: int,
+    month: int,
+    year: int
+) -> SalaryLedger:
+    """
+    Recalculate and update the totals for a salary ledger based on actual allowances,
+    deductions, and payments for the given teacher/month/year.
+    """
+    # Get or create the ledger
+    ledger = ensure_salary_ledger_exists(db, teacher_id, month, year)
+    # Calculate total allowances
+    total_allowances = db.exec(
+        select(Allowance.amount)
+        .where(
+            Allowance.teacher_id == teacher_id,
+            Allowance.month == month,
+            Allowance.year == year
+        )
+    ).all()
+    allowance_total = sum(total_allowances)
+    # Calculate total deductions
+    total_deductions = db.exec(
+        select(Deduction.amount)
+        .where(
+            Deduction.teacher_id == teacher_id,
+            Deduction.month == month,
+            Deduction.year == year
+        )
+    ).all()
+    deduction_total = sum(total_deductions)
+    # Calculate total payments and include allowances as already-paid amounts
+    total_payments = db.exec(
+        select(SalaryPayment.amount)
+        .where(
+            SalaryPayment.teacher_id == teacher_id,
+            SalaryPayment.ledger_id == ledger.id
+        )
+    ).all()
+    salary_payments_total = sum(total_payments)
+    total_paid = salary_payments_total + allowance_total
+    # Update ledger with recalculated totals
+    ledger.allowance_total = allowance_total
+    ledger.deduction_total = deduction_total
+    ledger.total_paid = total_paid
+    ledger.net_salary = ledger.base_salary + allowance_total - deduction_total
+    ledger.remaining = ledger.net_salary - total_paid
+    db.add(ledger)
+    db.commit()
+    db.refresh(ledger)
+    return ledger
+def _serialize_date_value(value):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    return value.isoformat()
+salary_router = APIRouter(
+    prefix="/salary",
+    tags=["Salary"],
+    responses={404: {"Description": "Not found"}}
+)
+# ============================================================================
+# TEACHER SALARY MANAGEMENT (Base Salary Configuration)
+# ============================================================================
+@salary_router.get("/teacher-salary/all", response_model=dict)
+def get_all_teacher_salaries(
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "view"))],
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=50),
+    all: bool = Query(False),
+):
+    """Get all teacher salary configurations with effective_till."""
+    try:
+        from sqlalchemy import func
+        total = db.exec(select(func.count(TeacherSalary.id))).one()
+        query = select(TeacherSalary)
+        if not all:
+            query = query.offset((page - 1) * page_size).limit(page_size)
+        salaries = db.exec(query).all()
+        response = []
+        for salary in salaries:
+            teacher = db.exec(
+                select(TeacherNames)
+                .where(TeacherNames.teacher_name_id == salary.teacher_id)
+            ).first()
+            response.append(TeacherSalaryResponse(
+                id=salary.id,
+                teacher_id=salary.teacher_id,
+                teacher_name=teacher.teacher_name if teacher else None,
+                base_salary=salary.base_salary,
+                effective_from=_serialize_date_value(salary.effective_from),
+                effective_till=_serialize_date_value(salary.effective_till),
+                created_at=salary.created_at
+            ))
+        return {
+            "data": response,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching teacher salaries: {str(e)}"
+        )
+@salary_router.post("/teacher-salary/add", response_model=TeacherSalaryResponse, status_code=status.HTTP_201_CREATED)
+def create_teacher_salary(
+    salary_data: TeacherSalaryCreate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "add"))]
+):
+    """Create a new teacher salary configuration."""
+    try:
+        # Verify teacher exists
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == salary_data.teacher_id)
+        ).first()
+        if not teacher:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Teacher with ID {salary_data.teacher_id} not found"
+            )
+        # Validate: no overlapping active record with same effective_from
+        existing = db.exec(
+            select(TeacherSalary)
+            .where(TeacherSalary.teacher_id == salary_data.teacher_id)
+            .where(TeacherSalary.effective_from == salary_data.effective_from)
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail="A salary record with the same effective_from already exists."
+            )
+        # Close the current active record before creating new one
+        effective_from_date = date.fromisoformat(salary_data.effective_from)
+        close_previous_active_record(db, salary_data.teacher_id, effective_from_date)
+        # Create new teacher salary record (effective_till = NULL = open-ended)
+        new_salary = TeacherSalary(
+            teacher_id=salary_data.teacher_id,
+            base_salary=salary_data.base_salary,
+            effective_from=salary_data.effective_from,
+            effective_till=None
+        )
+        db.add(new_salary)
+        db.commit()
+        db.refresh(new_salary)
+        return TeacherSalaryResponse(
+            id=new_salary.id,
+            teacher_id=new_salary.teacher_id,
+            teacher_name=teacher.teacher_name,
+            base_salary=new_salary.base_salary,
+            effective_from=_serialize_date_value(new_salary.effective_from),
+            effective_till=_serialize_date_value(new_salary.effective_till),
+            created_at=new_salary.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating teacher salary: {str(e)}"
+        )
+@salary_router.get("/teacher-salary/{teacher_id}", response_model=List[TeacherSalaryResponse])
+def get_teacher_salary_history(
+    teacher_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "view"))]
+):
+    """Get salary history for a specific teacher."""
+    try:
+        salaries = db.exec(
+            select(TeacherSalary)
+            .where(TeacherSalary.teacher_id == teacher_id)
+            .order_by(TeacherSalary.effective_from.desc())
+        ).all()
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == teacher_id)
+        ).first()
+        response = []
+        for salary in salaries:
+            response.append(
+                TeacherSalaryResponse(
+                    id=salary.id,
+                    teacher_id=salary.teacher_id,
+                    teacher_name=teacher.teacher_name if teacher else None,
+                    base_salary=salary.base_salary,
+                    effective_from=_serialize_date_value(salary.effective_from),
+                    effective_till=_serialize_date_value(salary.effective_till),
+                    created_at=salary.created_at
+                )
+            )
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching teacher salary history: {str(e)}"
+        )
+@salary_router.put("/teacher-salary/{salary_id}", response_model=TeacherSalaryResponse)
+def update_teacher_salary(
+    salary_id: int,
+    salary_data: TeacherSalaryUpdate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "edit"))]
+):
+    """Update a teacher salary record. Admin only."""
+    try:
+        salary = db.exec(
+            select(TeacherSalary)
+            .where(TeacherSalary.id == salary_id)
+        ).first()
+        if not salary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Teacher salary record with ID {salary_id} not found"
+            )
+        # Update fields if provided
+        if salary_data.base_salary is not None:
+            salary.base_salary = salary_data.base_salary
+        if salary_data.effective_from is not None:
+            salary.effective_from = salary_data.effective_from
+        db.add(salary)
+        # Recalculate ALL effective_till values for this teacher's timeline
+        recalculate_all_effective_till(db, salary.teacher_id)
+        db.commit()
+        db.refresh(salary)
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == salary.teacher_id)
+        ).first()
+        return TeacherSalaryResponse(
+            id=salary.id,
+            teacher_id=salary.teacher_id,
+            teacher_name=teacher.teacher_name if teacher else None,
+            base_salary=salary.base_salary,
+            effective_from=_serialize_date_value(salary.effective_from),
+            effective_till=_serialize_date_value(salary.effective_till),
+            created_at=salary.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating teacher salary: {str(e)}"
+        )
+@salary_router.delete("/teacher-salary/{salary_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_teacher_salary(
+    salary_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "delete"))]
+):
+    """Delete a teacher salary record. Admin only."""
+    try:
+        salary = db.exec(
+            select(TeacherSalary)
+            .where(TeacherSalary.id == salary_id)
+        ).first()
+        if not salary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Teacher salary record with ID {salary_id} not found"
+            )
+        # Reconnect neighboring periods BEFORE deleting
+        reconnect_neighbors_after_delete(db, salary)
+        db.delete(salary)
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting teacher salary: {str(e)}"
+        )
+# ── NEW: Teacher Salary Summary with Historical Calculation ──────────────────
+@salary_router.get("/teacher-summary/{teacher_id}")
+def get_teacher_salary_summary(
+    teacher_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "view"))]
+):
+    """
+    Get comprehensive salary summary for a teacher including:
+    - All historical salary periods with prorated calculations
+    - Total allowances and deductions
+    - Total paid and remaining balance
+    - Payment history details
+    """
+    try:
+        # Verify teacher exists
+        teacher = db.get(TeacherNames, teacher_id)
+        if not teacher:
+            raise HTTPException(status_code=404, detail="Teacher not found")
+        # Calculate summary using the service function
+        summary = calculate_teacher_salary_summary(db, teacher_id)
+        return summary
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error calculating teacher salary summary: {str(e)}"
+        )
+# ============================================================================
+# SALARY LEDGER MANAGEMENT (Monthly Records - Heart of System)
+# ============================================================================
+@salary_router.get("/ledger/all", response_model=dict)
+def get_all_salary_ledgers(
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "view"))],
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=50),
+    all: bool = Query(False),
+):
+    """Get all salary ledger records."""
+    try:
+        from sqlalchemy import func
+        total = db.exec(select(func.count(SalaryLedger.id))).one()
+        query = select(SalaryLedger, TeacherNames)
+        query = query.join(TeacherNames, SalaryLedger.teacher_id == TeacherNames.teacher_name_id)
+        if not all:
+            query = query.offset((page - 1) * page_size).limit(page_size)
+        ledgers = db.exec(query).all()
+        response = []
+        for ledger, teacher in ledgers:
+            response.append(SalaryLedgerResponse(
+                id=ledger.id,
+                teacher_id=ledger.teacher_id,
+                teacher_name=teacher.teacher_name if teacher else None,
+                month=ledger.month,
+                year=ledger.year,
+                base_salary=ledger.base_salary,
+                allowance_total=ledger.allowance_total or 0,
+                deduction_total=ledger.deduction_total or 0,
+                net_salary=ledger.net_salary,
+                total_paid=ledger.total_paid or 0,
+                remaining=ledger.remaining,
+                created_at=ledger.created_at
+            ))
+        return {
+            "data": response,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching salary ledgers: {str(e)}"
+        )
+@salary_router.post("/ledger/add", response_model=SalaryLedgerResponse, status_code=status.HTTP_201_CREATED)
+def create_salary_ledger(
+    ledger_data: SalaryLedgerCreate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "add"))]
+):
+    """Create a new salary ledger record."""
+    try:
+        # Verify teacher exists
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == ledger_data.teacher_id)
+        ).first()
+        if not teacher:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Teacher with ID {ledger_data.teacher_id} not found"
+            )
+        # Return existing ledger if already present for the same teacher/month/year
+        existing_ledger = db.exec(
+            select(SalaryLedger)
+            .where(
+                SalaryLedger.teacher_id == ledger_data.teacher_id,
+                SalaryLedger.month == ledger_data.month,
+                SalaryLedger.year == ledger_data.year
+            )
+        ).first()
+        if existing_ledger:
+            return SalaryLedgerResponse(
+                id=existing_ledger.id,
+                teacher_id=existing_ledger.teacher_id,
+                teacher_name=teacher.teacher_name,
+                month=existing_ledger.month,
+                year=existing_ledger.year,
+                base_salary=existing_ledger.base_salary,
+                allowance_total=existing_ledger.allowance_total,
+                deduction_total=existing_ledger.deduction_total,
+                net_salary=existing_ledger.net_salary,
+                total_paid=existing_ledger.total_paid,
+                remaining=existing_ledger.remaining,
+                created_at=existing_ledger.created_at
+            )
+        # Create new ledger record
+        new_ledger = SalaryLedger(
+            teacher_id=ledger_data.teacher_id,
+            month=ledger_data.month,
+            year=ledger_data.year,
+            base_salary=ledger_data.base_salary,
+            allowance_total=ledger_data.allowance_total or 0,
+            deduction_total=ledger_data.deduction_total or 0,
+            net_salary=ledger_data.net_salary,
+            total_paid=ledger_data.total_paid or 0,
+            remaining=ledger_data.remaining
+        )
+        db.add(new_ledger)
+        db.commit()
+        db.refresh(new_ledger)
+        return SalaryLedgerResponse(
+            id=new_ledger.id,
+            teacher_id=new_ledger.teacher_id,
+            teacher_name=teacher.teacher_name,
+            month=new_ledger.month,
+            year=new_ledger.year,
+            base_salary=new_ledger.base_salary,
+            allowance_total=new_ledger.allowance_total,
+            deduction_total=new_ledger.deduction_total,
+            net_salary=new_ledger.net_salary,
+            total_paid=new_ledger.total_paid,
+            remaining=new_ledger.remaining,
+            created_at=new_ledger.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating salary ledger: {str(e)}"
+        )
+@salary_router.post("/ledger/ensure/{teacher_id}/{month}/{year}", response_model=SalaryLedgerResponse)
+def ensure_teacher_ledger(
+    teacher_id: int,
+    month: int,
+    year: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "add"))]
+):
+    """Ensure a salary ledger exists for the given teacher/month/year, creating it if necessary."""
+    try:
+        ledger = ensure_salary_ledger_exists(db, teacher_id, month, year)
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == teacher_id)
+        ).first()
+        return SalaryLedgerResponse(
+            id=ledger.id,
+            teacher_id=ledger.teacher_id,
+            teacher_name=teacher.teacher_name if teacher else None,
+            month=ledger.month,
+            year=ledger.year,
+            base_salary=ledger.base_salary,
+            allowance_total=ledger.allowance_total,
+            deduction_total=ledger.deduction_total,
+            net_salary=ledger.net_salary,
+            total_paid=ledger.total_paid,
+            remaining=ledger.remaining,
+            created_at=ledger.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error ensuring salary ledger: {str(e)}"
+        )
+@salary_router.put("/ledger/{ledger_id}", response_model=SalaryLedgerResponse)
+def update_salary_ledger(
+    ledger_id: int,
+    ledger_data: SalaryLedgerUpdate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "edit"))]
+):
+    """Update a salary ledger record. Admin only."""
+    try:
+        ledger = db.exec(
+            select(SalaryLedger)
+            .where(SalaryLedger.id == ledger_id)
+        ).first()
+        if not ledger:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Salary ledger record with ID {ledger_id} not found"
+            )
+        # Update fields if provided
+        if ledger_data.allowance_total is not None:
+            ledger.allowance_total = ledger_data.allowance_total
+        if ledger_data.deduction_total is not None:
+            ledger.deduction_total = ledger_data.deduction_total
+        if ledger_data.net_salary is not None:
+            ledger.net_salary = ledger_data.net_salary
+        if ledger_data.total_paid is not None:
+            ledger.total_paid = ledger_data.total_paid
+        if ledger_data.remaining is not None:
+            ledger.remaining = ledger_data.remaining
+        # Recalculate net_salary if allowances/deductions changed
+        if ledger_data.allowance_total is not None or ledger_data.deduction_total is not None:
+            ledger.net_salary = ledger.base_salary + (ledger.allowance_total or 0) - (ledger.deduction_total or 0)
+            ledger.remaining = ledger.net_salary - (ledger.total_paid or 0)
+        db.commit()
+        db.refresh(ledger)
+        # Get teacher name
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == ledger.teacher_id)
+        ).first()
+        return SalaryLedgerResponse(
+            id=ledger.id,
+            teacher_id=ledger.teacher_id,
+            teacher_name=teacher.teacher_name if teacher else None,
+            month=ledger.month,
+            year=ledger.year,
+            base_salary=ledger.base_salary,
+            allowance_total=ledger.allowance_total,
+            deduction_total=ledger.deduction_total,
+            net_salary=ledger.net_salary,
+            total_paid=ledger.total_paid,
+            remaining=ledger.remaining,
+            created_at=ledger.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating salary ledger: {str(e)}"
+        )
+@salary_router.delete("/ledger/{ledger_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_salary_ledger(
+    ledger_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "delete"))]
+):
+    """Delete a salary ledger record. Admin only."""
+    try:
+        ledger = db.exec(
+            select(SalaryLedger)
+            .where(SalaryLedger.id == ledger_id)
+        ).first()
+        if not ledger:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Salary ledger record with ID {ledger_id} not found"
+            )
+        db.delete(ledger)
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting salary ledger: {str(e)}"
+        )
+# ============================================================================
+# SALARY PAYMENT MANAGEMENT (Transaction Records)
+# ============================================================================
+@salary_router.post("/payment/add", response_model=SalaryPaymentResponse, status_code=status.HTTP_201_CREATED)
+def create_salary_payment(
+    payment_data: SalaryPaymentCreate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "add"))]
+):
+    """Create a new salary payment record."""
+    try:
+        # Verify teacher exists
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == payment_data.teacher_id)
+        ).first()
+        if not teacher:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Teacher with ID {payment_data.teacher_id} not found"
+            )
+        # Verify ledger exists (should already exist, but double-check)
+        ledger = db.exec(
+            select(SalaryLedger)
+            .where(SalaryLedger.id == payment_data.ledger_id)
+        ).first()
+        if not ledger:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Salary ledger with ID {payment_data.ledger_id} not found"
+            )
+        # Create payment record
+        new_payment = SalaryPayment(
+            teacher_id=payment_data.teacher_id,
+            ledger_id=payment_data.ledger_id,
+            amount=payment_data.amount,
+            payment_date=payment_data.payment_date
+        )
+        db.add(new_payment)
+        db.commit()
+        db.refresh(new_payment)
+        # Recalculate ledger totals so allowances are included in total_paid
+        recalculate_ledger_totals(db, ledger.teacher_id, ledger.month, ledger.year)
+        # Refresh ledger after recalculation
+        db.refresh(ledger)
+        # Sync to expense record
+        linked_expense_created = False
+        try:
+            sync_expense_for_salary_payment(db, new_payment, teacher.teacher_name)
+            linked_expense_created = True
+        except Exception as sync_error:
+            # Log sync error but don't fail the payment creation
+            print(f"Warning: Failed to sync expense for salary payment {new_payment.id}: {str(sync_error)}")
+        return SalaryPaymentResponse(
+            id=new_payment.id,
+            teacher_id=new_payment.teacher_id,
+            teacher_name=teacher.teacher_name,
+            ledger_id=new_payment.ledger_id,
+            amount=new_payment.amount,
+            payment_date=new_payment.payment_date,
+            created_at=new_payment.created_at,
+            linked_expense_created=linked_expense_created
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating salary payment: {str(e)}"
+        )
+@salary_router.get("/payment/ledger/{ledger_id}", response_model=List[SalaryPaymentResponse])
+def get_ledger_payments(
+    ledger_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "view"))]
+):
+    """Get all payments for a specific salary ledger."""
+    try:
+        payments = db.exec(
+            select(SalaryPayment)
+            .where(SalaryPayment.ledger_id == ledger_id)
+            .order_by(SalaryPayment.payment_date.desc())
+        ).all()
+        response = []
+        for payment in payments:
+            teacher = db.exec(
+                select(TeacherNames)
+                .where(TeacherNames.teacher_name_id == payment.teacher_id)
+            ).first()
+            response.append(
+                SalaryPaymentResponse(
+                    id=payment.id,
+                    teacher_id=payment.teacher_id,
+                    teacher_name=teacher.teacher_name if teacher else None,
+                    ledger_id=payment.ledger_id,
+                    amount=payment.amount,
+                    payment_date=payment.payment_date,
+                    created_at=payment.created_at
+                )
+            )
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching ledger payments: {str(e)}"
+        )
+@salary_router.get("/payment/all", response_model=List[SalaryPaymentResponse])
+def get_all_payments(
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "view"))]
+):
+    """Get all salary payments."""
+    try:
+        payments = db.exec(
+            select(SalaryPayment)
+            .order_by(SalaryPayment.payment_date.desc())
+        ).all()
+        response = []
+        for payment in payments:
+            teacher = db.exec(
+                select(TeacherNames)
+                .where(TeacherNames.teacher_name_id == payment.teacher_id)
+            ).first()
+            response.append(
+                SalaryPaymentResponse(
+                    id=payment.id,
+                    teacher_id=payment.teacher_id,
+                    teacher_name=teacher.teacher_name if teacher else None,
+                    ledger_id=payment.ledger_id,
+                    amount=payment.amount,
+                    payment_date=payment.payment_date,
+                    created_at=payment.created_at
+                )
+            )
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching all payments: {str(e)}"
+        )
+@salary_router.delete("/payment/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_salary_payment(
+    payment_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "delete"))]
+):
+    """Delete a salary payment. Admin only."""
+    try:
+        payment = db.exec(
+            select(SalaryPayment)
+            .where(SalaryPayment.id == payment_id)
+        ).first()
+        if not payment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Salary payment with ID {payment_id} not found"
+            )
+        # Store ledger info for recalculation before deletion
+        ledger = db.exec(
+            select(SalaryLedger)
+            .where(SalaryLedger.id == payment.ledger_id)
+        ).first()
+        # Delete linked expense record if it exists
+        try:
+            delete_expense_for_salary_payment(db, payment.id)
+        except Exception as sync_error:
+            # Log sync error but don't fail the payment deletion
+            print(f"Warning: Failed to delete linked expense for salary payment {payment.id}: {str(sync_error)}")
+        db.delete(payment)
+        db.commit()
+        # Recalculate ledger totals after payment deletion
+        if ledger:
+            recalculate_ledger_totals(db, ledger.teacher_id, ledger.month, ledger.year)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting salary payment: {str(e)}"
+        )
+@salary_router.put("/payment/{payment_id}", response_model=SalaryPaymentResponse)
+def update_salary_payment(
+    payment_id: int,
+    payment_data: SalaryPaymentUpdate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "edit"))]
+):
+    """Update a salary payment record."""
+    try:
+        payment = db.exec(
+            select(SalaryPayment)
+            .where(SalaryPayment.id == payment_id)
+        ).first()
+        if not payment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Salary payment with ID {payment_id} not found"
+            )
+        if payment_data.amount is not None:
+            payment.amount = payment_data.amount
+        if payment_data.payment_date is not None:
+            payment.payment_date = payment_data.payment_date
+        db.add(payment)
+        db.commit()
+        db.refresh(payment)
+        # Sync to expense record
+        linked_expense_created = False
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == payment.teacher_id)
+        ).first()
+        try:
+            sync_expense_for_salary_payment(db, payment, teacher.teacher_name if teacher else "Unknown")
+            linked_expense_created = True
+        except Exception as sync_error:
+            # Log sync error but don't fail the payment update
+            print(f"Warning: Failed to sync expense for salary payment {payment.id}: {str(sync_error)}")
+        # Recalculate ledger totals after payment update
+        ledger = db.exec(
+            select(SalaryLedger)
+            .where(SalaryLedger.id == payment.ledger_id)
+        ).first()
+        if ledger:
+            recalculate_ledger_totals(db, ledger.teacher_id, ledger.month, ledger.year)
+        return SalaryPaymentResponse(
+            id=payment.id,
+            teacher_id=payment.teacher_id,
+            teacher_name=teacher.teacher_name if teacher else None,
+            ledger_id=payment.ledger_id,
+            amount=payment.amount,
+            payment_date=payment.payment_date,
+            created_at=payment.created_at,
+            linked_expense_created=linked_expense_created
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating salary payment: {str(e)}"
+        )
+# ============================================================================
+# ALLOWANCE MANAGEMENT
+# ============================================================================
+@salary_router.post("/allowance/add", response_model=AllowanceResponse, status_code=status.HTTP_201_CREATED)
+def create_allowance(
+    allowance_data: AllowanceCreate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "add"))]
+):
+    """Create a new allowance record."""
+    try:
+        # Verify teacher exists
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == allowance_data.teacher_id)
+        ).first()
+        if not teacher:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Teacher with ID {allowance_data.teacher_id} not found"
+            )
+        # Ensure salary ledger exists for this teacher/month/year
+        ledger = ensure_salary_ledger_exists(
+            db, allowance_data.teacher_id, allowance_data.month, allowance_data.year
+        )
+        # Create allowance record
+        new_allowance = Allowance(
+            teacher_id=allowance_data.teacher_id,
+            month=allowance_data.month,
+            year=allowance_data.year,
+            amount=allowance_data.amount,
+            reason=allowance_data.reason
+        )
+        db.add(new_allowance)
+        db.commit()
+        db.refresh(new_allowance)
+        # Recalculate ledger totals after allowance creation so total_paid includes allowances
+        recalculate_ledger_totals(db, allowance_data.teacher_id, allowance_data.month, allowance_data.year)
+        # Sync to expense record
+        linked_expense_created = False
+        try:
+            sync_expense_for_allowance(db, new_allowance, teacher.teacher_name)
+            linked_expense_created = True
+        except Exception as sync_error:
+            # Log sync error but don't fail the allowance creation
+            print(f"Warning: Failed to sync expense for allowance {new_allowance.id}: {str(sync_error)}")
+        return AllowanceResponse(
+            id=new_allowance.id,
+            teacher_id=new_allowance.teacher_id,
+            teacher_name=teacher.teacher_name,
+            month=new_allowance.month,
+            year=new_allowance.year,
+            amount=new_allowance.amount,
+            reason=new_allowance.reason,
+            created_at=new_allowance.created_at,
+            linked_expense_created=linked_expense_created
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating allowance: {str(e)}"
+        )
+@salary_router.get("/allowance/teacher/{teacher_id}", response_model=List[AllowanceResponse])
+def get_teacher_allowances(
+    teacher_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "view"))],
+    month: int = None,
+    year: int = None
+):
+    """Get allowances for a specific teacher, optionally filtered by month/year."""
+    try:
+        query = select(Allowance).where(Allowance.teacher_id == teacher_id)
+        if month and year:
+            query = query.where(
+                Allowance.month == month,
+                Allowance.year == year
+            )
+        allowances = db.exec(query.order_by(Allowance.year.desc(), Allowance.month.desc())).all()
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == teacher_id)
+        ).first()
+        response = []
+        for allowance in allowances:
+            response.append(
+                AllowanceResponse(
+                    id=allowance.id,
+                    teacher_id=allowance.teacher_id,
+                    teacher_name=teacher.teacher_name if teacher else None,
+                    month=allowance.month,
+                    year=allowance.year,
+                    amount=allowance.amount,
+                    reason=allowance.reason,
+                    created_at=allowance.created_at
+                )
+            )
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching teacher allowances: {str(e)}"
+        )
+@salary_router.get("/allowance/all", response_model=List[AllowanceResponse])
+def get_all_allowances(
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "view"))]
+):
+    """Get all allowances."""
+    try:
+        allowances = db.exec(
+            select(Allowance)
+            .order_by(Allowance.year.desc(), Allowance.month.desc())
+        ).all()
+        response = []
+        for allowance in allowances:
+            teacher = db.exec(
+                select(TeacherNames)
+                .where(TeacherNames.teacher_name_id == allowance.teacher_id)
+            ).first()
+            response.append(
+                AllowanceResponse(
+                    id=allowance.id,
+                    teacher_id=allowance.teacher_id,
+                    teacher_name=teacher.teacher_name if teacher else None,
+                    month=allowance.month,
+                    year=allowance.year,
+                    amount=allowance.amount,
+                    reason=allowance.reason,
+                    created_at=allowance.created_at
+                )
+            )
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching all allowances: {str(e)}"
+        )
+@salary_router.delete("/allowance/{allowance_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_allowance(
+    allowance_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "delete"))]
+):
+    """Delete an allowance record. Admin only."""
+    try:
+        allowance = db.exec(
+            select(Allowance)
+            .where(Allowance.id == allowance_id)
+        ).first()
+        if not allowance:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Allowance with ID {allowance_id} not found"
+            )
+        # Store values for ledger recalculation before deletion
+        teacher_id = allowance.teacher_id
+        month = allowance.month
+        year = allowance.year
+        # Delete linked expense record if it exists
+        try:
+            delete_expense_for_allowance(db, allowance.id)
+        except Exception as sync_error:
+            # Log sync error but don't fail the allowance deletion
+            print(f"Warning: Failed to delete linked expense for allowance {allowance.id}: {str(sync_error)}")
+        db.delete(allowance)
+        db.commit()
+        # Recalculate ledger totals after allowance deletion
+        recalculate_ledger_totals(db, teacher_id, month, year)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting allowance: {str(e)}"
+        )
+@salary_router.put("/allowance/{allowance_id}", response_model=AllowanceResponse)
+def update_allowance(
+    allowance_id: int,
+    allowance_data: AllowanceUpdate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "edit"))]
+):
+    """Update an allowance record."""
+    try:
+        allowance = db.exec(
+            select(Allowance)
+            .where(Allowance.id == allowance_id)
+        ).first()
+        if not allowance:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Allowance with ID {allowance_id} not found"
+            )
+        if allowance_data.amount is not None:
+            allowance.amount = allowance_data.amount
+        if allowance_data.reason is not None:
+            allowance.reason = allowance_data.reason
+        db.add(allowance)
+        db.commit()
+        db.refresh(allowance)
+        # Sync to expense record
+        linked_expense_created = False
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == allowance.teacher_id)
+        ).first()
+        try:
+            sync_expense_for_allowance(db, allowance, teacher.teacher_name if teacher else "Unknown")
+            linked_expense_created = True
+        except Exception as sync_error:
+            # Log sync error but don't fail the allowance update
+            print(f"Warning: Failed to sync expense for allowance {allowance.id}: {str(sync_error)}")
+        # Recalculate ledger totals after allowance update
+        recalculate_ledger_totals(db, allowance.teacher_id, allowance.month, allowance.year)
+        return AllowanceResponse(
+            id=allowance.id,
+            teacher_id=allowance.teacher_id,
+            teacher_name=teacher.teacher_name if teacher else None,
+            month=allowance.month,
+            year=allowance.year,
+            amount=allowance.amount,
+            reason=allowance.reason,
+            created_at=allowance.created_at,
+            linked_expense_created=linked_expense_created
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating allowance: {str(e)}"
+        )
+# ============================================================================
+# DEDUCTION MANAGEMENT
+# ============================================================================
+@salary_router.post("/deduction/add", response_model=DeductionResponse, status_code=status.HTTP_201_CREATED)
+def create_deduction(
+    deduction_data: DeductionCreate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "add"))]
+):
+    """Create a new deduction record."""
+    try:
+        # Verify teacher exists
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == deduction_data.teacher_id)
+        ).first()
+        if not teacher:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Teacher with ID {deduction_data.teacher_id} not found"
+            )
+        # Ensure salary ledger exists for this teacher/month/year
+        ledger = ensure_salary_ledger_exists(
+            db, deduction_data.teacher_id, deduction_data.month, deduction_data.year
+        )
+        # Create deduction record
+        new_deduction = Deduction(
+            teacher_id=deduction_data.teacher_id,
+            month=deduction_data.month,
+            year=deduction_data.year,
+            amount=deduction_data.amount,
+            type=deduction_data.type,
+            reason=deduction_data.reason
+        )
+        # Update corresponding ledger
+        ledger.deduction_total += deduction_data.amount
+        ledger.net_salary = ledger.base_salary + ledger.allowance_total - ledger.deduction_total
+        ledger.remaining = ledger.net_salary - ledger.total_paid
+        db.add(ledger)
+        db.add(new_deduction)
+        db.commit()
+        db.refresh(new_deduction)
+        return DeductionResponse(
+            id=new_deduction.id,
+            teacher_id=new_deduction.teacher_id,
+            teacher_name=teacher.teacher_name,
+            month=new_deduction.month,
+            year=new_deduction.year,
+            amount=new_deduction.amount,
+            type=new_deduction.type,
+            reason=new_deduction.reason,
+            created_at=new_deduction.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating deduction: {str(e)}"
+        )
+@salary_router.get("/deduction/teacher/{teacher_id}", response_model=List[DeductionResponse])
+def get_teacher_deductions(
+    teacher_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "view"))],
+    month: int = None,
+    year: int = None
+):
+    """Get deductions for a specific teacher, optionally filtered by month/year."""
+    try:
+        query = select(Deduction).where(Deduction.teacher_id == teacher_id)
+        if month and year:
+            query = query.where(
+                Deduction.month == month,
+                Deduction.year == year
+            )
+        deductions = db.exec(query.order_by(Deduction.year.desc(), Deduction.month.desc())).all()
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == teacher_id)
+        ).first()
+        response = []
+        for deduction in deductions:
+            response.append(
+                DeductionResponse(
+                    id=deduction.id,
+                    teacher_id=deduction.teacher_id,
+                    teacher_name=teacher.teacher_name if teacher else None,
+                    month=deduction.month,
+                    year=deduction.year,
+                    amount=deduction.amount,
+                    type=deduction.type,
+                    reason=deduction.reason,
+                    created_at=deduction.created_at
+                )
+            )
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching teacher deductions: {str(e)}"
+        )
+@salary_router.get("/deduction/all", response_model=dict)
+def get_all_deductions(
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "view"))],
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=50),
+    all: bool = Query(False),
+):
+    """Get all deductions."""
+    try:
+        from sqlalchemy import func
+        total = db.exec(select(func.count(Deduction.id))).one()
+        query = select(Deduction).order_by(Deduction.year.desc(), Deduction.month.desc())
+        if not all:
+            query = query.offset((page - 1) * page_size).limit(page_size)
+        deductions = db.exec(query).all()
+        response = []
+        for deduction in deductions:
+            teacher = db.exec(
+                select(TeacherNames)
+                .where(TeacherNames.teacher_name_id == deduction.teacher_id)
+            ).first()
+            response.append(DeductionResponse(
+                id=deduction.id,
+                teacher_id=deduction.teacher_id,
+                teacher_name=teacher.teacher_name if teacher else None,
+                month=deduction.month,
+                year=deduction.year,
+                amount=deduction.amount,
+                type=deduction.type,
+                reason=deduction.reason,
+                created_at=deduction.created_at
+            ))
+        return {
+            "data": response,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching all deductions: {str(e)}"
+        )
+@salary_router.delete("/deduction/{deduction_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_deduction(
+    deduction_id: int,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "delete"))]
+):
+    """Delete a deduction record. Admin only."""
+    try:
+        deduction = db.exec(
+            select(Deduction)
+            .where(Deduction.id == deduction_id)
+        ).first()
+        if not deduction:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Deduction with ID {deduction_id} not found"
+            )
+        # Store values for ledger recalculation before deletion
+        teacher_id = deduction.teacher_id
+        month = deduction.month
+        year = deduction.year
+        db.delete(deduction)
+        db.commit()
+        # Recalculate ledger totals after deduction deletion
+        recalculate_ledger_totals(db, teacher_id, month, year)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting deduction: {str(e)}"
+        )
+@salary_router.put("/deduction/{deduction_id}", response_model=DeductionResponse)
+def update_deduction(
+    deduction_id: int,
+    deduction_data: DeductionUpdate,
+    db: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_permission("salary", "edit"))]
+):
+    """Update a deduction record."""
+    try:
+        deduction = db.exec(
+            select(Deduction)
+            .where(Deduction.id == deduction_id)
+        ).first()
+        if not deduction:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Deduction with ID {deduction_id} not found"
+            )
+        if deduction_data.amount is not None:
+            deduction.amount = deduction_data.amount
+        if deduction_data.type is not None:
+            deduction.type = deduction_data.type
+        if deduction_data.reason is not None:
+            deduction.reason = deduction_data.reason
+        db.add(deduction)
+        db.commit()
+        db.refresh(deduction)
+        # Recalculate ledger totals after deduction update
+        recalculate_ledger_totals(db, deduction.teacher_id, deduction.month, deduction.year)
+        teacher = db.exec(
+            select(TeacherNames)
+            .where(TeacherNames.teacher_name_id == deduction.teacher_id)
+        ).first()
+        return DeductionResponse(
+            id=deduction.id,
+            teacher_id=deduction.teacher_id,
+            teacher_name=teacher.teacher_name if teacher else None,
+            month=deduction.month,
+            year=deduction.year,
+            amount=deduction.amount,
+            type=deduction.type,
+            reason=deduction.reason,
+            created_at=deduction.created_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating deduction: {str(e)}"
+        )
+
+--------------------------------------------------------------------------------
+FILE [8/10]: schemas/role_permission_model.py
+Size: 1,322 bytes
+--------------------------------------------------------------------------------
+from sqlmodel import SQLModel, Field
+from typing import Optional
+from datetime import datetime
+
+from user.user_models import UserRole
+
+
+class RolePermissionBase(SQLModel):
+    role: UserRole
+    module: str  # students, attendance, exam, staff, fees, income, expenses, salary, setup
+    action: str  # view, add, edit, delete
+    allowed: bool = False
+
+
+class RolePermission(RolePermissionBase, table=True):
+    __tablename__ = "role_permissions"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    updated_by: Optional[int] = Field(default=None, foreign_key="user.id", nullable=True)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class RolePermissionCreate(RolePermissionBase):
+    pass
+
+
+class RolePermissionResponse(RolePermissionBase):
+    id: int
+    updated_by: Optional[int] = None
+    updated_at: datetime
+
+
+class RolePermissionUpdate(SQLModel):
+    allowed: bool
+
+
+class PermissionChangeLog(SQLModel, table=True):
+    __tablename__ = "permission_change_log"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    role: UserRole
+    module: str
+    action: str
+    old_value: bool
+    new_value: bool
+    changed_by: int = Field(foreign_key="user.id")
+    changed_at: datetime = Field(default_factory=datetime.utcnow)
+
+--------------------------------------------------------------------------------
+FILE [9/10]: schemas/salary_model.py
+Size: 8,519 bytes
+--------------------------------------------------------------------------------
+from datetime import datetime
+from decimal import Decimal
+from sqlmodel import Relationship, SQLModel, Field, UniqueConstraint
+from typing import Optional
+
+
+# ============================================================================
+# TEACHER SALARY SYSTEM - PRODUCTION GRADE PAYROLL LEDGER
+# ============================================================================
+
+# ============================================================================
+# 1. TEACHER SALARY (Base Salary Configuration)
+# ============================================================================
+
+class TeacherSalaryBase(SQLModel):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    teacher_id: int = Field(foreign_key="teachernames.teacher_name_id", nullable=False)
+    base_salary: Decimal = Field(max_digits=10, decimal_places=2, nullable=False)
+    effective_from: str = Field(nullable=False)  # YYYY-MM-DD format
+    effective_till: Optional[str] = Field(default=None, nullable=True)  # NULL = currently active
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class TeacherSalary(TeacherSalaryBase, table=True):
+    __tablename__ = "teacher_salary"
+
+    # Relationship to TeacherNames
+    teacher: Optional["TeacherNames"] = Relationship(back_populates="teacher_salaries")
+
+
+class TeacherSalaryCreate(SQLModel):
+    teacher_id: int
+    base_salary: Decimal
+    effective_from: str
+
+
+class TeacherSalaryUpdate(SQLModel):
+    base_salary: Optional[Decimal] = None
+    effective_from: Optional[str] = None
+
+
+class TeacherSalaryResponse(SQLModel):
+    id: int
+    teacher_id: int
+    base_salary: Decimal
+    effective_from: str
+    created_at: datetime
+    teacher_name: Optional[str] = None
+    effective_till: Optional[str] = None
+
+
+# ============================================================================
+# 2. SALARY LEDGER (Monthly Records - HEART OF SYSTEM)
+# ============================================================================
+
+class SalaryLedgerBase(SQLModel):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    teacher_id: int = Field(foreign_key="teachernames.teacher_name_id", nullable=False)
+    month: int = Field(ge=1, le=12, nullable=False)  # 1-12
+    year: int = Field(nullable=False)  # e.g. 2026
+    base_salary: Decimal = Field(max_digits=10, decimal_places=2, nullable=False)
+    allowance_total: Decimal = Field(max_digits=10, decimal_places=2, default=0)
+    deduction_total: Decimal = Field(max_digits=10, decimal_places=2, default=0)
+    net_salary: Decimal = Field(max_digits=10, decimal_places=2, nullable=False)
+    total_paid: Decimal = Field(max_digits=10, decimal_places=2, default=0)
+    remaining: Decimal = Field(max_digits=10, decimal_places=2, nullable=False)
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class SalaryLedger(SalaryLedgerBase, table=True):
+    __tablename__ = "salary_ledger"
+
+    # Unique constraint to prevent duplicate ledger entries per teacher/month/year
+    __table_args__ = (
+        UniqueConstraint('teacher_id', 'month', 'year', name='unique_teacher_month_year'),
+    )
+
+    # Relationships
+    teacher: Optional["TeacherNames"] = Relationship(back_populates="salary_ledgers")
+    payments: list["SalaryPayment"] = Relationship(back_populates="ledger")
+
+
+class SalaryLedgerCreate(SQLModel):
+    teacher_id: int
+    month: int
+    year: int
+    base_salary: Decimal
+    allowance_total: Optional[Decimal] = 0
+    deduction_total: Optional[Decimal] = 0
+    net_salary: Decimal
+    total_paid: Optional[Decimal] = 0
+    remaining: Decimal
+
+
+class SalaryLedgerUpdate(SQLModel):
+    allowance_total: Optional[Decimal] = None
+    deduction_total: Optional[Decimal] = None
+    net_salary: Optional[Decimal] = None
+    total_paid: Optional[Decimal] = None
+    remaining: Optional[Decimal] = None
+
+
+class SalaryLedgerResponse(SQLModel):
+    id: int
+    teacher_id: int
+    month: int
+    year: int
+    base_salary: Decimal
+    allowance_total: Decimal
+    deduction_total: Decimal
+    net_salary: Decimal
+    total_paid: Decimal
+    remaining: Decimal
+    created_at: datetime
+    teacher_name: Optional[str] = None
+
+
+# ============================================================================
+# 3. SALARY PAYMENT (Transaction Records)
+# ============================================================================
+
+class SalaryPaymentBase(SQLModel):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    teacher_id: int = Field(foreign_key="teachernames.teacher_name_id", nullable=False)
+    ledger_id: int = Field(foreign_key="salary_ledger.id", nullable=False)
+    amount: Decimal = Field(max_digits=10, decimal_places=2, nullable=False)
+    payment_date: str = Field(nullable=False)  # YYYY-MM-DD format
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class SalaryPayment(SalaryPaymentBase, table=True):
+    __tablename__ = "salary_payment"
+
+    # Relationships
+    teacher: Optional["TeacherNames"] = Relationship(back_populates="salary_payments")
+    ledger: Optional[SalaryLedger] = Relationship(back_populates="payments")
+
+
+class SalaryPaymentCreate(SQLModel):
+    teacher_id: int
+    ledger_id: int
+    amount: Decimal
+    payment_date: str
+
+
+class SalaryPaymentUpdate(SQLModel):
+    amount: Optional[Decimal] = None
+    payment_date: Optional[str] = None
+
+
+class SalaryPaymentResponse(SQLModel):
+    id: int
+    teacher_id: int
+    ledger_id: int
+    amount: Decimal
+    payment_date: str
+    created_at: datetime
+    teacher_name: Optional[str] = None
+    linked_expense_created: bool = False
+
+
+# ============================================================================
+# 4. ALLOWANCE (Monthly Allowances)
+# ============================================================================
+
+class AllowanceBase(SQLModel):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    teacher_id: int = Field(foreign_key="teachernames.teacher_name_id", nullable=False)
+    month: int = Field(ge=1, le=12, nullable=False)
+    year: int = Field(nullable=False)
+    amount: Decimal = Field(max_digits=10, decimal_places=2, nullable=False)
+    reason: Optional[str] = Field(default=None, max_length=255)
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class Allowance(AllowanceBase, table=True):
+    __tablename__ = "allowance"
+
+    # Relationship to TeacherNames
+    teacher: Optional["TeacherNames"] = Relationship(back_populates="allowances")
+
+
+class AllowanceCreate(SQLModel):
+    teacher_id: int
+    month: int
+    year: int
+    amount: Decimal
+    reason: Optional[str] = None
+
+
+class AllowanceUpdate(SQLModel):
+    amount: Optional[Decimal] = None
+    reason: Optional[str] = None
+
+
+class AllowanceResponse(AllowanceBase, SQLModel):
+    teacher_name: Optional[str] = None
+    amount: Optional[Decimal] = None
+    linked_expense_created: bool = False
+
+
+# ============================================================================
+# 5. DEDUCTION (Monthly Deductions)
+# ============================================================================
+
+class DeductionBase(SQLModel):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    teacher_id: int = Field(foreign_key="teachernames.teacher_name_id", nullable=False)
+    month: int = Field(ge=1, le=12, nullable=False)
+    year: int = Field(nullable=False)
+    amount: Decimal = Field(max_digits=10, decimal_places=2, nullable=False)
+    type: str = Field(max_length=50, nullable=False)  # late/leave/loan/etc
+    reason: Optional[str] = Field(default=None, max_length=255)
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class Deduction(DeductionBase, table=True):
+    __tablename__ = "deduction"
+
+    # Relationship to TeacherNames
+    teacher: Optional["TeacherNames"] = Relationship(back_populates="deductions")
+
+
+class DeductionCreate(SQLModel):
+    teacher_id: int
+    month: int
+    year: int
+    amount: Decimal
+    type: str
+    reason: Optional[str] = None
+
+
+class DeductionUpdate(SQLModel):
+    amount: Optional[Decimal] = None
+    type: Optional[str] = None
+    reason: Optional[str] = None
+
+class DeductionResponse(DeductionBase, SQLModel):
+    amount: Optional[Decimal] = None
+    teacher_name: Optional[str] = None  
+    
+
+--------------------------------------------------------------------------------
+FILE [10/10]: user/user_crud.py
+Size: 17,049 bytes
+--------------------------------------------------------------------------------
+from datetime import timedelta
+from jose import JWTError, jwt
+from typing import Annotated, Optional
+from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from sqlmodel import Session, select
+from db import get_session
+from user.settings import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, REFRESH_TOKEN_EXPIRE_MINUTES, SECRET_KEY
+from user.services import create_access_token, get_password_hash, get_user_by_username, verify_password, pwd_context, oauth2_scheme
+from user.user_models import (
+    LoginResponse, 
+    TokenData, 
+    User, 
+    UserCreate,
+    UserLogin, 
+    UserResponse, 
+    UserUpdate,
+    UserRole,
+    AdminUserUpdate
+)
+from passlib.context import CryptContext
+from datetime import timedelta
+from jose import JWTError, jwt
+from typing import Annotated, List
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from sqlmodel import Session, select
+from db import get_session, get_tenant_engine
+from token_deps import TokenPayload, get_token_payload
+from user.settings import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, REFRESH_TOKEN_EXPIRE_MINUTES, SECRET_KEY
+from user.services import create_access_token, get_password_hash, get_user_by_username, verify_password, oauth2_scheme
+from user.user_models import (
+    LoginResponse, 
+    TokenData, 
+    User, 
+    UserCreate,
+    UserLogin, 
+    UserResponse, 
+    UserUpdate,
+    UserRole,
+    AdminUserUpdate
+)
+
+def user_login(tenant_id: str, form_data: UserLogin | OAuth2PasswordRequestForm) -> LoginResponse:
+    username = form_data.username
+    password = form_data.password
+
+    tenant_engine = get_tenant_engine(tenant_id)
+    with Session(tenant_engine) as db:
+        user = get_user_by_username(db, username)
+        if not user or not verify_password(password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username, "tenant_id": tenant_id},
+            expires_delta=access_token_expires,
+        )
+
+        refresh_token_expires = timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
+        refresh_token = create_access_token(
+            data={"sub": user.username, "tenant_id": tenant_id},
+            expires_delta=refresh_token_expires,
+        )
+
+        user_response = UserResponse(
+            username=user.username,
+            email=user.email,
+            role=user.role,
+            id=user.id,
+        )
+
+        return LoginResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=int(access_token_expires.total_seconds()),
+            token_type="bearer",
+            user=user_response,
+        )
+
+
+async def signup_user(user_data: UserCreate, db: Session) -> User:
+    """
+    Create a new user in the database
+    """
+    # Hash the password
+    hashed_password = get_password_hash(user_data.password)
+    
+    # Create new user instance without specifying the ID (let DB auto-increment)
+    db_user = User(
+        username=user_data.username,
+        email=user_data.email,
+        password=hashed_password,
+        role=user_data.role
+    )
+    
+    try:
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        return db_user
+    except Exception as e:
+        db.rollback()
+        raise e
+
+def update_user(user: UserUpdate, session: Session, current_user: User) -> User:
+    updated_user = session.exec(select(User).where(User.id == current_user.id)).first()
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    update_data = user.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        value = value if key != "password" else get_password_hash(value)
+        setattr(updated_user, key, value)
+    session.commit()
+    session.refresh(updated_user)
+    return updated_user
+
+def delete_user(session: Session, username: str) -> dict[str, str]:
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    session.delete(user)
+    session.commit()
+    return {"message": f"User {username} deleted successfully"}
+
+async def get_token_from_cookie_or_header(
+    request: Request,
+    token_from_header: Annotated[Optional[str], Depends(oauth2_scheme)] = None
+) -> str:
+    """
+    Extract token from either Authorization header or HTTPOnly cookie.
+    Preference: Authorization header > access_token cookie
+    
+    This allows HTTPOnly cookies set by the login endpoint to work
+    alongside traditional Authorization headers.
+    """
+    # First try to get token from Authorization header
+    if token_from_header:
+        return token_from_header
+    
+    # Fallback to HTTPOnly cookie (for browser requests)
+    token_from_cookie = request.cookies.get("access_token")
+    if token_from_cookie:
+        return token_from_cookie
+    
+    # No token found in either location
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials - no token provided",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+async def get_current_user(
+    token: Annotated[str, Depends(get_token_from_cookie_or_header)], 
+    db: Annotated[Session, Depends(get_session)]
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+        
+    user = get_user_by_username(db, username=token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+# ==================== SIMPLE ROLE CHECKING SYSTEM ====================
+
+def require_roles(allowed_roles: List[UserRole]):
+    """
+    Simple role checker - allows access if user has any of the specified roles
+    Admin always has access to everything
+    """
+    def role_checker(current_user: Annotated[User, Depends(get_current_user)]):
+        # Admin has access to everything
+        if current_user.role == UserRole.ADMIN:
+            return current_user
+        
+        # Check if user has one of the allowed roles
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Required roles: {[r.value for r in allowed_roles]}"
+            )
+        
+        return current_user
+    
+    return role_checker
+
+# Pre-defined role checkers for your specific use cases
+def require_admin():
+    """Only ADMIN can access"""
+    return require_roles([UserRole.ADMIN])
+
+def require_admin_principal():
+    """ADMIN or PRINCIPAL/CHIEF_PRINCIPAL can access"""
+    return require_roles([UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL])
+
+def require_admin_teacher_principal():
+    """ADMIN, TEACHER, STAFF, or PRINCIPAL/CHIEF_PRINCIPAL can access"""
+    return require_roles([UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STAFF])
+
+def require_admin_teacher_principal_accountant():
+    """ADMIN, TEACHER, STAFF, PRINCIPAL/CHIEF_PRINCIPAL, or ACCOUNTANT can access"""
+    return require_roles([UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STAFF, UserRole.ACCOUNTANT])
+
+def require_admin_accountant():
+    """ADMIN or ACCOUNTANT can access"""
+    return require_roles([UserRole.ADMIN, UserRole.ACCOUNTANT])
+
+def require_admin_fee_manager():
+    """ADMIN or FEE_MANAGER can access"""
+    return require_roles([UserRole.ADMIN, UserRole.FEE_MANAGER])
+
+def require_admin_chief_principal():
+    """ADMIN or CHIEF_PRINCIPAL only — matches Staff module's frontend visibility."""
+    return require_roles([UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL])
+
+def require_admin_principal_teacher():
+    """ADMIN, CHIEF_PRINCIPAL, PRINCIPAL, or TEACHER — matches Exam module's frontend visibility (excludes STAFF)."""
+    return require_roles([UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER])
+
+def require_all_roles():
+    """All roles can access (ADMIN, CHIEF_PRINCIPAL, PRINCIPAL, TEACHER, STAFF, ACCOUNTANT, FEE_MANAGER, STUDENT)"""
+    return require_roles([UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL,
+                         UserRole.TEACHER, UserRole.STAFF, UserRole.ACCOUNTANT,
+                         UserRole.FEE_MANAGER, UserRole.STUDENT])
+
+def require_authenticated():
+    """Any authenticated user can access"""
+    def checker(current_user: Annotated[User, Depends(get_current_user)]):
+        return current_user
+    return checker
+
+
+def require_non_student():
+    """Allow any authenticated user except students."""
+    def checker(current_user: Annotated[User, Depends(get_current_user)]):
+        if current_user.role == UserRole.STUDENT:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied for student role",
+            )
+        return current_user
+
+    return checker
+
+# ==================== LEGACY FUNCTIONS (for backward compatibility) ====================
+
+async def check_admin_or_teacher(
+    current_user: Annotated[User, Depends(get_current_user)]
+) -> User:
+    """Legacy function - Check if user is either admin, teacher, or staff"""
+    if current_user.role not in [UserRole.ADMIN, UserRole.TEACHER, UserRole.STAFF]:
+        raise HTTPException(
+            status_code=403,
+            detail="Only administrators and teachers can access this resource"
+        )
+    return current_user
+
+async def check_admin(
+    current_user: Annotated[User, Depends(get_current_user)]
+) -> User:
+    """Legacy function - Check if user is admin"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=403,
+            detail="Only administrators can access this resource"
+        )
+    return current_user
+
+async def check_authenticated_user(
+    current_user: Annotated[User, Depends(get_current_user)]
+) -> User:
+    """Legacy function - Check if user is authenticated"""
+    return current_user
+
+# ==================== ADMIN USER MANAGEMENT ====================
+
+async def admin_update_user(
+    username: str,
+    user_update: AdminUserUpdate, 
+    db: Session,
+    current_user: Annotated[User, Depends(require_admin)]  # Updated to use new role checker
+) -> User:
+    """Update user role as admin"""
+    
+    # Find the user to update
+    user_to_update = db.exec(select(User).where(User.username == username)).first()
+    if not user_to_update:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"User {username} not found"
+        )
+    
+    # Prevent admin from changing their own role
+    if user_to_update.username == current_user.username:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin cannot change their own role"
+        )
+    
+    try:
+        # Convert role to enum (ensure it's uppercase)
+        if isinstance(user_update.role, str):
+            new_role = UserRole(user_update.role.upper())
+        else:
+            new_role = user_update.role
+
+        # Update the user's role
+        user_to_update.role = new_role
+        db.commit()
+        db.refresh(user_to_update)
+        return user_to_update
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error updating role: {str(e)}")  # Debugging info
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating user role: {str(e)}"
+        )
+
+# ==================== PER-USER DATA FILTERING (for USER role) ====================
+
+def validate_student_access(current_user: User, requested_student_id: int):
+    """
+    Validate that a user can access a student's data.
+    - ADMIN/CHIEF_PRINCIPAL/PRINCIPAL/TEACHER/STAFF can access any student's data
+    - STUDENT can only access their own data
+    - Raises 403 if unauthorized
+    """
+    if current_user.role in [UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STAFF]:
+        return True
+
+    if current_user.role == UserRole.STUDENT:
+        if current_user.id != requested_student_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only access your own student records"
+            )
+        return True
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Your role does not have permission to access student data"
+    )
+
+def can_view_fee_data(current_user: User):
+    """
+    Check if a user can view fee data.
+    - ADMIN/CHIEF_PRINCIPAL/PRINCIPAL/ACCOUNTANT/FEE_MANAGER can view all fees
+    - STUDENT can only view their own fees
+    """
+    return current_user.role in [UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT, UserRole.FEE_MANAGER, UserRole.STUDENT]
+
+def can_view_attendance_data(current_user: User):
+    """
+    Check if a user can view attendance data.
+    - ADMIN/CHIEF_PRINCIPAL/PRINCIPAL/TEACHER/STAFF can view all attendance
+    - STUDENT can only view their own attendance
+    """
+    return current_user.role in [UserRole.ADMIN, UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STAFF, UserRole.STUDENT]
+
+def require_admin_accountant_fee_manager():
+    """ADMIN, ACCOUNTANT, or FEE_MANAGER can access"""
+    return require_roles([UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.FEE_MANAGER])
+
+# ==================== DB-DRIVEN PERMISSIONS (Phase 1) ====================
+# Replaces the hardcoded require_*() functions above, one router at a time
+# (Phase 1, Day 3). Do not remove the functions above yet — routers are
+# swapped over individually and tested, not all at once.
+
+from utils.cache import cache_get, cache_set, cache_invalidate
+
+
+def _load_permission_matrix(session: Session, tenant_id: str) -> dict[tuple[str, str, str], bool]:
+    from schemas.role_permission_model import RolePermission  # deferred: avoids circular import with user.user_models
+    """Load the full role_permissions table into a single in-memory dict,
+    keyed by (role, module, action), scoped to one tenant. Cached one slot
+    PER TENANT (see utils/cache.py) — the whole table is small (currently
+    ~500 rows per school), so caching it wholesale per tenant and
+    invalidating wholesale on any write is simpler than per-key caching."""
+    cached = cache_get("role_permissions", tenant_id)
+    if cached is not None:
+        return cached
+
+    rows = session.exec(select(RolePermission)).all()
+    matrix = {(row.role.value, row.module, row.action): row.allowed for row in rows}
+    cache_set("role_permissions", tenant_id, matrix)
+    return matrix
+
+
+def has_permission(role: UserRole, module: str, action: str, session: Session, tenant_id: str) -> bool:
+    """ADMIN always passes (same failsafe as require_roles()), so a missing
+    or incorrect role_permissions row can never lock every admin out."""
+    if role == UserRole.ADMIN:
+        return True
+
+    matrix = _load_permission_matrix(session, tenant_id)
+    return matrix.get((role.value, module, action), False)
+
+
+def require_permission(module: str, action: str):
+    """DB-driven equivalent of require_roles() — checks role_permissions
+    instead of a hardcoded list. ADMIN always passes."""
+    def checker(
+        current_user: Annotated[User, Depends(get_current_user)],
+        session: Session = Depends(get_session),
+        payload: TokenPayload = Depends(get_token_payload),
+    ):
+        if not has_permission(current_user.role, module, action, session, payload.tenant_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Not permitted: {module}.{action}",
+            )
+        return current_user
+
+    return checker
+
+================================================================================
+END OF CONSOLIDATED CONTENT
+Total files processed: 10
+Total size: 164,781 bytes (0.16MB)
+================================================================================

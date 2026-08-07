@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRole } from "@/context/RoleContext";
 import { Header } from "@/components/dashboard/Header";
 import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
+import { DebitAPI } from "@/api/Debit/DebitAPI";
 import { CardsSkeleton, Skeleton } from "@/components/dashboard/Skeleton";
 import SalarySummarySection from "@/components/Salary/SalarySummarySection";
 import { RefreshCw } from "lucide-react";
@@ -105,7 +106,27 @@ interface FeeSummaryData {
   };
 }
 
+interface DebitMonthlyStat {
+  month: number;
+  year: number;
+  taken: number;
+  cleared: number;
+}
+
+interface DebitSummaryData {
+  total_debit_taken: number;
+  total_debit_cleared: number;
+  total_outstanding: number;
+  active_count: number;
+  partially_cleared_count: number;
+  cleared_count: number;
+  monthly: DebitMonthlyStat[];
+}
+
 // Custom tooltip
+const formatCurrency = (value: number) =>
+  value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -113,7 +134,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p className="font-medium text-gray-700">{label}</p>
         {payload.map((entry: any, index: number) => (
           <p key={index} style={{ color: entry.color || entry.fill }}>
-            {entry.name}: Rs.{entry.value?.toLocaleString()}
+            {entry.name}: Rs.{formatCurrency(entry.value ?? 0)}
           </p>
         ))}
       </div>
@@ -137,23 +158,25 @@ export function AccountantDashboard() {
   const [expenseSummaryLoading, setExpenseSummaryLoading] = useState(true);
   const [feeSummaryData, setFeeSummaryData] = useState<FeeSummaryData | null>(null);
   const [feeSummaryLoading, setFeeSummaryLoading] = useState(true);
+  const [debitSummaryData, setDebitSummaryData] = useState<DebitSummaryData | null>(null);
+  const [debitSummaryLoading, setDebitSummaryLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedExpenseMonth, setSelectedExpenseMonth] = useState<number | null>(null);
   
   const monthNames = [
     "All Months",
-    "January",
-    "February",
-    "March",
-    "April",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
     "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
   ];
 
   const { data: summaryData, isError: summaryError } = useQuery({
@@ -247,6 +270,20 @@ export function AccountantDashboard() {
     }
   };
 
+  const fetchDebitSummary = async () => {
+    if (!role) return;
+    setDebitSummaryLoading(true);
+    try {
+      const payload = await DebitAPI.getDebitSummary();
+      setDebitSummaryData(payload);
+    } catch (error) {
+      console.error("Error fetching debit summary:", error);
+      setDebitSummaryData(null);
+    } finally {
+      setDebitSummaryLoading(false);
+    }
+  };
+
   const isInitialMount = React.useRef(true);
   useEffect(() => {
     if (isInitialMount.current) { isInitialMount.current = false; return; }
@@ -254,6 +291,7 @@ export function AccountantDashboard() {
     fetchIncomeSummary(selectedYear, selectedMonth);
     fetchExpenseSummary(selectedYear, selectedExpenseMonth);
     fetchFeeSummary(selectedYear);
+    fetchDebitSummary();
   }, [selectedYear, role]);
 
   useEffect(() => {
@@ -459,6 +497,136 @@ export function AccountantDashboard() {
                 </ResponsiveContainer>
               )}
             </div>
+          </motion.div>
+
+          {/* Debit Summary Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.45 }}
+            className="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-300"
+          >
+<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">Debit Summary</h2>
+                  <p className="text-sm text-gray-500">
+                    Yearly debit metrics and monthly performance
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+                    <label htmlFor="debit-year-select" className="mr-2 text-sm font-medium text-gray-600">Year:</label>
+                    <select
+                      id="debit-year-select"
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                      className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    >
+                      {Array.from({ length: 7 }, (_, i) => currentYear - 4 + i).map((year) => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={fetchDebitSummary}
+                    title="Refresh"
+                    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                </div>
+            </div>
+
+            {!debitSummaryLoading && debitSummaryData ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-xl shadow-sm">
+                    <div className="flex items-center">
+                      <div className="p-3 rounded-full bg-blue-500 text-white mr-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Debit Taken</p>
+                        <p className="text-2xl font-bold text-blue-600">Rs.{formatCurrency(debitSummaryData.total_debit_taken)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-r from-green-50 to-green-100 p-5 rounded-xl shadow-sm">
+                    <div className="flex items-center">
+                      <div className="p-3 rounded-full bg-green-500 text-white mr-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Debit Cleared</p>
+                        <p className="text-2xl font-bold text-green-600">Rs.{formatCurrency(debitSummaryData.total_debit_cleared)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-r from-red-50 to-red-100 p-5 rounded-xl shadow-sm">
+                    <div className="flex items-center">
+                      <div className="p-3 rounded-full bg-red-500 text-white mr-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Outstanding Balance</p>
+                        <p className="text-2xl font-bold text-red-600">Rs.{formatCurrency(debitSummaryData.total_outstanding)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={Array.from({ length: 12 }, (_, idx) => {
+                        const month = idx + 1;
+                        const item = debitSummaryData.monthly.find(
+                          (entry) => entry.year === selectedYear && entry.month === month
+                        );
+                        return {
+                          name: monthNames[month],
+                          Taken: item?.taken ?? 0,
+                          Cleared: item?.cleared ?? 0,
+                        };
+                      })}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      barSize={20}
+                      barGap={8}
+                    >
+                      <defs>
+                        <linearGradient id="debitColorTaken" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="rgba(59, 130, 246, 0.8)" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="rgba(59, 130, 246, 0.8)" stopOpacity={0.4} />
+                        </linearGradient>
+                        <linearGradient id="debitColorCleared" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="rgba(16, 185, 129, 0.8)" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="rgba(16, 185, 129, 0.8)" stopOpacity={0.4} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                      <YAxis axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend iconType="circle" />
+                      <Bar dataKey="Taken" fill="url(#debitColorTaken)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Cleared" fill="url(#debitColorCleared)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            ) : debitSummaryLoading ? (
+              <div className="flex items-center justify-center h-80">
+                <CardsSkeleton />
+              </div>
+            ) : (
+              <EmptyState message="No debit summary data available." />
+            )}
           </motion.div>
 
           {/* Income Category Details Card */}

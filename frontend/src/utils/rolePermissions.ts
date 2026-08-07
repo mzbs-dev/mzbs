@@ -96,6 +96,10 @@ const SUBMENU_MODULE_MAP: { match: string; module: string; action: string }[] = 
   { match: "/setup/income_category", module: "setup_income_categories", action: "view" },
   { match: "/setup/expense_category", module: "setup_expense_categories", action: "view" },
   { match: "/setup/reset_student_password", module: "setup_reset_student_password", action: "view" },
+  { match: "/debit/manage", module: "debit", action: "view" },
+  { match: "/debit/view", module: "debit", action: "view" },
+  { match: "/expense/debit/manage", module: "debit", action: "view" },
+  { match: "/expense/debit/view", module: "debit", action: "view" },
 ];
 
 /**
@@ -110,12 +114,13 @@ export function canAccessSection(
   permissions?: MyPermissions | null
 ): boolean {
   if (!role) return false;
-  if (!isValidRole(role)) return false;
+  const normalizedRole = role.toUpperCase();
+  if (!isValidRole(normalizedRole)) return false;
 
   if (permissions) {
-    return canAccessSectionDynamic(role, section, permissions);
+    return canAccessSectionDynamic(normalizedRole, section, permissions);
   }
-  return canAccessSectionStatic(role, section);
+  return canAccessSectionStatic(normalizedRole, section);
 }
 
 function canAccessSectionDynamic(
@@ -123,6 +128,8 @@ function canAccessSectionDynamic(
   section: string,
   permissions: MyPermissions
 ): boolean {
+  const normalizedRole = role.toUpperCase();
+
   // Dashboard has no permission gate — any authenticated user sees it.
   if (section === "dashboard") return true;
 
@@ -217,11 +224,12 @@ export function canAccessSubmenuItem(
   permissions?: MyPermissions | null
 ): boolean {
   if (!role) return false;
+  const normalizedRole = role.toUpperCase();
 
   if (permissions) {
-    return canAccessSubmenuItemDynamic(role, submenuPath, permissions);
+    return canAccessSubmenuItemDynamic(normalizedRole, submenuPath, permissions);
   }
-  return canAccessSubmenuItemStatic(role, submenuPath);
+  return canAccessSubmenuItemStatic(normalizedRole, submenuPath);
 }
 
 function canAccessSubmenuItemDynamic(
@@ -248,6 +256,13 @@ function canAccessSubmenuItemDynamic(
   // guardrails), so it's always ADMIN-only here too, never toggle-able.
   if (submenuPath.includes("/setup/role_permissions")) {
     return role === "ADMIN";
+  }
+
+  const isDebitSubmenu = submenuPath.includes("/expense/debit/") || submenuPath.includes("/dashboard/expense/debit/");
+  if (isDebitSubmenu) {
+    const debitPermission = permissions.debit?.view;
+    if (debitPermission === true) return true;
+    return role === "ADMIN" || role === "ACCOUNTANT";
   }
 
   const mapping = SUBMENU_MODULE_MAP.find((m) => submenuPath.includes(m.match));
@@ -286,6 +301,10 @@ function canAccessSubmenuItemStatic(role: string, submenuPath: string): boolean 
       submenuPath.includes("/exam") ||
       (submenuPath.includes("/students") && !submenuPath.includes("/deleted"))
     );
+  }
+
+  if (submenuPath.includes("/debit/") || submenuPath.includes("/expense/debit/")) {
+    return role === "ADMIN" || role === "ACCOUNTANT";
   }
 
   return true;
