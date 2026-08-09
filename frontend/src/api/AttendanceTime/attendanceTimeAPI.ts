@@ -52,4 +52,40 @@ export namespace AttendanceTimeAPI {
       throw error;
     }
   };
+
+  export interface ShiftConfig {
+    attendance_time_id: number;
+    attendance_time: string | null;
+    expected_arrival_time: string | null;
+    expected_departure_time: string | null;
+    updated_at: string | null;
+  }
+
+  export const getShiftConfig = async (attendanceTimeId: number) => {
+    try {
+      const response = await AxiosInstance.get<ShiftConfig>(
+        `/attendance_time/${attendanceTimeId}/shift-config`
+      );
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  };
+
+  export const setShiftConfig = async (
+    attendanceTimeId: number,
+    data: { expected_arrival_time?: string | null; expected_departure_time?: string | null }
+  ) => {
+    try {
+      const response = await AxiosInstance.put<ShiftConfig>(
+        `/attendance_time/${attendanceTimeId}/shift-config`,
+        data
+      );
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  };
 };

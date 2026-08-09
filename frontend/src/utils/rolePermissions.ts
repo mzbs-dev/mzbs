@@ -22,7 +22,8 @@ export type Section =
   | "salary"
   | "setup"
   | "exam"
-  | "staff";
+  | "staff"
+  | "profile";
 
 // Role to accessible sections mapping
 // STATIC FALLBACK ONLY — used when the dynamic /permissions/me fetch fails.
@@ -78,6 +79,7 @@ const SECTION_TO_MODULE: Partial<Record<Section, string>> = {
   salary: "salary",
   exam: "exam",
   staff: "staff",
+  profile: "self_attendance",
 };
 
 // Maps specific Setup submenu paths (and a couple of other narrowly-scoped
@@ -100,6 +102,7 @@ const SUBMENU_MODULE_MAP: { match: string; module: string; action: string }[] = 
   { match: "/debit/view", module: "debit", action: "view" },
   { match: "/expense/debit/manage", module: "debit", action: "view" },
   { match: "/expense/debit/view", module: "debit", action: "view" },
+  { match: "/profile/self-attendance", module: "self_attendance", action: "view" },
 ];
 
 /**

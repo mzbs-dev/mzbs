@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Banknote,
   BookOpen,
+  User,
 } from "lucide-react";
 import { RiCashLine } from "react-icons/ri";
 import { BsCashCoin } from "react-icons/bs";
@@ -46,6 +47,21 @@ type SidebarProps = {
 
 const menuList: MenuItem[] = [
   { id: 1, name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+  {
+    id: 38,
+    name: "Profile",
+    icon: User,
+    path: "/dashboard/profile",
+    hasSubmenu: true,
+    submenu: [
+      {
+        id: 381,
+        name: "Self-Attendance",
+        icon: GoDotFill,
+        path: "/dashboard/profile/self-attendance",
+      },
+    ],
+  },
   {
     id: 2,
     name: "Student",
@@ -169,13 +185,13 @@ const menuList: MenuItem[] = [
     submenu: [
       {
         id: 371,
-        name: "View Staff",
+        name: "Staff Profile",
         icon: GoDotFill,
         path: "/dashboard/staff/view_staff",
       },
       {
         id: 372,
-        name: "Staff Attendance",
+        name: "Attendance Review",
         icon: GoDotFill,
         path: "/dashboard/staff/attendance",
       },
@@ -362,6 +378,7 @@ const getMenuItemSection = (path: string): string => {
   if (lowerPath.includes("/setup") || lowerPath.includes("/settings")) return "setup";
   if (lowerPath.includes("/exam")) return "exam";
   if (lowerPath.includes("/staff")) return "staff";
+  if (lowerPath.includes("/profile")) return "profile";
   if (lowerPath.includes("/dashboard")) return "dashboard";
   return "dashboard";
 };
@@ -388,6 +405,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const visibleMenuItems = menuList.filter((item) => {
     // Logout is always visible
     if (item.name === "Logout") return true;
+
+    // Hardcoded exclusion: Profile module must never be visible to STUDENT,
+    // regardless of permissions state — matches backend 403 defense-in-depth.
+    if (item.name === "Profile" && normalizedRole === "STUDENT") return false;
 
     // Check if role can access this section
     const section = getMenuItemSection(item.path);
