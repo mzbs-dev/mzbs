@@ -19,6 +19,7 @@ from schemas.staff_attendance_model import (
 )
 from schemas.teacher_names_model import TeacherNames
 from schemas.attendance_time_model import AttendanceTime
+from schemas.attendance_time_shift_config_model import AttendanceTimeShiftConfig
 from user.user_crud import require_permission
 from user.user_models import User
 from utils.logging import logger
@@ -26,6 +27,18 @@ from utils.logging import logger
 staff_router = APIRouter(prefix="/staff", tags=["Staff"], responses={404: {"description": "Staff module"}})
 
 VALID_STATUSES = {"Present", "Absent", "Leave", "Late", "Unmarked"}
+
+
+def _compute_is_likely_late(session: Session, attendance_time_id: Optional[int], arrival_time) -> Optional[bool]:
+    """Returns None (not False) if shift-less, no arrival recorded, or no
+    shift-config row exists yet for this shift — per locked decision,
+    never auto-implies Late."""
+    if attendance_time_id is None or arrival_time is None:
+        return None
+    config = session.get(AttendanceTimeShiftConfig, attendance_time_id)
+    if config is None or config.expected_arrival_time is None:
+        return None
+    return arrival_time > config.expected_arrival_time
 
 
 def _calculate_total_stay(joining_date: datetime) -> str:

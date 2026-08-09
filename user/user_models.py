@@ -52,6 +52,17 @@ class User(UserBase, table=True):
     email: str = Field(index=True, unique=True, nullable=False)
     password: str = Field(nullable=False)
     role: UserRole = Field(default=UserRole.STUDENT)
+    # Phase 2 follow-up (migration 0008): links this login to a staff
+    # identity. Nullable — not every staff member has a login. Unique —
+    # one staff record can never be claimed by two User accounts. NULL
+    # here means self_attendance routes return 403 (see get_current_staff()
+    # in router/self_attendance.py) — never inferred/auto-matched.
+    teacher_name_id: Optional[int] = Field(
+        default=None,
+        foreign_key="teachernames.teacher_name_id",
+        nullable=True,
+        index=True,
+    )
 
 class UserCreate(SQLModel):
     username: str
@@ -111,3 +122,5 @@ class RefreshToken(SQLModel, table=True):
     def is_revoked(self) -> bool:
         """Check if token has been revoked"""
         return self.revoked_at is not None
+    
+ 

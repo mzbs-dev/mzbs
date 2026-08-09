@@ -133,7 +133,8 @@
 #         )
 
 from asyncio.log import logger
-from typing import Annotated, List
+from datetime import datetime
+from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError  # <-- Add this import
@@ -143,6 +144,11 @@ from utils.cache import cache_get, cache_set, cache_invalidate
 from token_deps import TokenPayload, get_token_payload
 from schemas.attendance_time_model import AttendanceTime, AttendanceTimeCreate, AttendanceTimeResponse
 from schemas.attendance_model import Attendance
+from schemas.attendance_time_shift_config_model import (
+    AttendanceTimeShiftConfig,
+    AttendanceTimeShiftConfigUpsert,
+    AttendanceTimeShiftConfigResponse,
+)
 from user.user_crud import require_permission, require_authenticated
 from user.user_models import User
 attendance_time_router = APIRouter(
@@ -277,3 +283,77 @@ def delete_attendance_time_by_id(
             status_code=500,
             detail="Error deleting attendance time"
         )
+
+
+# ============================================================================
+# Phase 6 — Shift Timing Setup (expected arrival/departure per shift)
+# Writes to attendance_time_shift_config, NOT to attendancetime itself —
+# per the locked "shadow table" design decision (attendancetime is
+# load-bearing/shared with student attendance and dashboard aggregation;
+# no DDL against it). Additive only — nothing above this line is touched.
+# ============================================================================
+
+
+def _to_shift_config_response(
+    session: Session,
+    attendance_time_id: int,
+    config: Optional[AttendanceTimeShiftConfig],
+) -> AttendanceTimeShiftConfigResponse:
+    shift = session.get(AttendanceTime, attendance_time_id)
+    return AttendanceTimeShiftConfigResponse(
+        attendance_time_id=attendance_time_id,
+        attendance_time=shift.attendance_time if shift else None,
+        expected_arrival_time=config.expected_arrival_time if config else None,
+        expected_departure_time=config.expected_departure_time if config else None,
+        updated_at=config.updated_at if config else None,
+    )
+
+
+@attendance_time_router.get(
+    "/{attendance_time_id}/shift-config",
+    response_model=AttendanceTimeShiftConfigResponse,
+)
+def get_shift_config(
+    current_user: Annotated[User, Depends(require_authenticated())],
+    attendance_time_id: int,
+    session: Session = Depends(get_session),
+):
+    shift = session.get(AttendanceTime, attendance_time_id)
+    if not shift:
+        raise HTTPException(status_code=404, detail="Attendance Time not found")
+    config = session.get(AttendanceTimeShiftConfig, attendance_time_id)
+    # No row yet is a valid state, not an error — resolves to all-null times.
+    return _to_shift_config_response(session, attendance_time_id, config)
+
+
+@attendance_time_router.put(
+    "/{attendance_time_id}/shift-config",
+    response_model=AttendanceTimeShiftConfigResponse,
+)
+def upsert_shift_config(
+    user: Annotated[User, Depends(require_permission("setup_timings", "edit"))],
+    attendance_time_id: int,
+    payload: AttendanceTimeShiftConfigUpsert,
+    session: Session = Depends(get_session),
+):
+    shift = session.get(AttendanceTime, attendance_time_id)
+    if not shift:
+        raise HTTPException(status_code=404, detail="Attendance Time not found")
+
+    config = session.get(AttendanceTimeShiftConfig, attendance_time_id)
+    if config:
+        config.expected_arrival_time = payload.expected_arrival_time
+        config.expected_departure_time = payload.expected_departure_time
+        config.updated_by = user.id
+        config.updated_at = datetime.utcnow()
+    else:
+        config = AttendanceTimeShiftConfig(
+            attendance_time_id=attendance_time_id,
+            expected_arrival_time=payload.expected_arrival_time,
+            expected_departure_time=payload.expected_departure_time,
+            updated_by=user.id,
+        )
+    session.add(config)
+    session.commit()
+    session.refresh(config)
+    return _to_shift_config_response(session, attendance_time_id, config)
