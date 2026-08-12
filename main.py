@@ -35,6 +35,7 @@ from router.dashboard import dashboard_router
 from router.admin_create_user import admin_create_user_router
 from router.salary import salary_router
 from router.debit import debit_router
+from router.attendance_review import attendance_review_router
 from router.exam_marks import exam_marks_router
 from router.student_profile import student_profile_router
 from router.student_portal_auth import student_portal_auth_router
@@ -174,6 +175,7 @@ app.include_router(fee_router)
 app.include_router(income_router)
 app.include_router(salary_router)
 app.include_router(debit_router)
+app.include_router(attendance_review_router)
 app.include_router(students_router)
 app.include_router(deleted_students_router)
 app.include_router(mark_attendance_router)

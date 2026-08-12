@@ -18,9 +18,10 @@ interface StaffOption {
 type TabKey = "basic" | "attendance" | "syllabus";
 
 export default function StaffProfile() {
-  const { permissions } = useRole();
-  const canView = permissions?.staff_profile?.view ?? false;
-  const canEdit = permissions?.staff_profile?.edit ?? false;
+  const { permissions, role } = useRole();
+  const isAdmin = role?.toUpperCase() === "ADMIN";
+  const canView = permissions?.staff_profile?.view ?? isAdmin;
+  const canEdit = permissions?.staff_profile?.edit ?? isAdmin;
 
   const [staffOptions, setStaffOptions] = useState<{ id: string | number; title: string }[]>([]);
   const [selectedStaff, setSelectedStaff] = useState("");

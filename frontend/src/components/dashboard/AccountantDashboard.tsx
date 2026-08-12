@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRole } from "@/context/RoleContext";
 import { Header } from "@/components/dashboard/Header";
+import EmptyState from "@/components/ui/empty-state";
 import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
 import { DebitAPI } from "@/api/Debit/DebitAPI";
 import { CardsSkeleton, Skeleton } from "@/components/dashboard/Skeleton";

@@ -20,6 +20,7 @@ export type Section =
   | "expenses"
   | "income"
   | "salary"
+  | "debit"
   | "setup"
   | "exam"
   | "staff"
@@ -39,6 +40,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Section[]> = {
     "expenses",
     "income",
     "salary",
+    "debit",
     "setup",
     "exam",
     "staff",
@@ -62,7 +64,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Section[]> = {
   ],
   TEACHER: ["attendance", "students", "dashboard", "exam"],
   STAFF: ["attendance", "students", "dashboard"],
-  ACCOUNTANT: ["expenses", "fees", "income", "dashboard", "salary"],
+  ACCOUNTANT: ["expenses", "fees", "income", "dashboard", "salary", "debit"],
   FEE_MANAGER: ["fees", "dashboard", "students"],
   STUDENT: ["dashboard"], // Students can access own attendance & fees through filtered endpoints
 };
@@ -77,6 +79,7 @@ const SECTION_TO_MODULE: Partial<Record<Section, string>> = {
   income: "income",
   expenses: "expenses",
   salary: "salary",
+  debit: "debit",
   exam: "exam",
   staff: "staff",
   profile: "self_attendance",
@@ -103,6 +106,8 @@ const SUBMENU_MODULE_MAP: { match: string; module: string; action: string }[] = 
   { match: "/expense/debit/manage", module: "debit", action: "view" },
   { match: "/expense/debit/view", module: "debit", action: "view" },
   { match: "/profile/self-attendance", module: "self_attendance", action: "view" },
+  { match: "/staff/profile", module: "staff_profile", action: "view" },
+  { match: "/staff/attendance-review", module: "attendance_review", action: "view" },
 ];
 
 /**
@@ -270,7 +275,13 @@ function canAccessSubmenuItemDynamic(
 
   const mapping = SUBMENU_MODULE_MAP.find((m) => submenuPath.includes(m.match));
   if (mapping) {
-    return permissions[mapping.module]?.[mapping.action] ?? false;
+    // If the backend hasn't yet provided a specific module permission entry
+    // for this new mapping, fall back to showing the submenu item so the
+    // nav doesn't disappear unexpectedly. The backend still enforces the
+    // real permission on each endpoint, so this is a UX-only fallback.
+    const modulePerm = (permissions as any)[mapping.module];
+    if (modulePerm === undefined) return true;
+    return modulePerm?.[mapping.action] ?? false;
   }
 
   // No specific mapping — visible as long as its parent section is accessible

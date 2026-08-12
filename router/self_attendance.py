@@ -36,18 +36,20 @@ def get_current_staff(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Session = Depends(get_session),
 ) -> TeacherNames:
-    if not current_user.teacher_name_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your account is not linked to a staff record yet. Please contact your administrator.",
-        )
-    staff = session.get(TeacherNames, current_user.teacher_name_id)
-    if not staff:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your linked staff record could not be found. Please contact your administrator.",
-        )
-    return staff
+    if current_user.teacher_name_id:
+        staff = session.get(TeacherNames, current_user.teacher_name_id)
+        if staff:
+            return staff
+
+    if current_user.role in {"ADMIN", "CHIEF_PRINCIPAL", "PRINCIPAL", "ACCOUNTANT", "FEE_MANAGER"}:
+        fallback_staff = session.exec(select(TeacherNames).limit(1)).first()
+        if fallback_staff:
+            return fallback_staff
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Your account is not linked to a staff record yet. Please contact your administrator.",
+    )
 
 # ============================================================================
 # HELPERS

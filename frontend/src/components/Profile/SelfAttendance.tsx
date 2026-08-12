@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import Card from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useRole } from "@/context/RoleContext";
+import { canAccessSection } from "@/utils/rolePermissions";
 import {
   SelfAttendanceAPI,
   SelfAttendanceEntry,
@@ -31,7 +32,7 @@ const emptyForm = (): ShiftFormState => ({
 });
 
 const SelfAttendance: React.FC = () => {
-  const { permissions, isLoading: roleLoading } = useRole();
+  const { permissions, isLoading: roleLoading, role } = useRole();
 
   const [entries, setEntries] = useState<SelfAttendanceEntry[]>([]);
   const [forms, setForms] = useState<Record<ShiftKey, ShiftFormState>>({});
@@ -39,9 +40,9 @@ const SelfAttendance: React.FC = () => {
   const [savingKey, setSavingKey] = useState<ShiftKey | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const canView = permissions?.self_attendance?.view ?? false;
-  const canAdd = permissions?.self_attendance?.add ?? false;
-  const canEdit = permissions?.self_attendance?.edit ?? false;
+  const canView = permissions?.self_attendance?.view ?? canAccessSection(role, "profile", permissions);
+  const canAdd = permissions?.self_attendance?.add ?? canAccessSection(role, "profile", permissions);
+  const canEdit = permissions?.self_attendance?.edit ?? canAccessSection(role, "profile", permissions);
 
   const loadToday = useCallback(async () => {
     setLoading(true);

@@ -118,6 +118,57 @@ class StaffAttendanceBulkResponse(SQLModel):
     records: List[StaffAttendanceResponse]
 
 
+class AttendanceReviewRow(SQLModel):
+    staff_id: int
+    staff_name: str
+    staff_attendance_id: Optional[int] = None
+    attendance_time_id: Optional[int] = None
+    attendance_time_name: Optional[str] = None
+    attendance_date: date
+    self_availability: Optional[str] = None
+    self_remarks: Optional[str] = None
+    arrival_time: Optional[time] = None
+    departure_time: Optional[time] = None
+    final_status: Optional[str] = None
+    final_remarks: Optional[str] = None
+    is_finalized: bool = False
+    is_likely_late: Optional[bool] = None
+    attendance_source: Optional[str] = None
+
+
+class AttendanceReviewFinalizePayload(SQLModel):
+    attendance_date: date
+    attendance_time_id: Optional[int] = None
+    final_status: str
+    final_remarks: Optional[str] = None
+
+
+class AttendanceReviewEditPayload(SQLModel):
+    attendance_date: date
+    attendance_time_id: Optional[int] = None
+    final_status: Optional[str] = None
+    final_remarks: Optional[str] = None
+    self_availability: Optional[str] = None
+    arrival_time: Optional[time] = None
+    departure_time: Optional[time] = None
+
+
+class AttendanceReviewHistoryRow(SQLModel):
+    staff_attendance_id: int
+    staff_id: int
+    staff_name: str
+    attendance_date: date
+    attendance_time_id: Optional[int] = None
+    attendance_time_name: Optional[str] = None
+    final_status: Optional[str] = None
+    final_remarks: Optional[str] = None
+    self_availability: Optional[str] = None
+    arrival_time: Optional[time] = None
+    departure_time: Optional[time] = None
+    is_finalized: bool = False
+    finalized_at: Optional[datetime] = None
+
+
 # ============================================================================
 # Phase 3 DTOs — Self-Attendance (teacher-facing)
 # New, additive only. Nothing above this line is touched.

@@ -105,6 +105,18 @@ def test_get_attendance(teacher_token):
     assert isinstance(response.json(), list)
 
 
+def test_permissions_me_includes_self_attendance_module(teacher_token):
+    headers = {"Authorization": f"Bearer {teacher_token}"}
+    response = client.get("/permissions/me", headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "self_attendance" in payload
+    assert payload["self_attendance"]["view"] is True
+    assert payload["self_attendance"]["add"] is True
+    assert payload["self_attendance"]["edit"] is True
+
+
 def test_attendance_show_all_returns_paginated_payload(teacher_token):
     headers = {"Authorization": f"Bearer {teacher_token}"}
     response = client.get(
