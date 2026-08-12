@@ -62,7 +62,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Section[]> = {
     "fees",
     "exam",
   ],
-  TEACHER: ["attendance", "students", "dashboard", "exam"],
+  TEACHER: ["attendance", "students", "dashboard", "exam", "profile"],
   STAFF: ["attendance", "students", "dashboard"],
   ACCOUNTANT: ["expenses", "fees", "income", "dashboard", "salary", "debit"],
   FEE_MANAGER: ["fees", "dashboard", "students"],
@@ -149,10 +149,10 @@ function canAccessSectionDynamic(
     );
   }
 
-  const module = SECTION_TO_MODULE[section as Section];
-  if (!module) return false; // unknown/unmapped section — deny by default
+  const moduleName = SECTION_TO_MODULE[section as Section];
+  if (!moduleName) return false; // unknown/unmapped section — deny by default
 
-  return permissions[module]?.view ?? false;
+  return permissions[moduleName]?.view ?? false;
 }
 
 function canAccessSectionStatic(role: string, section: string): boolean {
@@ -255,6 +255,7 @@ function canAccessSubmenuItemDynamic(
       submenuPath.includes("/attendance/mark_attendance") ||
       submenuPath.includes("/attendance/view_attendance") ||
       submenuPath.includes("/exam") ||
+      submenuPath.includes("/profile/self-attendance") ||
       (submenuPath.includes("/students") && !submenuPath.includes("/deleted"));
     if (!allowed) return false;
   }

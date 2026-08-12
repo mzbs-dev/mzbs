@@ -171,7 +171,7 @@ def create_income_cat_name(
 
 @income_cat_names_router.get("/income-cat-names-all/", response_model=List[IncomeCatNamesResponse])
 def read_income_cat_names(
-    current_user: Annotated[User, Depends(require_permission("setup_income_categories", "view"))],
+    current_user: Annotated[User, Depends(require_permission("income", "view"))],
     session: Session = Depends(get_session),
     payload: TokenPayload = Depends(get_token_payload),
 ):
@@ -187,7 +187,7 @@ def read_income_cat_names(
 
 
 @income_cat_names_router.get("/{income_cat_id}", response_model=IncomeCatNamesResponse)
-def read_income_cat_name(current_user: Annotated[User, Depends(require_permission("setup_income_categories", "view"))], income_cat_id: int, session: Session = Depends(get_session)):
+def read_income_cat_name(current_user: Annotated[User, Depends(require_permission("income", "view"))], income_cat_id: int, session: Session = Depends(get_session)):
     income_cat_name = session.get(IncomeCatNames, income_cat_id)
     if not income_cat_name:
         raise HTTPException(

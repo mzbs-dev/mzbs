@@ -60,7 +60,7 @@ def create_expense_cat_name(
 
 @expense_cat_names_router.get("/expense-cat-names-all/", response_model=List[ExpenseCatNamesResponse])
 def read_expense_cat_names(
-    user: Annotated[User, Depends(require_permission("setup_expense_categories", "view"))],
+    user: Annotated[User, Depends(require_permission("expenses", "view"))],
     session: Session = Depends(get_session),
     payload: TokenPayload = Depends(get_token_payload),
 ):
@@ -74,7 +74,7 @@ def read_expense_cat_names(
 
 @expense_cat_names_router.get("/{expense_cat_id}", response_model=ExpenseCatNamesResponse)
 def read_expense_cat_name(
-    user: Annotated[User, Depends(require_permission("setup_expense_categories", "view"))],
+    user: Annotated[User, Depends(require_permission("expenses", "view"))],
     expense_cat_id: int, session: Session = Depends(get_session)):
     expense_cat_name = session.get(ExpenseCatNames, expense_cat_id)
     if not expense_cat_name:

@@ -64,9 +64,26 @@ def create_teachernames(
 # # Returns all placed teacher names
 
 
+@teachernames_router.get("/teacher-names-for-attendance/", response_model=List[TeacherNamesResponse])
+def read_teachernames_for_attendance(
+    current_user: Annotated[User, Depends(require_permission("attendance", "view"))],
+    session: Session = Depends(get_session),
+    payload: TokenPayload = Depends(get_token_payload),
+):
+    """Fetch teacher names for attendance marking. Requires attendance:view, not setup:view.
+    Allows teachers and other attendance users to see the teacher list even without setup permissions."""
+    cached = cache_get("teacher_names", payload.tenant_id)
+    if cached is not None:
+        return cached
+    teachernames = session.exec(select(TeacherNames)).all()
+    result = [TeacherNamesResponse.model_validate(t) for t in teachernames]
+    cache_set("teacher_names", payload.tenant_id, result)
+    return result
+
+
 @teachernames_router.get("/teacher-names-all/", response_model=List[TeacherNamesResponse])
 def read_teachernames(
-    current_user: Annotated[User, Depends(require_permission("setup_teachers", "view"))],
+    current_user: Annotated[User,Depends(require_permission("attendance", "view"))],
     session: Session = Depends(get_session),
     payload: TokenPayload = Depends(get_token_payload),
 ):
