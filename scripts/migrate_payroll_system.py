@@ -30,10 +30,10 @@ import setting
 def create_payroll_tables():
     """Create the new payroll system tables"""
 
-    CONN_STRING: str = str(setting.DATABASE_URL)
+    CONN_STRING = str(setting.DATABASE_URL) if setting.DATABASE_URL else None
 
     if not CONN_STRING or CONN_STRING == "None":
-        logger.error("DATABASE_URL is not configured!")
+        logger.error("DATABASE_URL is not configured! Skipping payroll table creation.")
         return False
 
     try:
@@ -85,7 +85,11 @@ def verify_tables():
     """Verify that all tables were created successfully"""
     from sqlmodel import Session, text
 
-    CONN_STRING: str = str(setting.DATABASE_URL)
+    CONN_STRING = str(setting.DATABASE_URL) if setting.DATABASE_URL else None
+    if not CONN_STRING or CONN_STRING == "None":
+        logger.error("DATABASE_URL is not configured; cannot verify payroll tables.")
+        return False
+
     engine = create_engine(CONN_STRING)
 
     try:
