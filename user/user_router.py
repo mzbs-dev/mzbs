@@ -53,9 +53,28 @@ async def login_for_swagger(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
 ):
-    """Swagger UI login — OAuth2PasswordRequestForm has no tenant_id field,
-    so this always resolves to DEFAULT_TENANT_ID."""
-    return user_login(DEFAULT_TENANT_ID, form_data)
+    """Swagger UI login. OAuth2PasswordRequestForm has no tenant_id field,
+    so tenant selection is encoded into the username using a '::' delimiter.
+
+    In Swagger's Authorize dialog, enter:
+        username: mzbs::yourusername             -> targets tenant 'mzbs'
+        username: mzbs_staging_school::yourname   -> targets staging tenant
+        username: yourusername (no delimiter)     -> falls back to DEFAULT_TENANT_ID
+    """
+    if "::" in form_data.username:
+        tenant_id, real_username = form_data.username.split("::", 1)
+        form_data.username = real_username
+    else:
+        tenant_id = DEFAULT_TENANT_ID
+
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No tenant specified and no DEFAULT_TENANT_ID configured. "
+                   "Use 'tenant_id::username' as the Swagger username.",
+        )
+
+    return user_login(tenant_id, form_data)
 
 @public_router.post("/login", response_model=LoginResponse)
 @limiter.limit("5/minute")  # Security: Rate limiting - 5 attempts per minute per IP

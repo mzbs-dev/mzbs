@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from db import get_session
 from user.settings import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, REFRESH_TOKEN_EXPIRE_MINUTES, SECRET_KEY
 from user.services import create_access_token, get_password_hash, get_user_by_username, verify_password, pwd_context, oauth2_scheme
+from utils.logging import logger
 from user.user_models import (
     LoginResponse, 
     TokenData, 
@@ -45,6 +46,7 @@ def user_login(tenant_id: str, form_data: UserLogin | OAuth2PasswordRequestForm)
     username = form_data.username
     password = form_data.password
 
+    logger.info(f"[LOGIN] Authenticating '{username}' against tenant '{tenant_id}'")
     tenant_engine = get_tenant_engine(tenant_id)
     with Session(tenant_engine) as db:
         user = get_user_by_username(db, username)

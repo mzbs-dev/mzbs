@@ -17,8 +17,6 @@ import schemas.student_parent_credentials_model  # noqa: F401
 from control_plane_client.tenant_lookup import lookup_tenant_connection
 from token_deps import TokenPayload, get_token_payload
 
-CONN_STRING: str = str(setting.DATABASE_URL)
-
 
 def _normalize_database_url(raw_url: str) -> str:
     """Use a SQLAlchemy-compatible dialect based on the available DB driver."""
@@ -59,12 +57,6 @@ def _mask_connection_string(url: str) -> str:
         return "<connection string, unparseable, not logged>"
 
 
-# Validate DATABASE_URL is configured
-if not CONN_STRING or CONN_STRING == "None":
-    logger.error("DATABASE_URL is not configured! Please set DATABASE_URL environment variable.")
-    logger.error("Example: postgresql://user:password@localhost/dbname")
-    raise ValueError("DATABASE_URL environment variable is required but not set")
-
 def get_engine(CONN_STRING):
     # Configure connection pooling for PostgreSQL
     # Note: Neon pooler doesn't support statement_timeout in options
@@ -84,8 +76,6 @@ def get_engine(CONN_STRING):
     )
     logger.info("Engine created successfully using %s", _mask_connection_string(normalized_url))
     return engine
-
-engine = get_engine(CONN_STRING=CONN_STRING)
 
 
 def get_control_plane_engine():
@@ -148,6 +138,18 @@ def evict_idle_tenant_engines(max_idle_minutes: int = 30) -> list[str]:
     return stale_tenant_ids
 
 
+def dispose_all_tenant_engines() -> list[str]:
+    """Dispose every cached tenant engine's connection pool. Call on app shutdown."""
+    with _tenant_engine_lock:
+        tenant_ids = list(_tenant_engines.keys())
+        for tenant_engine in _tenant_engines.values():
+            tenant_engine.dispose()
+        _tenant_engines.clear()
+        _tenant_engine_conn_strs.clear()
+        _tenant_engine_last_used.clear()
+    return tenant_ids
+
+
 def get_tenant_engine(tenant_id: str) -> Engine:
     """Resolve a tenant_id to a cached engine.
 
@@ -194,54 +196,19 @@ def get_tenant_engine(tenant_id: str) -> Engine:
         return tenant_engine
 
 
-def seed_attendance_values():
-    """Seed initial attendance values into the database"""
-    try:
-        session = SessionLocal(engine)
-        from schemas.attendance_value_model import AttendanceValue
-        
-        # Check if values already exist
-        existing_values = session.exec(select(AttendanceValue)).all()
-        if existing_values:
-            logger.info(f"Attendance values already exist: {len(existing_values)} values found")
-            session.close()
-            return
-        
-        # Define the 4 core attendance values
-        attendance_values = [
-            AttendanceValue(attendance_value="Present"),
-            AttendanceValue(attendance_value="Absent"),
-            AttendanceValue(attendance_value="Late"),
-            AttendanceValue(attendance_value="Leave"),
-        ]
-        
-        for value in attendance_values:
-            session.add(value)
-        
-        session.commit()
-        logger.info("Attendance values seeded successfully: Present, Absent, Late, Leave")
-        session.close()
-    except Exception as e:
-        logger.error(f"Error seeding attendance values: {str(e)}")
-        session.close()
-        raise
-
-def create_db_and_tables():
-    # SQLModel.metadata.drop_all(engine)  # Drop existing tables
-    SQLModel.metadata.create_all(engine)
-    seed_attendance_values()  # Seed initial data
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Creating database connection")
-    try:
-        create_db_and_tables()
-        logger.info("Database tables created successfully")
-    except Exception as e:
-        logger.error(f"Database initialization error: {str(e)}")
-        raise
+    logger.info(
+        "App startup — no tenant DB connected yet. "
+        "Tenant engines are created lazily, on the first authenticated "
+        "request for each tenant (watch for 'Created new engine for "
+        "tenant ...' below once you log in)."
+    )
     yield
-    logger.info("Closing database connection")
+    logger.info("Application shutting down — closing tenant database connections")
+    disposed = dispose_all_tenant_engines()
+    logger.info(f"Disposed {len(disposed)} tenant engine(s): {disposed}")
+
 
 def get_session(payload: Annotated[TokenPayload, Depends(get_token_payload)]):
     session = None

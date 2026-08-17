@@ -9,7 +9,7 @@ from sqlmodel import select, Session, SQLModel
 from typing import Annotated
 from contextlib import asynccontextmanager
 from utils.logging import logger, cleanup_old_logs
-from db import engine, SessionLocal, lifespan
+from db import dispose_all_tenant_engines
 from slowapi.errors import RateLimitExceeded
 import asyncio
 from fastapi.openapi.utils import get_openapi
@@ -48,18 +48,9 @@ from control_plane_client.tenant_branding import tenant_branding_router
 # User related imports
 from user.user_router import public_router, user_router, admin_router
 
-from db import get_session, create_db_and_tables
-
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 🔹 Startup Tasks
-    print("Starting Application")
-    print("Creating database and tables")
-    create_db_and_tables()
-    print("Database and tables created")
-
     logger.info("Starting application...")
     try:
         cleanup_old_logs()
@@ -67,14 +58,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to clean up logs: {str(e)}")
 
-    yield  # 🔸 Application Runs Here
+    yield
 
-    # 🔹 Shutdown Tasks
     logger.info("Application shutting down...")
     try:
-        await engine.dispose()  # Close database connections
-        
-        # Cancel any pending tasks
+        disposed = dispose_all_tenant_engines()
+        logger.info(f"Disposed {len(disposed)} tenant engine(s) on shutdown: {disposed}")
+
         for task in asyncio.all_tasks():
             if not task.done():
                 task.cancel()
