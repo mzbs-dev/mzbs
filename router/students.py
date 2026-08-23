@@ -248,10 +248,25 @@ def all_students(
     session: Annotated[Session, Depends(get_session)],
     page: int = Query(10, ge=1, le=50, description="Page number"),
     page_size: int = Query(10, ge=1, le=50, description="Records per page"),
+    search: str | None = Query(None, description="Search student records"),
 ):
-    total = session.exec(select(func.count(Students.student_id))).one()
+    query = select(Students)
+    if search and search.strip():
+        search_pattern = f"%{search.strip()}%"
+        query = query.where(
+            Students.student_name.ilike(search_pattern)
+            | Students.student_gender.ilike(search_pattern)
+            | Students.class_name.ilike(search_pattern)
+            | Students.student_city.ilike(search_pattern)
+            | Students.father_name.ilike(search_pattern)
+            | Students.father_contact.ilike(search_pattern)
+        )
+
+    total = session.exec(
+        select(func.count()).select_from(query.subquery())
+    ).one()
     students = session.exec(
-        select(Students)
+        query
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()

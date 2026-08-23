@@ -6,11 +6,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import Card from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import { useRole } from "@/context/RoleContext";
 import { canAccessSection } from "@/utils/rolePermissions";
 import {
   SelfAttendanceAPI,
   SelfAttendanceEntry,
+  SelfAttendanceHistoryRow,
 } from "@/api/SelfAttendance/SelfAttendanceAPI";
 
 type ShiftKey = string;
@@ -23,6 +25,29 @@ interface ShiftFormState {
 }
 
 const shiftKey = (id: number | null): ShiftKey => (id === null ? "none" : String(id));
+const savedTimesKey = (key: ShiftKey): string => `self-attendance-times-${key}`;
+
+const getSavedTimes = (key: ShiftKey): Pick<ShiftFormState, "arrival_time" | "departure_time"> => {
+  try {
+    const saved = window.localStorage.getItem(savedTimesKey(key));
+    if (!saved) return { arrival_time: "", departure_time: "" };
+    const parsed = JSON.parse(saved) as Partial<Pick<ShiftFormState, "arrival_time" | "departure_time">>;
+    return {
+      arrival_time: typeof parsed.arrival_time === "string" ? parsed.arrival_time : "",
+      departure_time: typeof parsed.departure_time === "string" ? parsed.departure_time : "",
+    };
+  } catch {
+    return { arrival_time: "", departure_time: "" };
+  }
+};
+
+const saveTimes = (key: ShiftKey, form: Pick<ShiftFormState, "arrival_time" | "departure_time">) => {
+  try {
+    window.localStorage.setItem(savedTimesKey(key), JSON.stringify(form));
+  } catch {
+    // Storage may be unavailable in private browsing or restricted contexts.
+  }
+};
 
 const emptyForm = (): ShiftFormState => ({
   self_availability: null,
@@ -35,6 +60,8 @@ const SelfAttendance: React.FC = () => {
   const { permissions, isLoading: roleLoading, role } = useRole();
 
   const [entries, setEntries] = useState<SelfAttendanceEntry[]>([]);
+  const [history, setHistory] = useState<SelfAttendanceHistoryRow[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
   const [forms, setForms] = useState<Record<ShiftKey, ShiftFormState>>({});
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<ShiftKey | null>(null);
@@ -49,19 +76,25 @@ const SelfAttendance: React.FC = () => {
     setError(null);
 
     try {
-      const data = await SelfAttendanceAPI.getToday();
+      const [data, historyData] = await Promise.all([
+        SelfAttendanceAPI.getToday(),
+        SelfAttendanceAPI.getHistory(),
+      ]);
       setEntries(data);
+      setHistory(historyData);
+      setHistoryPage(1);
       setForms((prev) => {
         const next: Record<ShiftKey, ShiftFormState> = {};
         for (const entry of data) {
           const key = shiftKey(entry.attendance_time_id);
+          const savedTimes = getSavedTimes(key);
           next[key] =
             prev[key] ?? {
               self_availability:
                 (entry.self_availability as "AVAILABLE" | "NOT_AVAILABLE" | null) ?? null,
               self_remarks: entry.self_remarks ?? "",
-              arrival_time: entry.arrival_time ?? "",
-              departure_time: entry.departure_time ?? "",
+              arrival_time: entry.arrival_time ?? savedTimes.arrival_time,
+              departure_time: entry.departure_time ?? savedTimes.departure_time,
             };
         }
         return next;
@@ -82,10 +115,13 @@ const SelfAttendance: React.FC = () => {
   }, [canView, loadToday]);
 
   const updateForm = (key: ShiftKey, patch: Partial<ShiftFormState>) => {
-    setForms((prev) => ({
-      ...prev,
-      [key]: { ...(prev[key] ?? emptyForm()), ...patch },
-    }));
+    setForms((prev) => {
+      const nextForm = { ...(prev[key] ?? emptyForm()), ...patch };
+      if ("arrival_time" in patch || "departure_time" in patch) {
+        saveTimes(key, nextForm);
+      }
+      return { ...prev, [key]: nextForm };
+    });
   };
 
   const handleSubmit = async (entry: SelfAttendanceEntry) => {
@@ -256,6 +292,59 @@ const SelfAttendance: React.FC = () => {
           );
         })}
       </div>
+
+      <Card title="Previous Attendance">
+        {history.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No finalized attendance records found.</p>
+        ) : (
+          <>
+            <div className="mb-3 flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                Page {historyPage} of {Math.max(1, Math.ceil(history.length / 10))}
+              </span>
+              <span>{history.length} finalized record{history.length === 1 ? "" : "s"}</span>
+            </div>
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="min-w-full text-sm">
+                <thead className="bg-muted text-left">
+                  <tr>
+                    <th className="px-3 py-2">Date</th>
+                    <th className="px-3 py-2">Shift</th>
+                    <th className="px-3 py-2">Final Status</th>
+                    <th className="px-3 py-2">Arrival</th>
+                    <th className="px-3 py-2">Departure</th>
+                    <th className="px-3 py-2">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history
+                    .slice((historyPage - 1) * 10, historyPage * 10)
+                    .map((row) => (
+                      <tr key={row.staff_attendance_id} className="border-t border-border">
+                        <td className="px-3 py-2">
+                          {new Date(row.attendance_date).toLocaleDateString("en-GB")}
+                        </td>
+                        <td className="px-3 py-2">{row.attendance_time_name ?? "General / No Shift Assigned"}</td>
+                        <td className="px-3 py-2">{row.final_status ?? "—"}</td>
+                        <td className="px-3 py-2">{row.arrival_time ?? "—"}</td>
+                        <td className="px-3 py-2">{row.departure_time ?? "—"}</td>
+                        <td className="px-3 py-2">{row.final_remarks ?? "—"}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+            {history.length > 10 && (
+              <Pagination
+                className="mt-3"
+                currentPage={historyPage}
+                totalPages={Math.ceil(history.length / 10)}
+                onPageChange={setHistoryPage}
+              />
+            )}
+          </>
+        )}
+      </Card>
     </div>
   );
 };

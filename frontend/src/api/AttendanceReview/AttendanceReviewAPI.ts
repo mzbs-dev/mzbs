@@ -23,6 +23,8 @@ export interface AttendanceReviewFinalizePayload {
   attendance_time_id: number | null;
   final_status: string; // PRESENT | LATE | ABSENT | LEAVE
   final_remarks?: string;
+  arrival_time?: string;
+  departure_time?: string;
 }
 
 export interface AttendanceReviewEditPayload {

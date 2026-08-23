@@ -143,36 +143,13 @@ const AttendanceStatusSummary = () => {
         return;
       }
 
-      // Determine which students to fetch
-      let studentsToFetch: StudentData[] = [];
-
-      if (data.student_id && data.student_id !== 0 && data.student_id !== "0") {
-        // Specific student selected
-        studentsToFetch = students.filter(s => s.student_id === Number(data.student_id));
-      } else {
-        // All students option selected
-        studentsToFetch = students;
-      }
-
-      if (studentsToFetch.length === 0) {
-        toast.error("No students found");
-        setIsLoading(false);
-        return;
-      }
-
-      // Fetch attendance summary for each student
-      const summaryPromises = studentsToFetch.map(student =>
-        AttendanceAPI.GetAttendanceStatusSummary(
-          student.student_id,
-          data.from_date || undefined,
-          data.to_date || undefined
-        ).catch(() => null)
+      const response = await AttendanceAPI.GetAttendanceStatusSummary(
+        data.student_id && data.student_id !== "0" ? Number(data.student_id) : undefined,
+        data.class_name,
+        data.from_date || undefined,
+        data.to_date || undefined
       );
-
-      const responses = await Promise.all(summaryPromises);
-      const summaryData = responses
-        .filter((r): r is any => r !== null && r.data !== null)
-        .map(r => r.data) as AttendanceStatusResponse[];
+      const summaryData = response.data;
 
       if (summaryData.length === 0) {
         toast.error("Failed to fetch attendance summary");

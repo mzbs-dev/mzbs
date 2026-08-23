@@ -186,6 +186,11 @@ const SalaryLogs = () => {
     fetchTransactions();
   }, [fetchTransactions]);
 
+  const getTransactionDate = (transaction: SalaryTransaction) =>
+    transaction.transactionType === 'payment' && transaction.paymentDate
+      ? transaction.paymentDate
+      : transaction.createdAt;
+
   // Filter transactions based on search, tab, month, and year
   useEffect(() => {
     let filtered = transactions.filter((transaction) =>
@@ -201,6 +206,11 @@ const SalaryLogs = () => {
     if (selectedYear) {
       filtered = filtered.filter((transaction) => transaction.year === selectedYear);
     }
+
+    filtered.sort((a, b) => {
+      const dateDifference = new Date(getTransactionDate(b)).getTime() - new Date(getTransactionDate(a)).getTime();
+      return dateDifference || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
     setFilteredTransactions(filtered);
     setCurrentPage(1);

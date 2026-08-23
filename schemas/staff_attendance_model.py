@@ -141,6 +141,8 @@ class AttendanceReviewFinalizePayload(SQLModel):
     attendance_time_id: Optional[int] = None
     final_status: str
     final_remarks: Optional[str] = None
+    arrival_time: Optional[time] = None
+    departure_time: Optional[time] = None
 
 
 class AttendanceReviewEditPayload(SQLModel):

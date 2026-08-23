@@ -1,0 +1,10 @@
+[33mcommit 9540f89bc3fb4242c13ae24400a0af51cfdb22e3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Muhammad Asif Shahzad <71362700+aasifshahzad@users.noreply.github.com>
+Date:   Tue Aug 18 03:05:24 2026 +0500
+
+    tenant aware localhost backend
+
+ scripts/migrate_payroll_system.py | 10 [32m+++++++[m[31m---[m
+ user/settings.py                  |  2 [32m+[m[31m-[m
+ user/user_router.py               | 22 [32m++++++++++++++[m[31m--------[m
+ 3 files changed, 22 insertions(+), 12 deletions(-)

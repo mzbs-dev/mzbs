@@ -4,7 +4,7 @@ import React from "react";
 import { Header } from "@/components/dashboard/Header";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { BookOpen, Users, Eye, ClipboardList, NotebookPen } from "lucide-react";
+import { BookOpen, Users, Eye, ClipboardList, NotebookPen, UserCheck } from "lucide-react";
 import { ResponsiveH3 } from "@/components/responsive/ResponsiveTypography";
 
 export function TeacherDashboard() {
@@ -22,6 +22,18 @@ export function TeacherDashboard() {
           >
             <ResponsiveH3 className="mb-6 sm:mb-8 text-center">Quick Actions</ResponsiveH3>
             <div className="space-y-5 sm:space-y-6">
+              {/* Self Attendance Button */}
+              <Link href="/dashboard/profile/self-attendance">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full bg-teal-500 hover:bg-teal-600 text-white py-3 sm:py-3.5 px-4 sm:px-6 rounded-lg transition text-sm sm:text-base font-medium flex items-center justify-center gap-2"
+                >
+                  <UserCheck size={20} />
+                  Self Attendance
+                </motion.button>
+              </Link>
+
               {/* Mark Attendance Button */}
               <Link href="/dashboard/attendance/mark_attendance">
                 <motion.button

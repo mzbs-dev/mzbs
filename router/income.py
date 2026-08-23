@@ -211,6 +211,7 @@ def delete_income(
 @income_router.get("/filter_income", response_model=dict)
 def filter_income(
     category_id: Optional[int] = None,
+    source: Optional[str] = None,
     session: Session = Depends(get_session),
     user: User = Depends(require_permission("income", "view")),
     page: int = Query(1, ge=1),
@@ -221,6 +222,8 @@ def filter_income(
         query = select(Income)
         if category_id and category_id != 0:
             query = query.where(Income.category_id == category_id)
+        if source and source.strip():
+            query = query.where(Income.source.ilike(f"%{source.strip()}%"))
 
         total = session.scalar(select(func.count()).select_from(query.subquery())) or 0
         incomes = session.exec(

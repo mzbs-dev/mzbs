@@ -12,6 +12,22 @@ interface FilteredAttendance {
   attendance_value_id: number;
 }
 
+interface AttendanceStatusResponse {
+  student_id: number;
+  student_name: string;
+  father_name: string;
+  class_name: string;
+  present: number;
+  absent: number;
+  late: number;
+  leave: number;
+  total: number;
+  date_range: {
+    from: string;
+    to: string;
+  };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace AttendanceAPI {
   export const Create = async (Attendances: MarkAttInput) => {
@@ -114,13 +130,19 @@ export namespace AttendanceAPI {
   }
 
   export const GetAttendanceStatusSummary = async (
-    studentId: number,
+    studentId?: number,
+    className?: string,
     fromDate?: string,
     toDate?: string
   ) => {
     try {
       const params = new URLSearchParams();
-      params.append('student_id', studentId.toString());
+      if (studentId) {
+        params.append('student_id', studentId.toString());
+      }
+      if (className) {
+        params.append('class_name', className);
+      }
 
       if (fromDate) {
         params.append('from_date', fromDate);
@@ -129,7 +151,7 @@ export namespace AttendanceAPI {
         params.append('to_date', toDate);
       }
 
-      const response = await AxiosInstance.get(
+      const response = await AxiosInstance.get<AttendanceStatusResponse[]>(
         `/mark_attendance/attendance_status_summary?${params.toString()}`
       );
       return response;

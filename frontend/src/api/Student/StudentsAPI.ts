@@ -10,11 +10,11 @@ interface StudentResponse {
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace StudentAPI {
-  export const Get = async (page = 1, pageSize = 10) => {
+  export const Get = async (page = 1, pageSize = 10, search = "") => {
     try {
       const response = await AxiosInstance.get<unknown>(
         "/students/all_students/",
-        { params: { page, page_size: pageSize } }
+        { params: { page, page_size: pageSize, search: search || undefined } }
       );
       return response;
     } catch (error) {

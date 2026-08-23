@@ -27,6 +27,8 @@ interface TeacherSalarySummary {
   netSalary: number;
   totalPaid: number;
   remainingBalance: number;
+  salaryHistory?: SalaryPeriod[];
+  paymentHistory?: SalaryPaymentResponse[];
 }
 
 const ViewSalary = () => {
@@ -86,6 +88,8 @@ const ViewSalary = () => {
             netSalary: apiSummary.total_net_salary,
             totalPaid: apiSummary.total_paid,
             remainingBalance: apiSummary.remaining,
+            salaryHistory: apiSummary.salary_history || [],
+            paymentHistory: apiSummary.payment_history || [],
           };
         } catch (error) {
           // Return a basic summary even if the API call fails
@@ -109,7 +113,12 @@ const ViewSalary = () => {
       });
 
       const summaryResults = await Promise.all(summaryPromises);
-      const summaryList = summaryResults.filter((s): s is TeacherSalarySummary => s !== null);
+      const summaryList: TeacherSalarySummary[] = summaryResults.reduce<TeacherSalarySummary[]>((acc, item) => {
+        if (item) {
+          acc.push(item);
+        }
+        return acc;
+      }, []);
 
       summaryList.sort((a, b) => a.teacherName.localeCompare(b.teacherName));
 
@@ -311,8 +320,8 @@ const ViewSalary = () => {
                 <span>Rs. ${Math.round(selectedSummary.totalPaid).toLocaleString("en-US")}</span>
               </div>
               <div class="summary-row">
-                <span>Payments Made</span>
-                <span>${paymentHistory.length} ${paymentHistory.length === 1 ? 'payment' : 'payments'}</span>
+                <span>Payment Entries</span>
+                <span>${paymentHistory.length + allowanceHistory.length} ${(paymentHistory.length + allowanceHistory.length) === 1 ? 'entry' : 'entries'}</span>
               </div>
               <div class="summary-row" style="font-weight: bold; border-top: 1px solid #0066cc; padding-top: 8px; margin-top: 8px;">
                 <span>Balance ${selectedSummary.remainingBalance >= 0 ? '(Remaining)' : '(Overpaid)'}</span>
@@ -322,21 +331,34 @@ const ViewSalary = () => {
 
             <div class="summary-section">
               <h2>Payment Breakdown</h2>
-              ${paymentHistory.length > 0 ? `
+              ${(paymentHistory.length > 0 || allowanceHistory.length > 0) ? `
                 <table>
                   <thead>
                     <tr>
                       <th style="text-align:left; padding:8px;">#</th>
-                      <th style="text-align:left; padding:8px;">Payment Date</th>
-                      <th style="text-align:right; padding:8px;">Amount Paid</th>
+                      <th style="text-align:left; padding:8px;">Type</th>
+                      <th style="text-align:left; padding:8px;">Date / Period</th>
+                      <th style="text-align:left; padding:8px;">Reason</th>
+                      <th style="text-align:right; padding:8px;">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     ${paymentHistory.map((payment, index) => `
                       <tr>
                         <td style="padding:8px;">${index + 1}</td>
+                        <td style="padding:8px;">Salary Payment</td>
                         <td style="padding:8px;">${formatDateToDDMMYY(payment.payment_date)}</td>
+                        <td style="padding:8px;">-</td>
                         <td style="padding:8px; text-align:right;">Rs. ${Math.round(payment.amount).toLocaleString("en-US")}</td>
+                      </tr>
+                    `).join("")}
+                    ${allowanceHistory.map((allowance, index) => `
+                      <tr>
+                        <td style="padding:8px;">${paymentHistory.length + index + 1}</td>
+                        <td style="padding:8px;">Allowance Paid</td>
+                        <td style="padding:8px;">${allowance.month}/${allowance.year}</td>
+                        <td style="padding:8px;">${allowance.reason || 'Allowance'}</td>
+                        <td style="padding:8px; text-align:right;">Rs. ${Math.round(allowance.amount).toLocaleString("en-US")}</td>
                       </tr>
                     `).join("")}
                   </tbody>
@@ -382,20 +404,51 @@ const ViewSalary = () => {
     }
   };
 
-  // Fetch salary history for a specific teacher using the new summary endpoint
-  const fetchSalaryHistoryForTeacher = async (teacherId: number) => {
+  // Fetch salary history for a specific teacher using the same summary already loaded in the list.
+  // This keeps the modal/print data synchronized with what the user sees in the row without
+  // changing the existing open-details flow.
+  const fetchSalaryHistoryForTeacher = async (teacherId: number, fallbackSummary?: TeacherSalarySummary) => {
     try {
       setIsLoadingSalaryHistory(true);
+
+      if (fallbackSummary && fallbackSummary.salaryHistory && fallbackSummary.paymentHistory) {
+        setSelectedSummary(fallbackSummary);
+        setSalaryHistory(fallbackSummary.salaryHistory);
+        setPaymentHistory(fallbackSummary.paymentHistory);
+
+        const allowances = await SalaryAPI.getTeacherAllowances(teacherId);
+        setAllowanceHistory(allowances || []);
+        return;
+      }
+
       const [summary, allowances] = await Promise.all([
         SalaryAPI.getTeacherSalarySummary(teacherId),
         SalaryAPI.getTeacherAllowances(teacherId)
       ]);
-      setSalaryHistory(summary.salary_history);
+
+      const refreshedSummary: TeacherSalarySummary = {
+        teacherId: summary.teacher_id,
+        teacherName: summary.teacher_name || fallbackSummary?.teacherName || "Unknown",
+        baseSalary: summary.current_base_salary,
+        effectiveDate: formatDateToDDMMYY(summary.latest_effective_from),
+        totalPayable: summary.total_payable,
+        totalAllowance: summary.total_allowance,
+        totalDeduction: summary.total_deduction,
+        netSalary: summary.total_net_salary,
+        totalPaid: summary.total_paid,
+        remainingBalance: summary.remaining,
+        salaryHistory: summary.salary_history || [],
+        paymentHistory: summary.payment_history || [],
+      };
+
+      setSelectedSummary(refreshedSummary);
+      setSalaryHistory(summary.salary_history || []);
       setPaymentHistory(summary.payment_history || []);
       setAllowanceHistory(allowances || []);
     } catch (error) {
       console.error("Error fetching salary history:", error);
       toast.error("Failed to load salary history");
+      setSelectedSummary(fallbackSummary ?? null);
       setSalaryHistory([]);
       setPaymentHistory([]);
       setAllowanceHistory([]);
@@ -598,7 +651,7 @@ const ViewSalary = () => {
                           onClick={() => {
                             setSelectedSummary(summary);
                             setShowDetails(true);
-                            fetchSalaryHistoryForTeacher(summary.teacherId);
+                            fetchSalaryHistoryForTeacher(summary.teacherId, summary);
                           }}
                           className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                         >
@@ -828,10 +881,11 @@ const ViewSalary = () => {
             <div className="bg-gray-50 dark:bg-neutral-800 p-4 sm:p-6 border-t border-gray-200 dark:border-neutral-700 flex gap-3 justify-end">
               <Button
                 onClick={handlePrintModalDetails}
+                disabled={isLoadingSalaryHistory}
                 className="flex items-center gap-2 whitespace-nowrap"
               >
                 <Printer className="w-4 h-4" />
-                Print
+                {isLoadingSalaryHistory ? "Loading..." : "Print"}
               </Button>
               <Button
                 onClick={() => {

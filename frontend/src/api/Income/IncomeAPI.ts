@@ -2,25 +2,39 @@ import AxiosInstance from "@/api/axiosInterceptorInstance";
 import { AddIncomeModel, CreateIncomeCat } from "@/models/income/income";
 
 export const IncomeAPI = {
-  GetAllIncomeData: async (page = 1, pageSize = 10) => {
+  GetAllIncomeData: async (page = 1, pageSize = 10, source = "") => {
     try {
-      const response = await AxiosInstance.get("/income/all", {
-        params: { page, page_size: pageSize },
-      });
+      const response = await AxiosInstance.get(
+        source.trim() ? "/income/filter_income" : "/income/all",
+        {
+          params: {
+            page,
+            page_size: pageSize,
+            ...(source.trim() ? { source } : {}),
+          },
+        }
+      );
       return response;
     } catch (error) {
       throw error;
     }
   },
 
-  GetIncomeData: async (category_id: number, page = 1, pageSize = 10) => {
+  GetIncomeData: async (
+    category_id: number,
+    page = 1,
+    pageSize = 10,
+    source = ""
+  ) => {
     try {
-      const response = await AxiosInstance.get(
-        "/income/filter_income",
-        {
-          params: { category_id, page, page_size: pageSize },
-        }
-      );
+      const response = await AxiosInstance.get("/income/filter_income", {
+        params: {
+          category_id,
+          page,
+          page_size: pageSize,
+          ...(source.trim() ? { source } : {}),
+        },
+      });
       return response;
     } catch (error) {
       throw error;

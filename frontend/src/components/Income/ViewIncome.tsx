@@ -73,6 +73,7 @@ const ViewIncome = () => {
   const [incomeCategory, setIncomeCategory] = useState<IncomeCategory[]>([]);
   const [incomeData, setIncomeData] = useState<IncomeDataItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number>(0);
+  const [sourceSearch, setSourceSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize] = useState(10);
@@ -113,10 +114,10 @@ const ViewIncome = () => {
     }
   };
 
-  const getAllIncome = async (page = 1) => {
+  const getAllIncome = async (page = 1, source = sourceSearch) => {
     setIsLoading(true);
     try {
-      const res = await API.GetAllIncomeData(page, pageSize);
+      const res = await API.GetAllIncomeData(page, pageSize, source);
       const payload = res?.data;
       const items = Array.isArray(payload?.data)
         ? payload.data
@@ -133,14 +134,14 @@ const ViewIncome = () => {
     }
   };
 
-  const getIncome = async (CategoryId: number, page = 1) => {
+  const getIncome = async (CategoryId: number, page = 1, source = sourceSearch) => {
     if (CategoryId === 0) {
-      getAllIncome(page);
+      getAllIncome(page, source);
       return;
     }
     setIsLoading(true);
     try {
-      const res = await API.GetIncomeData(CategoryId, page, pageSize);
+      const res = await API.GetIncomeData(CategoryId, page, pageSize, source);
       const payload = res?.data;
       const items = Array.isArray(payload?.data)
         ? payload.data
@@ -155,6 +156,15 @@ const ViewIncome = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSourceSearch = () => {
+    getIncome(selectedCategory, 1, sourceSearch);
+  };
+
+  const clearSourceSearch = () => {
+    setSourceSearch("");
+    getIncome(selectedCategory, 1, "");
   };
 
   const handleDeleteIncome = async (incomeId: number) => {
@@ -166,7 +176,7 @@ const ViewIncome = () => {
     try {
       await API.DeleteIncome(incomeId);
       // Refresh the data
-      getAllIncome();
+      getIncome(selectedCategory, 1, sourceSearch);
     } catch (error) {
       alert("Failed to delete income record");
     } finally {
@@ -212,11 +222,7 @@ const ViewIncome = () => {
       setEditingIncome(null);
       
       // Refresh the data based on current selection
-      if (selectedCategory !== 0) {
-        getIncome(selectedCategory);
-      } else {
-        setIncomeData([]);
-      }
+      getIncome(selectedCategory, 1, sourceSearch);
     } catch (error) {
       console.error("Error updating income:", error);
       toast.error("Failed to update income record");
@@ -243,10 +249,10 @@ const ViewIncome = () => {
       <Header value="View Income" />
 
       <form className="space-y-4 border w-full my-2">
-        <div className="space-y-4 px-2 rounded-md">
+        <div className="flex flex-wrap items-center gap-2 px-2 py-2 rounded-md">
           <label className="font-bold text-sm dark:text-foreground">Category: </label>
           <select
-            className="w-[14rem] border bg-card rounded-md px-3 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground"
+            className="h-10 w-[14rem] border bg-card rounded-md px-3 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground"
             value={selectedCategory}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
               const value = Number(e.target.value);
@@ -264,6 +270,43 @@ const ViewIncome = () => {
               </option>
             ))}
           </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={sourceSearch}
+              onChange={(e) => setSourceSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSourceSearch();
+                }
+              }}
+              placeholder="Search source"
+              aria-label="Search income source"
+              className="h-10 w-[14rem] border bg-card rounded-md px-3 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground"
+            />
+            <Button
+              type="button"
+              onClick={handleSourceSearch}
+              disabled={isLoading}
+              className="h-10 gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90"
+            >
+              Search
+            </Button>
+            {sourceSearch && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={clearSourceSearch}
+                disabled={isLoading}
+                aria-label="Clear source search"
+                title="Clear source search"
+                className="h-10 w-10"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </form>
 
@@ -279,7 +322,7 @@ const ViewIncome = () => {
                   const meta = `Total records: ${incomeData.length} · Printed: ${new Date().toLocaleDateString()}`;
                   printRecords('income-print-area', 'Income Report', meta);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition"
+                className="flex h-10 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90"
               >
                 <Printer size={16} />
                 Print

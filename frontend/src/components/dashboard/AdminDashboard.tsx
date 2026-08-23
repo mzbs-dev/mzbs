@@ -180,7 +180,7 @@ const getAttVal = (values: Record<string, number>, key: string): number =>
   0;
 
 const formatCurrency = (value: number) =>
-  value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
 const MONTH_NAMES = [
   "All Months", "Jan", "Feb", "Mar", "Apr", "May", "Jun",

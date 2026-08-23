@@ -7,7 +7,6 @@ import {
   getCoreRowModel,
   useReactTable,
   getPaginationRowModel,
-  getFilteredRowModel,
 } from "@tanstack/react-table";
 import { Search, LoaderIcon, Eye, Trash2, Printer, Edit2, ChevronFirst, ChevronLast } from "lucide-react";
 import { StudentAPI as API } from "@/api/Student/StudentsAPI";
@@ -316,10 +315,10 @@ export default function ModernStudentTable() {
   ];
 
   // Fetch data from API
-  const GetData = async (page = 1) => {
+  const GetData = async (page = 1, search = globalFilter) => {
     setLoading(true);
     try {
-      const response = await API.Get(page, pageSize);
+      const response = await API.Get(page, pageSize, search);
       const payload = (response?.data ?? {}) as PaginatedStudentResponse;
       const rows = Array.isArray(payload.data)
         ? payload.data
@@ -356,19 +355,21 @@ export default function ModernStudentTable() {
   };
 
   useEffect(() => {
-    GetData();
-  }, []);
+    const timer = window.setTimeout(() => {
+      GetData(1, globalFilter);
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [globalFilter]);
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     state: {
-      globalFilter,
+      globalFilter: "",
     },
-    onGlobalFilterChange: setGlobalFilter,
   });
 
   return (

@@ -15,6 +15,7 @@ from schemas.attendance_model import (
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 from sqlalchemy.orm import joinedload
+from sqlalchemy import case, func
 from typing import Annotated, List, Optional
 from user.user_models import User, UserRole
 from user.user_crud import require_permission
@@ -384,26 +385,37 @@ def get_filtered_attendance_by_name(                       # FIX 1 (continued): 
 
 # ─── Attendance Status Summary ────────────────────────────────────────────────
 
-@mark_attendance_router.get("/attendance_status_summary", response_model=AttendanceStatusSummary)
+@mark_attendance_router.get("/attendance_status_summary", response_model=List[AttendanceStatusSummary])
 def get_attendance_status_summary(
     current_user: Annotated[User, Depends(require_permission("attendance", "view"))],   # FIX 11: removed = None default
     session: Session = Depends(get_session),
-    student_id: int = Query(..., description="Student ID"),
+    student_id: Optional[int] = Query(None, description="Student ID"),
+    class_name: Optional[str] = Query(None, description="Class name"),
     from_date: Optional[str] = Query(None, description="From date (YYYY-MM-DD)"),
     to_date: Optional[str] = Query(None, description="To date (YYYY-MM-DD)"),
 ):
-    """Get attendance status summary (present / absent / late / leave) for a student."""
+    """Get grouped attendance summaries for one student or an entire class."""
 
-    student = session.get(Students, student_id)
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
-
-    # FIX 12: eager-load attendance_value to avoid N+1 queries
     query = (
-        select(Attendance)
-        .options(joinedload(Attendance.attendance_value))
-        .where(Attendance.student_id == student_id)
+        select(
+            Students.student_id,
+            Students.student_name,
+            Students.father_name,
+            Students.class_name,
+            func.coalesce(func.sum(case((func.lower(AttendanceValue.attendance_value) == "present", 1), else_=0)), 0).label("present"),
+            func.coalesce(func.sum(case((func.lower(AttendanceValue.attendance_value) == "absent", 1), else_=0)), 0).label("absent"),
+            func.coalesce(func.sum(case((func.lower(AttendanceValue.attendance_value) == "late", 1), else_=0)), 0).label("late"),
+            func.coalesce(func.sum(case((func.lower(AttendanceValue.attendance_value) == "leave", 1), else_=0)), 0).label("leave"),
+        )
+        .join(Attendance, Attendance.student_id == Students.student_id)
+        .join(AttendanceValue, Attendance.attendance_value_id == AttendanceValue.attendance_value_id)
+        .group_by(Students.student_id, Students.student_name, Students.father_name, Students.class_name)
     )
+
+    if student_id:
+        query = query.where(Students.student_id == student_id)
+    if class_name and class_name != "ALL":
+        query = query.where(Students.class_name == class_name)
 
     if from_date:
         from_dt = _parse_date(from_date, "from_date")
@@ -415,34 +427,22 @@ def get_attendance_status_summary(
         query = query.where(Attendance.attendance_date < to_dt + timedelta(days=1))
 
     records = session.exec(query).all()
+    if student_id and not records:
+        raise HTTPException(status_code=404, detail="No attendance records found for student")
 
-    present_count = absent_count = late_count = leave_count = 0
-
-    for record in records:
-        if record.attendance_value:
-            val = record.attendance_value.attendance_value.lower()
-            if val == "present":
-                present_count += 1
-            elif val == "absent":
-                absent_count += 1
-            elif val == "late":
-                late_count += 1
-            elif val == "leave":
-                leave_count += 1
-
-    return AttendanceStatusSummary(
-        student_id=student.student_id,
-        student_name=student.student_name,
-        father_name=student.father_name,
-        class_name=student.class_name if student.class_name else "N/A",
-        present=present_count,
-        absent=absent_count,
-        late=late_count,
-        leave=leave_count,
-        total=present_count + absent_count + late_count + leave_count,
-        date_range={
-            "from": from_date or "N/A",
-            "to": to_date or "N/A",
-        },
-    )
+    return [
+        AttendanceStatusSummary(
+            student_id=record.student_id,
+            student_name=record.student_name,
+            father_name=record.father_name,
+            class_name=record.class_name or "N/A",
+            present=record.present,
+            absent=record.absent,
+            late=record.late,
+            leave=record.leave,
+            total=record.present + record.absent + record.late + record.leave,
+            date_range={"from": from_date or "N/A", "to": to_date or "N/A"},
+        )
+        for record in records
+    ]
 

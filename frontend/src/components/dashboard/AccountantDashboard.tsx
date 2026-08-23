@@ -126,7 +126,7 @@ interface DebitSummaryData {
 
 // Custom tooltip
 const formatCurrency = (value: number) =>
-  value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {

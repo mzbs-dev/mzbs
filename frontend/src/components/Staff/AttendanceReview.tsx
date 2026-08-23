@@ -62,6 +62,8 @@ export default function AttendanceReview() {
   const [editingRow, setEditingRow] = useState<AttendanceReviewRow | null>(null);
   const [modalStatus, setModalStatus] = useState<FinalStatus | "">("");
   const [modalRemarks, setModalRemarks] = useState("");
+  const [modalArrivalTime, setModalArrivalTime] = useState("");
+  const [modalDepartureTime, setModalDepartureTime] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -101,12 +103,16 @@ export default function AttendanceReview() {
     setEditingRow(row);
     setModalStatus((row.final_status as FinalStatus) || "");
     setModalRemarks(row.final_remarks ?? "");
+    setModalArrivalTime(row.arrival_time ?? "");
+    setModalDepartureTime(row.departure_time ?? "");
   };
 
   const closeModal = () => {
     setEditingRow(null);
     setModalStatus("");
     setModalRemarks("");
+    setModalArrivalTime("");
+    setModalDepartureTime("");
   };
 
   const handleSaveModal = async () => {
@@ -122,6 +128,8 @@ export default function AttendanceReview() {
           attendance_time_id: editingRow.attendance_time_id,
           final_status: modalStatus,
           final_remarks: modalRemarks || undefined,
+          arrival_time: modalArrivalTime || undefined,
+          departure_time: modalDepartureTime || undefined,
         });
         toast.success("Attendance record updated.");
       } else {
@@ -130,6 +138,8 @@ export default function AttendanceReview() {
           attendance_time_id: editingRow.attendance_time_id,
           final_status: modalStatus,
           final_remarks: modalRemarks || undefined,
+          arrival_time: modalArrivalTime || undefined,
+          departure_time: modalDepartureTime || undefined,
         });
         toast.success("Attendance finalized.");
       }
@@ -318,6 +328,27 @@ export default function AttendanceReview() {
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 placeholder="Admin remarks"
               />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-sm text-muted-foreground">Arrival Time (optional)</label>
+                <input
+                  type="time"
+                  value={modalArrivalTime}
+                  onChange={(e) => setModalArrivalTime(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm text-muted-foreground">Departure Time (optional)</label>
+                <input
+                  type="time"
+                  value={modalDepartureTime}
+                  onChange={(e) => setModalDepartureTime(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+              </div>
             </div>
           </div>
 

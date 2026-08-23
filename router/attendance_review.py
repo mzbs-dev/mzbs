@@ -93,6 +93,11 @@ def get_attendance_review_rows(
 ):
     selected_date = attendance_date or date.today()
     staff_members = session.exec(select(TeacherNames).order_by(TeacherNames.teacher_name)).all()
+    assignments = session.exec(select(StaffShiftAssignment)).all()
+    assigned_shift_ids: dict[int, list[int]] = {}
+    for assignment in assignments:
+        assigned_shift_ids.setdefault(assignment.staff_id, []).append(assignment.attendance_time_id)
+
     query = select(StaffAttendance).where(StaffAttendance.attendance_date == selected_date)
     if attendance_time_id is not None:
         query = query.where(StaffAttendance.attendance_time_id == attendance_time_id)
@@ -104,7 +109,17 @@ def get_attendance_review_rows(
 
     rows: List[AttendanceReviewRow] = []
     for staff in staff_members:
+        staff_shifts = assigned_shift_ids.get(staff.teacher_name_id, [])
+        shifts = (
+            [attendance_time_id]
+            if attendance_time_id is not None and attendance_time_id in staff_shifts
+            else staff_shifts
+        )
+
         if attendance_time_id is not None:
+            if not shifts:
+                continue
+
             record = record_map.get((staff.teacher_name_id, attendance_time_id))
             if record:
                 rows.append(_build_review_row(session, record, staff.teacher_name))
@@ -121,20 +136,43 @@ def get_attendance_review_rows(
                 )
             continue
 
-        # No timing filter: include any existing record, plus a placeholder row if none exists.
-        staff_records = [record for key, record in record_map.items() if key[0] == staff.teacher_name_id]
-        if staff_records:
-            for record in staff_records:
-                rows.append(_build_review_row(session, record, staff.teacher_name))
+        # Show one row for every assigned shift, even before self-attendance is submitted.
+        if shifts:
+            for shift_id in shifts:
+                record = record_map.get((staff.teacher_name_id, shift_id))
+                if record:
+                    rows.append(_build_review_row(session, record, staff.teacher_name))
+                else:
+                    rows.append(
+                        AttendanceReviewRow(
+                            staff_id=staff.teacher_name_id,
+                            staff_name=staff.teacher_name,
+                            attendance_date=selected_date,
+                            attendance_time_id=shift_id,
+                            attendance_time_name=_shift_name(session, shift_id),
+                            is_finalized=False,
+                        )
+                    )
         else:
-            rows.append(
-                AttendanceReviewRow(
-                    staff_id=staff.teacher_name_id,
-                    staff_name=staff.teacher_name,
-                    attendance_date=selected_date,
-                    is_finalized=False,
+            # Preserve the general row for staff without explicit assignments.
+            staff_records = [
+                record for key, record in record_map.items()
+                if key[0] == staff.teacher_name_id and key[1] is None
+            ]
+            if staff_records:
+                for record in staff_records:
+                    rows.append(_build_review_row(session, record, staff.teacher_name))
+            else:
+                rows.append(
+                    AttendanceReviewRow(
+                        staff_id=staff.teacher_name_id,
+                        staff_name=staff.teacher_name,
+                        attendance_date=selected_date,
+                        attendance_time_id=None,
+                        attendance_time_name=_shift_name(session, None),
+                        is_finalized=False,
+                    )
                 )
-            )
 
     return rows
 
@@ -174,6 +212,8 @@ def finalize_attendance_review(
             attendance_time_id=payload.attendance_time_id,
             final_status=payload.final_status,
             final_remarks=payload.final_remarks,
+            arrival_time=payload.arrival_time,
+            departure_time=payload.departure_time,
             is_finalized=True,
             finalized_by=current_user.id,
             finalized_at=datetime.utcnow(),
@@ -183,6 +223,8 @@ def finalize_attendance_review(
     else:
         record.final_status = payload.final_status
         record.final_remarks = payload.final_remarks
+        record.arrival_time = payload.arrival_time
+        record.departure_time = payload.departure_time
         record.is_finalized = True
         record.finalized_by = current_user.id
         record.finalized_at = datetime.utcnow()
