@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -152,8 +153,12 @@ const AttendanceStatusSummary = () => {
       const summaryData = response.data;
 
       if (summaryData.length === 0) {
-        toast.error("Failed to fetch attendance summary");
+        setTopPresent([]);
+        setTopAbsent([]);
+        setTopLate([]);
+        setTopLeave([]);
         setHasResults(false);
+        toast.info("No attendance records match the selected criteria");
         return;
       }
 
@@ -187,7 +192,15 @@ const AttendanceStatusSummary = () => {
       toast.success("Attendance summary loaded successfully");
     } catch (error) {
       console.error("Error fetching attendance summary:", error);
-      toast.error("Failed to fetch attendance summary");
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        setTopPresent([]);
+        setTopAbsent([]);
+        setTopLate([]);
+        setTopLeave([]);
+        toast.info("No attendance records match the selected criteria");
+      } else {
+        toast.error("Failed to fetch attendance summary");
+      }
       setHasResults(false);
     } finally {
       setIsLoading(false);
