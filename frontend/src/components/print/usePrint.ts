@@ -16,13 +16,26 @@ export function usePrint() {
     const clone = content.cloneNode(true) as HTMLElement;
     clone.querySelectorAll('.no-print').forEach(el => el.remove());
 
-    const printWindow = window.open('', '_blank', 'width=900,height=700');
-    if (!printWindow) {
-      console.error('Failed to open print window');
+    const printFrame = document.createElement('iframe');
+    printFrame.setAttribute('title', title);
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    printFrame.style.visibility = 'hidden';
+    document.body.appendChild(printFrame);
+
+    const printDocument = printFrame.contentDocument;
+    if (!printDocument) {
+      printFrame.remove();
+      console.error('Failed to create print document');
       return;
     }
 
-    printWindow.document.write(`
+    printDocument.open();
+    printDocument.write(`
       <!DOCTYPE html>
       <html>
         <head>
@@ -87,10 +100,14 @@ export function usePrint() {
                 padding: 0;
               }
               table {
-                page-break-inside: avoid;
+                page-break-inside: auto;
+              }
+              thead {
+                display: table-header-group;
               }
               tr {
                 page-break-inside: avoid;
+                page-break-after: auto;
               }
             }
           </style>
@@ -103,10 +120,18 @@ export function usePrint() {
       </html>
     `);
 
-    printWindow.document.close();
-    printWindow.focus();
+    printDocument.close();
     setTimeout(() => {
+      const printWindow = printFrame.contentWindow;
+      if (!printWindow) {
+        printFrame.remove();
+        return;
+      }
+
+      printWindow.focus();
+      printWindow.addEventListener('afterprint', () => printFrame.remove(), { once: true });
       printWindow.print();
+      setTimeout(() => printFrame.remove(), 1000);
     }, 250);
   };
 

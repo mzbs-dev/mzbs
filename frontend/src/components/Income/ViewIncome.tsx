@@ -77,6 +77,11 @@ const ViewIncome = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize] = useState(10);
+  // Holds the FULL filtered dataset (not just the current page) built right
+  // before printing, so the report includes every matching record instead
+  // of only the 10 rows currently visible on screen.
+  const [printData, setPrintData] = useState<IncomeDataItem[]>([]);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -231,6 +236,50 @@ const ViewIncome = () => {
     }
   };
 
+  // Fetches every record matching the current filters (not just the current
+  // page) so the printed report is complete. Reuses the same endpoints and
+  // filters already in effect on screen; on-screen pagination is untouched.
+  const handlePrintClick = async () => {
+    setIsPreparingPrint(true);
+    try {
+      // Fetch first page to get total_pages
+      const firstPageRes =
+        selectedCategory === 0
+          ? await API.GetAllIncomeData(1, 50, sourceSearch)
+          : await API.GetIncomeData(selectedCategory, 1, 50, sourceSearch);
+      const payload = firstPageRes?.data;
+      const totalPages = payload?.total_pages || 1;
+      
+      // Collect all records from all pages
+      let allItems: IncomeDataItem[] = [];
+      for (let page = 1; page <= totalPages; page++) {
+        const res =
+          selectedCategory === 0
+            ? await API.GetAllIncomeData(page, 50, sourceSearch)
+            : await API.GetIncomeData(selectedCategory, page, 50, sourceSearch);
+        const pagePayload = res?.data;
+        const items = Array.isArray(pagePayload?.data)
+          ? pagePayload.data
+          : extractArrayData<IncomeDataItem>(res);
+        allItems = [...allItems, ...items];
+      }
+      setPrintData(sortByDateDesc(allItems as IncomeDataItem[]));
+    } catch (error) {
+      console.error("Failed to prepare print data", error);
+      toast.error("Failed to prepare print data");
+      setIsPreparingPrint(false);
+    }
+  };
+
+  // Once the full dataset lands, print it, then clear it out again.
+  useEffect(() => {
+    if (printData.length === 0) return;
+    const meta = `Total records: ${printData.length} · Printed: ${new Date().toLocaleDateString()}`;
+    printRecords('income-print-area-full', 'Income Report', meta);
+    setPrintData([]);
+    setIsPreparingPrint(false);
+  }, [printData, printRecords]);
+
   const getSourceBadgeClasses = (sourceType: string | null | undefined): string => {
     switch (sourceType) {
       case "Fee":
@@ -318,14 +367,12 @@ const ViewIncome = () => {
             <div className="flex justify-between items-center p-4 no-print">
               <h3 className="text-lg font-semibold">Income Data</h3>
               <button
-                onClick={() => {
-                  const meta = `Total records: ${incomeData.length} · Printed: ${new Date().toLocaleDateString()}`;
-                  printRecords('income-print-area', 'Income Report', meta);
-                }}
-                className="flex h-10 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90"
+                onClick={handlePrintClick}
+                disabled={isPreparingPrint}
+                className="flex h-10 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Printer size={16} />
-                Print
+                {isPreparingPrint ? 'Preparing...' : 'Print'}
               </button>
             </div>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 px-4 no-print">
@@ -436,6 +483,34 @@ const ViewIncome = () => {
                           )}
                         </TableCell>
                       )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div id="income-print-area-full" style={{ display: "none" }}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Receipt Number</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {printData.map((item) => (
+                    <TableRow className="h-[1rem]" key={item.id}>
+                      <TableCell>{item.recipt_number ?? "-"}</TableCell>
+                      <TableCell>{formatDateToDDMMYY(item.date)}</TableCell>
+                      <TableCell>{item.category}</TableCell>
+                      <TableCell>{item.source}</TableCell>
+                      <TableCell>{item.description}</TableCell>
+                      <TableCell>{item.contact}</TableCell>
+                      <TableCell>{item.amount}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

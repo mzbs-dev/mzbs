@@ -105,6 +105,11 @@ export default function ModernStudentTable() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [serialOffset, setSerialOffset] = useState(0);
+  // Holds the FULL filtered dataset (not just the current page) built right
+  // before printing, so the report includes every matching record instead
+  // of only the 10 rows currently visible on screen.
+  const [printData, setPrintData] = useState<StudentModel[]>([]);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
   // Get current user ID from localStorage
   useEffect(() => {
@@ -372,6 +377,64 @@ export default function ModernStudentTable() {
     },
   });
 
+  // Second table instance, same columns (with corrected serial numbering),
+  // fed by the full (unpaginated) dataset built right before printing.
+  const printColumns: ColumnDef<StudentModel>[] = columns.map((col) =>
+    col.id === "serialNumber"
+      ? {
+          ...col,
+          cell: ({ row }: { row: { index: number } }) => (
+            <div className="font-medium">{row.index + 1}</div>
+          ),
+        }
+      : col
+  );
+
+  const printTable = useReactTable({
+    data: printData,
+    columns: printColumns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  // Fetches every record matching the current search term (not just the
+  // current page) so the printed report is complete. Reuses the same
+  // endpoint already used for on-screen fetching; on-screen pagination is
+  // untouched.
+  const handlePrintClick = async () => {
+    setIsPreparingPrint(true);
+    try {
+      // Fetch first page to get total_pages
+      const firstPageResponse = await API.Get(1, 50, globalFilter);
+      const payload = (firstPageResponse?.data ?? {}) as PaginatedStudentResponse;
+      const totalPages = payload.total_pages || 1;
+      
+      // Collect all records from all pages
+      let allRows: StudentModel[] = [];
+      for (let page = 1; page <= totalPages; page++) {
+        const response = await API.Get(page, 50, globalFilter);
+        const pagePayload = (response?.data ?? {}) as PaginatedStudentResponse;
+        const rows = Array.isArray(pagePayload.data)
+          ? pagePayload.data
+          : extractArrayData<StudentModel>(response);
+        allRows = [...allRows, ...rows];
+      }
+      setPrintData(allRows);
+    } catch (error) {
+      console.error("Failed to prepare print data", error);
+      toast.error("Failed to prepare print data");
+      setIsPreparingPrint(false);
+    }
+  };
+
+  // Once the full dataset lands, print it, then clear it out again.
+  useEffect(() => {
+    if (printData.length === 0) return;
+    const meta = `Total records: ${printData.length} · Printed: ${new Date().toLocaleDateString()}`;
+    printRecords('student-print-area-full', 'Student Report', meta);
+    setPrintData([]);
+    setIsPreparingPrint(false);
+  }, [printData, printRecords]);
+
   return (
     <Card className="mt-2 w-full max-w-full overflow-x-auto overflow-y-visible p-3 sm:p-6 bg-white dark:bg-background rounded-[24px] shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)]">
       {canAddStudent && <AddNewStudent onClassAdded={GetData} />}
@@ -388,14 +451,12 @@ export default function ModernStudentTable() {
           </div>
           {data.length > 0 && (
             <button
-              onClick={() => {
-                const meta = `Total records: ${data.length} · Printed: ${new Date().toLocaleDateString()}`;
-                printRecords('student-print-area', 'Student Report', meta);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition whitespace-nowrap"
+              onClick={handlePrintClick}
+              disabled={isPreparingPrint}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Printer size={16} />
-              Print
+              {isPreparingPrint ? 'Preparing...' : 'Print'}
             </button>
           )}
         </div>
@@ -517,6 +578,49 @@ export default function ModernStudentTable() {
           </TableBody>
         </Table>
         </div>
+      </div>
+
+      {/* Hidden Print Container - Full Dataset */}
+      <div id="student-print-area-full" style={{ display: 'none' }}>
+        <Table className="w-full min-w-full">
+          <TableHeader>
+            {printTable.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={`px-2 py-2 text-xs sm:px-3 sm:text-sm font-medium text-slate-700 dark:text-slate-300 ${
+                      header.column.columnDef.id === "Action" ? "no-print" : ""
+                    }`}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {printTable.getRowModel().rows?.map((row) => (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell
+                    key={cell.id}
+                    className={`px-2 py-2 text-xs text-slate-700 sm:px-3 sm:text-sm dark:text-slate-300 ${
+                      cell.column.columnDef.id === "Action" ? "no-print" : ""
+                    }`}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
 
       {/* Mobile Card View - visible only on small screens */}

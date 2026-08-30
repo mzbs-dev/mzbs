@@ -97,7 +97,7 @@ def get_all_attendance(
         "total": total,
         "page": page,
         "page_size": page_size,
-        "total_pages": (total + page_size - 1) // page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size),
     }
 
 
@@ -313,11 +313,6 @@ def filter_attendance_by_ids(
 
     paginated = records[(page - 1) * page_size : page * page_size]
 
-    if not paginated:
-        raise HTTPException(
-            status_code=404, detail="No attendance records found matching the criteria"
-        )
-
     return {
         "data": [_build_response(att) for att in paginated],
         "total": total,
@@ -427,9 +422,6 @@ def get_attendance_status_summary(
         query = query.where(Attendance.attendance_date < to_dt + timedelta(days=1))
 
     records = session.exec(query).all()
-    if student_id and not records:
-        raise HTTPException(status_code=404, detail="No attendance records found for student")
-
     return [
         AttendanceStatusSummary(
             student_id=record.student_id,

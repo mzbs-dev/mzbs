@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
 import { Search, Printer, RefreshCw, ChevronDown, ChevronRight, Eye, X } from "lucide-react";
+import { usePrint } from "@/components/print/usePrint";
 import {
   SalaryAPI,
   TeacherSalarySummary as ApiTeacherSalarySummary,
@@ -32,6 +33,7 @@ interface TeacherSalarySummary {
 }
 
 const ViewSalary = () => {
+  const { printRecords } = usePrint();
   const [summaries, setSummaries] = useState<TeacherSalarySummary[]>([]);
   const [filteredSummaries, setFilteredSummaries] = useState<TeacherSalarySummary[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -162,246 +164,15 @@ const ViewSalary = () => {
   }, [searchTerm, summaries]);
 
   const handlePrint = () => {
-    try {
-      const rows = filteredSummaries.map((summary, index) => `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${summary.teacherName}</td>
-          <td>Rs. ${Math.round(summary.baseSalary).toLocaleString("en-US")}</td>
-          <td>${summary.effectiveDate}</td>
-          <td>Rs. ${Math.round(summary.totalPayable).toLocaleString("en-US")}</td>
-          <td>Rs. ${Math.round(summary.totalAllowance).toLocaleString("en-US")}</td>
-          <td>Rs. ${Math.round(summary.totalDeduction).toLocaleString("en-US")}</td>
-          <td>Rs. ${Math.round(summary.netSalary).toLocaleString("en-US")}</td>
-          <td>Rs. ${Math.round(summary.totalPaid).toLocaleString("en-US")}</td>
-          <td>Rs. ${Math.round(summary.remainingBalance).toLocaleString("en-US")}</td>
-        </tr>
-      `).join("");
-
-      const html = `
-        <html>
-          <head>
-            <title>View Salary Print</title>
-            <style>
-              body { font-family: Arial, sans-serif; color: #111; }
-              table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background: #f5f5f5; }
-            </style>
-          </head>
-          <body>
-            <h1>View Salary Report</h1>
-            <p>Generated on ${new Date().toLocaleString()}</p>
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Teacher Name</th>
-                  <th>Base Salary</th>
-                  <th>Effective Date</th>
-                  <th>Total Payable</th>
-                  <th>Allowance</th>
-                  <th>Deduction</th>
-                  <th>Net Salary</th>
-                  <th>Paid Amount</th>
-                  <th>Remaining Balance</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </body>
-        </html>
-      `;
-
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) {
-        toast.error("Unable to open print window");
-        return;
-      }
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-    } catch (error) {
-      console.error("Error printing records:", error);
-      toast.error("Failed to print salary data");
-    }
+    const meta = `Total records: ${filteredSummaries.length} · Generated on ${new Date().toLocaleString()}`;
+    printRecords('salary-print-area', 'View Salary Report', meta);
   };
 
   // Print modal details
   const handlePrintModalDetails = () => {
     if (!selectedSummary) return;
-
-    try {
-      const salaryHistoryRows = salaryHistory.map((record, index) => `
-        <tr>
-          <td>${index + 1}</td>
-          <td>Rs. ${Math.round(record.base_salary).toLocaleString("en-US")}</td>
-          <td>${record.effective_from ? formatDateToDDMMYY(record.effective_from) : "N/A"}</td>
-          <td>${record.effective_till ? formatDateToDDMMYY(record.effective_till) : "—"}</td>
-          <td style="text-align: right;">${record.days}</td>
-          <td style="text-align: right;">Rs. ${Math.round(record.period_payable).toLocaleString("en-US")}</td>
-          <td style="text-align: center;">${record.effective_till === null ? "Active" : "Closed"}</td>
-        </tr>
-      `).join("");
-
-      const html = `
-        <html>
-          <head>
-            <title>${selectedSummary.teacherName} - Salary Details</title>
-            <style>
-              body { font-family: Arial, sans-serif; color: #111; margin: 20px; }
-              h1 { color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 10px; }
-              h2 { color: #0066cc; font-size: 14px; margin-top: 20px; margin-bottom: 10px; }
-              .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-              .info-box { padding: 12px; border: 1px solid #ddd; background: #f9f9f9; }
-              .label { font-size: 12px; color: #666; margin-bottom: 4px; }
-              .value { font-size: 16px; font-weight: bold; color: #333; }
-              table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-              th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-              th { background: #f5f5f5; font-weight: bold; }
-              .summary-section { margin-top: 20px; padding: 12px; border-left: 4px solid #0066cc; background: #f0f5ff; }
-              .summary-row { display: flex; justify-content: space-between; padding: 6px 0; }
-              p { font-size: 12px; color: #666; margin-top: 20px; }
-            </style>
-          </head>
-          <body>
-            <h1>${selectedSummary.teacherName}</h1>
-            <p>Salary Details & Breakdown Report</p>
-            <p>Generated on ${new Date().toLocaleString()}</p>
-
-            <div class="info-grid">
-              <div class="info-box">
-                <div class="label">Base Salary (Current)</div>
-                <div class="value">Rs. ${Math.round(selectedSummary.baseSalary).toLocaleString("en-US")}</div>
-              </div>
-              <div class="info-box">
-                <div class="label">Total Payable</div>
-                <div class="value">Rs. ${Math.round(selectedSummary.totalPayable).toLocaleString("en-US")}</div>
-              </div>
-              <div class="info-box">
-                <div class="label">Total Allowance</div>
-                <div class="value">+ Rs. ${Math.round(selectedSummary.totalAllowance).toLocaleString("en-US")}</div>
-              </div>
-              <div class="info-box">
-                <div class="label">Total Deduction</div>
-                <div class="value">- Rs. ${Math.round(selectedSummary.totalDeduction).toLocaleString("en-US")}</div>
-              </div>
-            </div>
-
-            <div class="summary-section">
-              <h2>Calculation Summary</h2>
-              <div class="summary-row">
-                <span>Total Payable</span>
-                <span>Rs. ${Math.round(selectedSummary.totalPayable).toLocaleString("en-US")}</span>
-              </div>
-              <div class="summary-row">
-                <span>Add: Allowance</span>
-                <span>+ Rs. ${Math.round(selectedSummary.totalAllowance).toLocaleString("en-US")}</span>
-              </div>
-              <div class="summary-row">
-                <span>Less: Deduction</span>
-                <span>- Rs. ${Math.round(selectedSummary.totalDeduction).toLocaleString("en-US")}</span>
-              </div>
-              <div class="summary-row" style="font-weight: bold; border-top: 1px solid #0066cc; padding-top: 8px; margin-top: 8px;">
-                <span>Net Salary</span>
-                <span>Rs. ${Math.round(selectedSummary.netSalary).toLocaleString("en-US")}</span>
-              </div>
-            </div>
-
-            <div class="summary-section">
-              <h2>Payment Status</h2>
-              <div class="summary-row">
-                <span>Net Salary</span>
-                <span>Rs. ${Math.round(selectedSummary.netSalary).toLocaleString("en-US")}</span>
-              </div>
-              <div class="summary-row">
-                <span>Already Paid</span>
-                <span>Rs. ${Math.round(selectedSummary.totalPaid).toLocaleString("en-US")}</span>
-              </div>
-              <div class="summary-row">
-                <span>Payment Entries</span>
-                <span>${paymentHistory.length + allowanceHistory.length} ${(paymentHistory.length + allowanceHistory.length) === 1 ? 'entry' : 'entries'}</span>
-              </div>
-              <div class="summary-row" style="font-weight: bold; border-top: 1px solid #0066cc; padding-top: 8px; margin-top: 8px;">
-                <span>Balance ${selectedSummary.remainingBalance >= 0 ? '(Remaining)' : '(Overpaid)'}</span>
-                <span>Rs. ${Math.round(Math.abs(selectedSummary.remainingBalance)).toLocaleString("en-US")}</span>
-              </div>
-            </div>
-
-            <div class="summary-section">
-              <h2>Payment Breakdown</h2>
-              ${(paymentHistory.length > 0 || allowanceHistory.length > 0) ? `
-                <table>
-                  <thead>
-                    <tr>
-                      <th style="text-align:left; padding:8px;">#</th>
-                      <th style="text-align:left; padding:8px;">Type</th>
-                      <th style="text-align:left; padding:8px;">Date / Period</th>
-                      <th style="text-align:left; padding:8px;">Reason</th>
-                      <th style="text-align:right; padding:8px;">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${paymentHistory.map((payment, index) => `
-                      <tr>
-                        <td style="padding:8px;">${index + 1}</td>
-                        <td style="padding:8px;">Salary Payment</td>
-                        <td style="padding:8px;">${formatDateToDDMMYY(payment.payment_date)}</td>
-                        <td style="padding:8px;">-</td>
-                        <td style="padding:8px; text-align:right;">Rs. ${Math.round(payment.amount).toLocaleString("en-US")}</td>
-                      </tr>
-                    `).join("")}
-                    ${allowanceHistory.map((allowance, index) => `
-                      <tr>
-                        <td style="padding:8px;">${paymentHistory.length + index + 1}</td>
-                        <td style="padding:8px;">Allowance Paid</td>
-                        <td style="padding:8px;">${allowance.month}/${allowance.year}</td>
-                        <td style="padding:8px;">${allowance.reason || 'Allowance'}</td>
-                        <td style="padding:8px; text-align:right;">Rs. ${Math.round(allowance.amount).toLocaleString("en-US")}</td>
-                      </tr>
-                    `).join("")}
-                  </tbody>
-                </table>
-              ` : `
-                <p style="margin-top:8px; color:#666;">No payment records found.</p>
-              `}
-            </div>
-
-            <h2 style="margin-top: 30px;">Salary History (Prorated Breakdown)</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Base Salary</th>
-                  <th>From</th>
-                  <th>Till</th>
-                  <th style="text-align: right;">Days</th>
-                  <th style="text-align: right;">Period Payable</th>
-                  <th style="text-align: center;">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${salaryHistoryRows}
-              </tbody>
-            </table>
-          </body>
-        </html>
-      `;
-
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) {
-        toast.error("Unable to open print window");
-        return;
-      }
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-    } catch (error) {
-      console.error("Error printing salary details:", error);
-      toast.error("Failed to print salary details");
-    }
+    const meta = `Salary Details & Breakdown Report · Generated on ${new Date().toLocaleString()}`;
+    printRecords('salary-details-print-area', `${selectedSummary.teacherName} - Salary Details`, meta);
   };
 
   // Fetch salary history for a specific teacher using the same summary already loaded in the list.
@@ -616,7 +387,7 @@ const ViewSalary = () => {
               {searchTerm ? "No salary records match your search" : "No salary records found"}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div id="salary-print-area" className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-neutral-800 border-b border-gray-200 dark:border-neutral-700">
                   <tr>
@@ -629,7 +400,7 @@ const ViewSalary = () => {
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Net Salary<br /><span className="text-xs font-normal text-gray-500 dark:text-gray-400">(Cumulative)</span></th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Paid</th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Remaining</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 dark:text-gray-300 no-print">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
@@ -646,7 +417,7 @@ const ViewSalary = () => {
                       <td className={`px-4 py-3 text-sm text-right font-semibold ${summary.remainingBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         Rs. {Math.round(summary.remainingBalance).toLocaleString("en-US")}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center no-print">
                         <button
                           onClick={() => {
                             setSelectedSummary(summary);
@@ -690,7 +461,7 @@ const ViewSalary = () => {
             </div>
 
             {/* Modal Body */}
-            <div className="p-4 sm:p-6 space-y-6">
+            <div id="salary-details-print-area" className="p-4 sm:p-6 space-y-6">
               {/* Key Information Cards */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">

@@ -101,6 +101,7 @@ interface StudentResponse {
 interface APIError {
   response: {
     data: {
+      detail?: string;
       message: string;
     };
   };
@@ -161,6 +162,11 @@ const AttendanceTable: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [activeFilters, setActiveFilters] = useState<FilteredAttendance | null>(null);
+  // Holds the FULL filtered dataset (not just the current page) built right
+  // before printing, so the report includes every matching record instead
+  // of only the ~15 rows currently visible on screen.
+  const [printData, setPrintData] = useState<AttendanceRecord[]>([]);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const { role, permissions, permissionsLoaded } = useRole();
 
   const canEditAttendance = permissionsLoaded
@@ -230,7 +236,10 @@ const AttendanceTable: React.FC = () => {
       } catch (error: unknown) {
         if (error && typeof error === "object" && "response" in error) {
           const apiError = error as APIError;
-          const errorMessage = apiError.response?.data?.message || "Failed to fetch records";
+          const errorMessage =
+            apiError.response?.data?.detail ||
+            apiError.response?.data?.message ||
+            "Failed to fetch records";
           toast.error(errorMessage, {
             position: "bottom-center",
             duration: 3000,
@@ -405,7 +414,7 @@ const AttendanceTable: React.FC = () => {
         ),
       },
     ],
-    [currentPage, pageSize, handleAttendanceUpdate, handleDeleteAttendance]
+    [currentPage, pageSize, canEditAttendance, handleAttendanceUpdate, canDeleteAttendance, handleDeleteAttendance]
   );
 
   // FIX 2: dropdowns load exactly once on mount — no dependency on formRefresh
@@ -519,6 +528,56 @@ const AttendanceTable: React.FC = () => {
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  // Second table instance, same columns, fed by the full (unpaginated)
+  // dataset built right before printing. Reusing `columns` means the
+  // "actions" column is still present but stays hidden via its existing
+  // `no-print` class, same as the visible table.
+  const printTable = useReactTable({
+    data: printData,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  // Fetches every record matching the currently active filters (not just
+  // the current page) so the printed report is complete. Reuses the same
+  // endpoint and filters already in effect on screen; on-screen pagination
+  // is untouched.
+  const handlePrintClick = async () => {
+    if (!activeFilters) return;
+    setIsPreparingPrint(true);
+    try {
+      // Fetch first page to get total_pages
+      const firstPageRes = await API.GetbyFilter(activeFilters, 1, 50);
+      const payload = (firstPageRes?.data ?? {}) as any;
+      const totalPages = payload.total_pages || 1;
+      
+      // Collect all records from all pages
+      let allItems: AttendanceRecord[] = [];
+      for (let page = 1; page <= totalPages; page++) {
+        const res = await API.GetbyFilter(activeFilters, page, 50);
+        const pagePayload = (res?.data ?? {}) as any;
+        const items = Array.isArray(pagePayload?.data)
+          ? pagePayload.data
+          : extractArrayData<AttendanceRecord>(res);
+        allItems = [...allItems, ...items];
+      }
+      setPrintData(allItems);
+    } catch (error) {
+      console.error("Failed to prepare print data", error);
+      toast.error("Failed to prepare print data");
+      setIsPreparingPrint(false);
+    }
+  };
+
+  // Once the full dataset lands, print it, then clear it out again.
+  useEffect(() => {
+    if (printData.length === 0) return;
+    const meta = `Total records: ${printData.length} · Printed: ${new Date().toLocaleDateString()}`;
+    printRecords('attendance-print-area-full', 'Attendance Report', meta);
+    setPrintData([]);
+    setIsPreparingPrint(false);
+  }, [printData, printRecords]);
 
   return (
     <div className="flex flex-col w-full h-screen bg-muted dark:bg-background">
@@ -678,14 +737,12 @@ const AttendanceTable: React.FC = () => {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 sm:p-4 no-print border-b border-border dark:border-border bg-card dark:bg-card">
                 <h3 className="text-lg font-semibold text-foreground dark:text-foreground">Attendance Records</h3>
                 <button
-                  onClick={() => {
-                    const meta = `Total records: ${attendanceRecords.length} · Printed: ${new Date().toLocaleDateString()}`;
-                    printRecords('attendance-print-area', 'Attendance Report', meta);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition w-full sm:w-auto justify-center sm:justify-start mt-2 sm:mt-0"
+                  onClick={handlePrintClick}
+                  disabled={isPreparingPrint}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition w-full sm:w-auto justify-center sm:justify-start mt-2 sm:mt-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Printer size={16} />
-                  Print
+                  {isPreparingPrint ? 'Preparing...' : 'Print'}
                 </button>
               </div>
 
@@ -830,6 +887,44 @@ const AttendanceTable: React.FC = () => {
                         </TableCell>
                       </TableRow>
                     )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div id="attendance-print-area-full" style={{ display: "none" }}>
+                <Table className="w-full min-w-full">
+                  <TableHeader>
+                    {printTable.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <TableHead
+                            key={header.id}
+                            className={header.column.columnDef.id === "actions" ? "no-print" : ""}
+                          >
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {printTable.getRowModel().rows.map((row) => (
+                      <TableRow key={row.id}>
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className={cell.column.columnDef.id === "actions" ? "no-print" : ""}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>

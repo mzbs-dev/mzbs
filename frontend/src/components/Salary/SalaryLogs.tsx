@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
 import { Search, Printer, Eye, Edit, Trash2, RefreshCw, ChevronFirst, ChevronLast } from "lucide-react";
+import { usePrint } from "@/components/print/usePrint";
 import { SalaryAPI, SalaryPaymentResponse, AllowanceResponse, DeductionResponse, SalaryLedgerResponse } from "@/api/Salary/SalaryAPI";
 import { useRole } from "@/context/RoleContext";
 
@@ -32,6 +33,7 @@ interface SalaryTransaction {
 const SalaryLogs = () => {
   const { role } = useRole();
   const isAdmin = role === "ADMIN";
+  const { printRecords } = usePrint();
 
   const [transactions, setTransactions] = useState<SalaryTransaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<SalaryTransaction[]>([]);
@@ -324,77 +326,8 @@ const SalaryLogs = () => {
     const monthLabel = selectedMonth !== null ? MONTHS[selectedMonth - 1] : 'All Months';
     const periodLabel = `${monthLabel} ${selectedYear}`;
 
-    const rows = filteredTransactions.map((tx, index) => {
-      if (activeTab === 'payment') {
-        return `
-          <tr>
-            <td>${index + 1}</td>
-            <td>${tx.teacherName}</td>
-            <td>${tx.paymentDate ? new Date(tx.paymentDate).toLocaleDateString('en-PK') : '-'}</td>
-            <td>Rs. ${Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td>
-            <td>Rs. ${Math.round(tx.netSalary).toLocaleString("en-US")}</td>
-            <td>Rs. ${Math.round(tx.remaining).toLocaleString("en-US")}</td>
-          </tr>`;
-      } else if (activeTab === 'allowance') {
-        return `
-          <tr>
-            <td>${index + 1}</td>
-            <td>${tx.teacherName}</td>
-            <td>${MONTHS[tx.month - 1]} ${tx.year}</td>
-            <td>Rs. ${Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td>
-            <td>${tx.transactionReason || '-'}</td>
-          </tr>`;
-      } else {
-        return `
-          <tr>
-            <td>${index + 1}</td>
-            <td>${tx.teacherName}</td>
-            <td>${MONTHS[tx.month - 1]} ${tx.year}</td>
-            <td>Rs. ${Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td>
-            <td>${tx.deductionType || '-'}</td>
-            <td>${tx.transactionReason || '-'}</td>
-          </tr>`;
-      }
-    }).join('');
-
-    const headers =
-      activeTab === 'payment'
-        ? '<th>#</th><th>Teacher</th><th>Payment Date</th><th>Amount Paid</th><th>Net Salary</th><th>Remaining</th>'
-        : activeTab === 'allowance'
-        ? '<th>#</th><th>Teacher</th><th>Period</th><th>Allowance Amount</th><th>Reason</th>'
-        : '<th>#</th><th>Teacher</th><th>Period</th><th>Deduction Amount</th><th>Type</th><th>Reason</th>';
-
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>${tabLabel} — ${periodLabel}</title>
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 13px; padding: 24px; color: #111; }
-            h2 { margin-bottom: 4px; }
-            p { margin: 0 0 16px; color: #555; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
-            th { background: #f5f5f5; font-weight: 600; }
-            tr:nth-child(even) td { background: #fafafa; }
-            @media print { body { padding: 0; } }
-          </style>
-        </head>
-        <body>
-          <h2>${tabLabel}</h2>
-          <p>Period: ${periodLabel} &nbsp;|&nbsp; Total records: ${filteredTransactions.length} &nbsp;|&nbsp; Printed: ${new Date().toLocaleDateString('en-PK')}</p>
-          <table>
-            <thead><tr>${headers}</tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+    const meta = `Period: ${periodLabel} · Total records: ${filteredTransactions.length} · Printed: ${new Date().toLocaleDateString('en-PK')}`;
+    printRecords('salary-logs-print-area', tabLabel, meta);
   };
 
   const getTransactionTypeColor = (type: string) => {
@@ -700,6 +633,37 @@ const SalaryLogs = () => {
                 ))}
               </tbody>
             </table>
+
+            {/* Hidden, print-only table: sourced from the FULL filtered
+                dataset (filteredTransactions), not the paginated
+                visibleTransactions the screen renders, so the printed
+                report includes every matching record. Columns mirror the
+                visible table's per-tab layout; the Actions column is
+                omitted entirely (never part of the printed report). */}
+            <div id="salary-logs-print-area" style={{ display: "none" }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr>
+                    <th>Serial No</th>
+                    <th>Teacher Name</th>
+                    {activeTab === 'payment' && (<><th>Payment Date</th><th>Payment Amount</th><th>Net Salary</th><th>Remaining</th></>)}
+                    {activeTab === 'allowance' && (<><th>Month</th><th>Year</th><th>Allowance Amount</th><th>Reason</th></>)}
+                    {activeTab === 'deduction' && (<><th>Month</th><th>Year</th><th>Deduction Amount</th><th>Type</th><th>Reason</th></>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTransactions.map((tx, index) => (
+                    <tr key={tx.id}>
+                      <td>{index + 1}</td>
+                      <td>{tx.teacherName}</td>
+                      {activeTab === 'payment' && (<><td>{tx.paymentDate ? new Date(tx.paymentDate).toLocaleDateString('en-PK') : '-'}</td><td>Rs. {Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td><td>Rs. {Math.round(tx.netSalary).toLocaleString("en-US")}</td><td>Rs. {Math.round(tx.remaining).toLocaleString("en-US")}</td></>)}
+                      {activeTab === 'allowance' && (<><td>{MONTHS[tx.month - 1]}</td><td>{tx.year}</td><td>Rs. {Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td><td>{tx.transactionReason || '-'}</td></>)}
+                      {activeTab === 'deduction' && (<><td>{MONTHS[tx.month - 1]}</td><td>{tx.year}</td><td>Rs. {Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td><td>{tx.deductionType || '-'}</td><td>{tx.transactionReason || '-'}</td></>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             </>
           ) : (
             <div className="text-center py-8 text-gray-600 dark:text-gray-400">

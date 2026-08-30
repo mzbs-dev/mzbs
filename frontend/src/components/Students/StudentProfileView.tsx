@@ -7,6 +7,7 @@ import AxiosInstance from '@/api/axiosInterceptorInstance';
 import { StudentProfileAPI } from '@/api/StudentProfile/StudentProfileAPI';
 import { Select } from '@/components/Select';
 import { Button } from '@/components/ui/button';
+import { usePrint } from '@/components/print/usePrint';
 
 interface ClassOption {
   class_name_id: number;
@@ -117,7 +118,7 @@ export default function StudentProfileView() {
   const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummaryData | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('personal');
-  const [isPrinting, setIsPrinting] = useState(false);
+  const { printRecords } = usePrint();
   const [error, setError] = useState<string | null>(null);
   const [tabPages, setTabPages] = useState<Record<TabKey, number>>({
     personal: 1,
@@ -127,25 +128,6 @@ export default function StudentProfileView() {
     resultCard: 1,
   });
   const pageSize = 6;
-
-  useEffect(() => {
-    const handleBeforePrint = () => {
-      setActiveTab('resultCard');
-      setIsPrinting(true);
-    };
-
-    const handleAfterPrint = () => {
-      setIsPrinting(false);
-    };
-
-    window.addEventListener('beforeprint', handleBeforePrint);
-    window.addEventListener('afterprint', handleAfterPrint);
-
-    return () => {
-      window.removeEventListener('beforeprint', handleBeforePrint);
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
-  }, []);
 
   useEffect(() => {
     const loadClasses = async () => {
@@ -406,7 +388,7 @@ export default function StudentProfileView() {
       : 0;
 
     const summaryCards = [
-      { label: 'Total Working Days', value: totalAttendance },
+      { label: 'Total Attendance Slots', value: totalAttendance },
       { label: 'Days Present', value: attendanceSummary?.present ?? 0 },
       { label: 'Days Absent', value: attendanceSummary?.absent ?? 0 },
       { label: 'Leave Days', value: attendanceSummary?.leave ?? 0 },
@@ -608,9 +590,9 @@ export default function StudentProfileView() {
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('resultCard');
-                    setIsPrinting(true);
-                    window.setTimeout(() => window.print(), 50);
+                    if (!profile) return;
+                    const meta = `Printed: ${new Date().toLocaleDateString()}`;
+                    printRecords('student-profile-print-area', `${profile.student.student_name} - Result Card`, meta);
                   }}
                   className="flex-1 h-10 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-semibold text-sm rounded-lg transition-colors"
                 >
@@ -625,7 +607,7 @@ export default function StudentProfileView() {
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
       {profile && (
-        <div className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm print:border-0 print:shadow-none print:p-0 print:m-0 ${isPrinting ? 'print-hide' : ''}`} style={{ pageBreakInside: 'avoid' }}>
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm print:border-0 print:shadow-none print:p-0 print:m-0" style={{ pageBreakInside: 'avoid' }}>
           <div className="mb-4 flex flex-wrap gap-2 no-print print-hide">
             {tabConfig.map((tab) => (
               <button
@@ -653,8 +635,8 @@ export default function StudentProfileView() {
         </div>
       )}
 
-      {isPrinting && profile && (
-        <div className="print:block hidden">
+      {profile && (
+        <div id="student-profile-print-area" style={{ display: 'none' }}>
           {renderResultCard()}
         </div>
       )}

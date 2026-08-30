@@ -76,6 +76,12 @@ const ViewFees: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize] = useState(12);
   const [activeFilters, setActiveFilters] = useState<GetFeeModel | null>(null);
+  // Holds the FULL filtered dataset (not just the current page) built right
+  // before printing, so the report includes every matching record instead
+  // of only the ~12 rows currently visible on screen. Same search-box text
+  // filter that's applied on screen is re-applied here too.
+  const [printData, setPrintData] = useState<FeeData[]>([]);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
   useEffect(() => {
     GetClassName();
@@ -177,6 +183,74 @@ const handleDeleteFee = async (feeId: number) => {
   }
 };
 
+// Fetches every record matching the currently active filters (not just the
+// current page) so the printed report is complete. Reuses the same filters
+// already applied on screen, plus the same search-box text filter, and
+// leaves on-screen pagination completely untouched.
+const handlePrintClick = async () => {
+  if (!activeFilters) return;
+  setIsPreparingPrint(true);
+  try {
+    const selectedYear = activeFilters.fee_year === "all" ? undefined : activeFilters.fee_year;
+    const filterParams = {
+      class_id: activeFilters.class_id && Number(activeFilters.class_id) !== 0
+        ? Number(activeFilters.class_id)
+        : undefined,
+      fee_month: activeFilters.fee_month && activeFilters.fee_month !== "all"
+        ? activeFilters.fee_month
+        : undefined,
+      fee_year: selectedYear,
+      fee_status: activeFilters.fee_status && activeFilters.fee_status !== "all"
+        ? activeFilters.fee_status
+        : undefined,
+    };
+    
+    // Fetch first page to get total_pages
+    const firstPageResponse = await API3.Filter({
+      ...filterParams,
+      page: 1,
+      page_size: 50,
+    });
+    const payload = firstPageResponse?.data;
+    const totalPages = payload?.total_pages || 1;
+    
+    // Collect all records from all pages
+    let allRecords: FeeData[] = [];
+    for (let page = 1; page <= totalPages; page++) {
+      const response = await API3.Filter({
+        ...filterParams,
+        page,
+        page_size: 50,
+      });
+      const pagePayload = response?.data;
+      const records = Array.isArray(pagePayload?.data) ? pagePayload.data : Array.isArray(pagePayload) ? pagePayload : [];
+      const searchLower = searchQuery.toLowerCase();
+      const filtered = (records as FeeData[]).filter((fee) =>
+        fee.student_name.toLowerCase().includes(searchLower) ||
+        fee.father_name.toLowerCase().includes(searchLower) ||
+        fee.class_name.toLowerCase().includes(searchLower) ||
+        fee.fee_month.toLowerCase().includes(searchLower) ||
+        fee.fee_status.toLowerCase().includes(searchLower)
+      );
+      allRecords = [...allRecords, ...filtered];
+    }
+    setPrintData(allRecords);
+  } catch (error) {
+    console.error("Failed to prepare print data", error);
+    toast.error("Failed to prepare print data");
+    setIsPreparingPrint(false);
+  }
+};
+
+// Once the full dataset lands, print it, then clear it out again.
+useEffect(() => {
+  if (printData.length === 0) return;
+  const meta = `Total records: ${printData.length} · Printed: ${new Date().toLocaleDateString()}`;
+  printRecords('fees-print-area-full', 'Fees Report', meta);
+  setPrintData([]);
+  setIsPreparingPrint(false);
+}, [printData, printRecords]);
+
 // Filter fees based on search query
 const filteredFeesData = feesData.filter((fee) => {
   const searchLower = searchQuery.toLowerCase();
@@ -275,14 +349,12 @@ const filteredFeesData = feesData.filter((fee) => {
             <div className="mb-4 flex items-center justify-between gap-3 no-print">
               <h3 className="text-lg font-semibold text-foreground dark:text-foreground">Fees Data</h3>
               <button
-                onClick={() => {
-                  const meta = `Total records: ${feesData.length} · Printed: ${new Date().toLocaleDateString()}`;
-                  printRecords('fees-print-area', 'Fees Report', meta);
-                }}
+                onClick={handlePrintClick}
+                disabled={isPreparingPrint}
                 className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:from-primary/90 hover:to-primary/90"
               >
                 <Printer size={16} />
-                Print
+                {isPreparingPrint ? 'Preparing...' : 'Print'}
               </button>
             </div>
 
@@ -438,6 +510,35 @@ const filteredFeesData = feesData.filter((fee) => {
                       </TableCell>
                     </TableRow>
                   )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div id="fees-print-area-full" style={{ display: "none" }}>
+              <Table className="min-w-[760px] w-full">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student Name</TableHead>
+                    <TableHead>Father Name</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Month</TableHead>
+                    <TableHead>Year</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {printData.map((fee) => (
+                    <TableRow key={fee.fee_id}>
+                      <TableCell>{fee.student_name}</TableCell>
+                      <TableCell>{fee.father_name}</TableCell>
+                      <TableCell>{fee.class_name}</TableCell>
+                      <TableCell>{fee.fee_amount}</TableCell>
+                      <TableCell>{fee.fee_month}</TableCell>
+                      <TableCell>{fee.fee_year}</TableCell>
+                      <TableCell>{fee.fee_status}</TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
