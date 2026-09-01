@@ -12,6 +12,7 @@ from datetime import datetime
 class TeacherNamesBase(SQLModel):
     teacher_name_id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default=datetime.now(), nullable=False)
+    is_deleted: bool = Field(default=False, nullable=False)
 
 
 class TeacherNames(TeacherNamesBase, table=True):

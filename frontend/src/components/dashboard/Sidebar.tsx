@@ -526,7 +526,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 {userData ? JSON.parse(userData).username : "Guest"}
               </h2>
               <p className="truncate text-xs font-medium uppercase" style={{ color: `hsl(var(--muted-foreground))` }}>
-                {role || "Loading..."}
+                {role === "PRINCIPAL" ? "ناظمِ تعلیمات" : role === "FEE_MANAGER" ? "ناظمُ الامور" : role || "Loading..."}
               </p>
             </div>
           </div>

@@ -297,7 +297,7 @@ def get_students_by_class(
 
 @students_router.get("/by_class_id/", response_model=List[StudentsResponse])
 def get_students_by_class_id(
-    current_user: Annotated[User, Depends(require_permission("students", "view"))],
+    current_user: Annotated[User, Depends(require_permission("attendance", "view"))],
     class_id: int, 
     session: Annotated[Session, Depends(get_session)]
 ):

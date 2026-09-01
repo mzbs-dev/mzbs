@@ -173,7 +173,7 @@ def test_delete_teacher_by_id(admin_token):
     assert "deleted successfully" in delete_response.json()["message"].lower()
 
 
-def test_delete_teacher_with_salary_returns_conflict(admin_token):
+def test_soft_delete_teacher_with_salary(admin_token):
     headers = {"Authorization": f"Bearer {admin_token}"}
     create_response = client.post(
         "/teacher_name/add_teacher_name/",
@@ -196,8 +196,13 @@ def test_delete_teacher_with_salary_returns_conflict(admin_token):
 
     delete_response = client.delete(f"/teacher_name/{teacher_id}", headers=headers)
 
-    assert delete_response.status_code == 409
-    assert "related" in delete_response.json()["detail"].lower()
+    assert delete_response.status_code == 200
+    assert "soft deleted" in delete_response.json()["message"].lower()
+
+    list_response = client.get("/teacher_name/teacher-names-all/", headers=headers)
+    assert list_response.status_code == 200
+    teacher_names = [item["teacher_name"] for item in list_response.json()]
+    assert "Teacher With Salary" not in teacher_names
 
 
 def test_set_class_subjects(admin_token):

@@ -14,10 +14,9 @@ class ExpenseCatNamesBase(SQLModel):
 
 
 class ExpenseCatNames(ExpenseCatNamesBase, table=True):
-    expense_cat_name: str  # Ensure this attribute exists
+    expense_cat_name: str = Field(index=True, unique=True)
 
     # Relationship back to Expense
-    
     expenses: List["Expense"] = Relationship(back_populates="category")  # type: ignore # Define relationship
 
 

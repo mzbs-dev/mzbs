@@ -15,6 +15,7 @@ from schemas.income_model import Income, IncomeCreate
 from schemas.expense_model import Expense, ExpenseCreate
 from schemas.income_cat_names_model import IncomeCatNames
 from schemas.expense_cat_names_model import ExpenseCatNames
+from utils.cache import cache_invalidate
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -22,51 +23,96 @@ from schemas.expense_cat_names_model import ExpenseCatNames
 # ══════════════════════════════════════════════════════════════════════════════
 
 FEE_INCOME_CATEGORY_NAME = "ماہانہ فیس"
+FEE_INCOME_FALLBACK_CATEGORY_NAME = "Monthly Fee"
 SALARY_EXPENSE_CATEGORY_NAME = "تنخواہ"
+SALARY_EXPENSE_FALLBACK_CATEGORY_NAME = "Salary"
 ALLOWANCE_EXPENSE_CATEGORY_NAME = "الاؤنس"
+ALLOWANCE_EXPENSE_FALLBACK_CATEGORY_NAME = "Allowance"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _ensure_income_category_exists(db: Session, preferred_names: list[str]) -> IncomeCatNames:
+    """Return an existing or newly created income category using the preferred names."""
+    normalized_names = [name.strip() for name in preferred_names if name and name.strip()]
+
+    for name in normalized_names:
+        category = db.exec(
+            select(IncomeCatNames).where(
+                func.trim(IncomeCatNames.income_cat_name) == name
+            )
+        ).first()
+        if category:
+            return category
+
+    fallback_name = normalized_names[-1]
+    new_category = IncomeCatNames(income_cat_name=fallback_name)
+    db.add(new_category)
+    db.flush()
+    cache_invalidate("income_cats")
+    return new_category
+
+
 def _get_income_category_id(db: Session, name: str) -> int:
-    """
-    Retrieve the Income category ID by name (case-sensitive, with trim-safe matching).
-    Trim both database value and input to handle trailing spaces gracefully.
-    Raises ValueError if category is missing.
-    """
-    category = db.exec(
-        select(IncomeCatNames).where(
-            func.trim(IncomeCatNames.income_cat_name) == name.strip()
-        )
-    ).first()
-    
-    if not category:
-        raise ValueError(
-            f"Income category '{name}' not found in database. It must exist before auto-sync can work."
-        )
-    
+    """Priority order: Urdu name first, then English fallback, then create if absent."""
+    preferred_names = [name.strip(), FEE_INCOME_FALLBACK_CATEGORY_NAME]
+    if name == FEE_INCOME_CATEGORY_NAME:
+        preferred_names = [FEE_INCOME_CATEGORY_NAME, FEE_INCOME_FALLBACK_CATEGORY_NAME]
+
+    for preferred_name in preferred_names:
+        category = db.exec(
+            select(IncomeCatNames).where(
+                func.trim(IncomeCatNames.income_cat_name) == preferred_name.strip()
+            )
+        ).first()
+        if category:
+            return category.income_cat_name_id
+
+    category = _ensure_income_category_exists(db, preferred_names)
     return category.income_cat_name_id
 
 
+def _ensure_expense_category_exists(db: Session, preferred_names: list[str]) -> ExpenseCatNames:
+    """Return an existing or newly created expense category using the preferred names."""
+    normalized_names = [name.strip() for name in preferred_names if name and name.strip()]
+
+    for name in normalized_names:
+        category = db.exec(
+            select(ExpenseCatNames).where(
+                func.trim(ExpenseCatNames.expense_cat_name) == name
+            )
+        ).first()
+        if category:
+            return category
+
+    fallback_name = normalized_names[-1]
+    new_category = ExpenseCatNames(expense_cat_name=fallback_name)
+    db.add(new_category)
+    db.flush()
+    cache_invalidate("expense_cats")
+    return new_category
+
+
 def _get_expense_category_id(db: Session, name: str) -> int:
-    """
-    Retrieve the Expense category ID by name (case-sensitive, with trim-safe matching).
-    Trim both database value and input to handle trailing spaces gracefully.
-    Raises ValueError if category is missing.
-    """
-    category = db.exec(
-        select(ExpenseCatNames).where(
-            func.trim(ExpenseCatNames.expense_cat_name) == name.strip()
-        )
-    ).first()
-    
-    if not category:
-        raise ValueError(
-            f"Expense category '{name}' not found in database. It must exist before auto-sync can work."
-        )
-    
+    """Priority order: Urdu name first, then English fallback, then create if absent."""
+    preferred_names = [name.strip(), "Salary"]
+    if name == SALARY_EXPENSE_CATEGORY_NAME:
+        preferred_names = [SALARY_EXPENSE_CATEGORY_NAME, SALARY_EXPENSE_FALLBACK_CATEGORY_NAME]
+    elif name == ALLOWANCE_EXPENSE_CATEGORY_NAME:
+        preferred_names = [ALLOWANCE_EXPENSE_CATEGORY_NAME, ALLOWANCE_EXPENSE_FALLBACK_CATEGORY_NAME]
+
+    for preferred_name in preferred_names:
+        category = db.exec(
+            select(ExpenseCatNames).where(
+                func.trim(ExpenseCatNames.expense_cat_name) == preferred_name.strip()
+            )
+        ).first()
+        if category:
+            return category.expense_cat_name_id
+
+    category = _ensure_expense_category_exists(db, preferred_names)
     return category.expense_cat_name_id
 
 

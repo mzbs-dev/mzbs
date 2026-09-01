@@ -255,26 +255,28 @@ const SelfAttendance: React.FC = () => {
                   </div>
                 )}
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">Arrival Time</label>
-                    <Input
-                      type="time"
-                      value={form.arrival_time}
-                      disabled={isFinalized || !canSubmitThis}
-                      onChange={(event) => updateForm(key, { arrival_time: event.target.value })}
-                    />
+                {form.self_availability === "AVAILABLE" && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-sm text-muted-foreground">Arrival Time</label>
+                      <Input
+                        type="time"
+                        value={form.arrival_time}
+                        disabled={isFinalized || !canSubmitThis}
+                        onChange={(event) => updateForm(key, { arrival_time: event.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm text-muted-foreground">Departure Time</label>
+                      <Input
+                        type="time"
+                        value={form.departure_time}
+                        disabled={isFinalized || !canSubmitThis}
+                        onChange={(event) => updateForm(key, { departure_time: event.target.value })}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">Departure Time</label>
-                    <Input
-                      type="time"
-                      value={form.departure_time}
-                      disabled={isFinalized || !canSubmitThis}
-                      onChange={(event) => updateForm(key, { departure_time: event.target.value })}
-                    />
-                  </div>
-                </div>
+                )}
 
                 {!isFinalized && canSubmitThis && (
                   <div className="flex justify-end">

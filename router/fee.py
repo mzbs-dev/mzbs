@@ -18,6 +18,7 @@ from schemas.fee_model import Fee, FeeCreate, FeeResponse, FeeStatus, FeeUpdateR
 from user.user_crud import require_permission
 from user.user_models import User, UserRole
 from services.finance_sync_service import sync_income_for_fee, delete_income_for_fee
+from schemas.income_model import Income
 
 fee_router = APIRouter(
     prefix="/fee",
@@ -78,6 +79,64 @@ async def get_all_fees(
 
     response_list = _mask_fee_amount_for_restricted_roles(response_list, current_user)
     return response_list
+
+
+@fee_router.post("/repair/paid-fees-to-income", status_code=status.HTTP_200_OK)
+async def repair_paid_fees_to_income(
+    db: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[User, Depends(require_permission("fees", "edit"))]
+):
+    """Backfill missing income entries for all paid fee records."""
+    try:
+        paid_fees = db.exec(
+            select(Fee).where(Fee.fee_status == FeeStatus.PAID)
+        ).all()
+
+        created = 0
+        skipped = 0
+
+        for fee in paid_fees:
+            existing_income = db.exec(
+                select(Income).where(
+                    Income.source_type == "fee",
+                    Income.source_id == fee.fee_id
+                )
+            ).first()
+
+            if existing_income:
+                skipped += 1
+                continue
+
+            student = db.exec(
+                select(Students).where(Students.student_id == fee.student_id)
+            ).first()
+
+            class_obj = db.exec(
+                select(ClassNames).where(ClassNames.class_name_id == fee.class_id)
+            ).first()
+
+            sync_income_for_fee(
+                db,
+                fee,
+                student.student_name if student else None,
+                student.father_name if student else None,
+                class_obj.class_name if class_obj else None
+            )
+            created += 1
+
+        db.commit()
+        return {
+            "message": "Paid fee income repair completed",
+            "paid_fees_scanned": len(paid_fees),
+            "income_records_created": created,
+            "income_records_skipped": skipped,
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error repairing paid fee income records: {str(e)}"
+        )
 
 @fee_router.post("/add_fee", response_model=FeeResponse, status_code=status.HTTP_201_CREATED)
 async def create_fee(

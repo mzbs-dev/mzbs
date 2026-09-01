@@ -249,6 +249,8 @@ const MarkAttendance = () => {
       );
     } catch (error: unknown) {
       console.error("Error fetching teachers:", error);
+      setTeacherNameList([]);
+      toast.error("Unable to load teacher names");
     }
     setIsLoading(false);
   };
