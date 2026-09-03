@@ -77,6 +77,47 @@ def test_get_all_students(teacher_token):
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
+
+def test_get_students_by_class_id_for_fee_selection(teacher_token):
+    headers = {"Authorization": f"Bearer {teacher_token}"}
+    class_response = client.post(
+        "/class_name/add_class_name/",
+        json={"class_name": "Fee Class A"},
+        headers={"Authorization": f"Bearer {teacher_token}"},
+    )
+    assert class_response.status_code == 200
+    class_id = class_response.json()["class_name_id"]
+
+    student_response = client.post(
+        "/students/add/",
+        json={
+            "student_name": "Fee Student",
+            "student_date_of_birth": "2010-01-01",
+            "student_gender": "Male",
+            "student_age": 13,
+            "student_education": "Primary",
+            "class_name": "Fee Class A",
+            "student_city": "Test City",
+            "student_address": "Test Address",
+            "father_name": "Test Father",
+            "father_occupation": "Test Job",
+            "father_cnic": "12345-1234567-1",
+            "father_contact": "1234567890",
+        },
+        headers=headers,
+    )
+    assert student_response.status_code == 200
+
+    response = client.get(
+        f"/students/by_class_id/?class_id={class_id}",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert any(item["student_name"] == "Fee Student" for item in payload)
+
 # Test Attendance Routes
 def test_mark_attendance(teacher_token):
     headers = {"Authorization": f"Bearer {teacher_token}"}

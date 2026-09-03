@@ -525,9 +525,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <h2 className="truncate text-sm font-semibold uppercase" style={{ color: `hsl(var(--sidebar-foreground))` }}>
                 {userData ? JSON.parse(userData).username : "Guest"}
               </h2>
-              <p className="truncate text-xs font-medium uppercase" style={{ color: `hsl(var(--muted-foreground))` }}>
+              {/* <p className="truncate text-xs font-medium uppercase" style={{ color: `hsl(var(--muted-foreground))` }}>
                 {role === "PRINCIPAL" ? "ناظمِ تعلیمات" : role === "FEE_MANAGER" ? "ناظمُ الامور" : role || "Loading..."}
-              </p>
+              </p> */}
             </div>
           </div>
         </div>
