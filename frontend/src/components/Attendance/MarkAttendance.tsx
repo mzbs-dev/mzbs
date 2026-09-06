@@ -183,6 +183,9 @@ const MarkAttendance = () => {
   const [studentByFilter, setStudentByFilter] = useState<SelectComponentOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const today = new Date();
+  const todayValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
   useEffect(() => {
     GetClassName();
     GetClassTime();
@@ -257,9 +260,21 @@ const MarkAttendance = () => {
 
   const {
     register,
+    setValue,
+    getValues,
     formState: { errors },
     handleSubmit,
-  } = useForm<MarkAttInput>();
+  } = useForm<MarkAttInput>({
+    defaultValues: {
+      attendance_date: todayValue,
+    },
+  });
+
+  useEffect(() => {
+    if (classTimeList.length > 0 && !getValues("attendance_time_id")) {
+      setValue("attendance_time_id", Number(classTimeList[0].id));
+    }
+  }, [classTimeList, getValues, setValue]);
 
   // ── Mark All Helper ─────────────────────────────────────────────────────────
   const markAll = (field: "present" | "absent" | "late" | "leave") => {
@@ -400,18 +415,18 @@ const MarkAttendance = () => {
   const HandleSubmitForStudentGet = async (formData: MarkAttInput) => {
     try {
       setIsLoading(true);
-      const response = await API3.GetStudentsByFilter(formData.class_name_id);
+      const classId = Number(formData.class_name_id);
+      const response = await API3.GetStudentsByFilter(classId);
       const students = extractArrayData<StudentResponse>(response);
-      if (students.length > 0) {
-        setStudentByFilter(
-          students.map((item) => ({
-            id: item.student_id,
-            title: item.student_name,
-          }))
-        );
-      }
+      setStudentByFilter(
+        students.map((item) => ({
+          id: item.student_id,
+          title: item.student_name,
+        }))
+      );
     } catch (error) {
       console.error("Error fetching students:", error);
+      setStudentByFilter([]);
     }
     setIsLoading(false);
   };

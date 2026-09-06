@@ -386,6 +386,18 @@ const AddFees = () => {
               />
               <p className="text-red-500 text-xs">{errors.fee_year?.message}</p>
             </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm text-foreground dark:text-foreground font-bold">
+                Remarks
+              </label>
+              <Input
+                type="text"
+                className="w-full focus:ring-primary"
+                {...register("remarks")}
+                placeholder="Enter remarks (optional)"
+              />
+            </div>
           </div>
 
           <div className="mt-6 flex justify-end">

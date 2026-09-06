@@ -3,7 +3,8 @@ export interface AddFeeModel {
     class_id: number,
     fee_amount: number,
     fee_month: string,
-    fee_year: number
+    fee_year: number,
+    remarks?: string
 }
 
 export interface GetFeeModel {

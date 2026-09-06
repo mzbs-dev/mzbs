@@ -27,13 +27,7 @@ fee_router = APIRouter(
 )
 
 def _mask_fee_amount_for_restricted_roles(items, current_user: User):
-    """CHIEF_PRINCIPAL/PRINCIPAL can view fee records (per Phase 1 permission
-    decision) but must not see the monetary amount. Nulling it out here, in
-    one place, avoids repeating the check in every branch that builds a
-    FeeResponse/FilterPaidUnpaid object."""
-    if current_user.role in (UserRole.CHIEF_PRINCIPAL, UserRole.PRINCIPAL):
-        for item in items:
-            item.fee_amount = None
+    """Return fee records with their amounts visible to permitted viewers."""
     return items
 
 
@@ -74,7 +68,8 @@ async def get_all_fees(
             fee_amount=fee.fee_amount,
             fee_month=fee.fee_month,
             fee_year=str(fee.fee_year),
-            fee_status=fee.fee_status
+            fee_status=fee.fee_status,
+            remarks=fee.remarks
         ))
 
     response_list = _mask_fee_amount_for_restricted_roles(response_list, current_user)
@@ -190,7 +185,8 @@ async def create_fee(
             fee_amount=new_fee.fee_amount,
             fee_month=new_fee.fee_month,
             fee_year=str(new_fee.fee_year),
-            fee_status=new_fee.fee_status
+            fee_status=new_fee.fee_status,
+            remarks=new_fee.remarks
         )
         
         return response

@@ -46,14 +46,24 @@ const ExamSheetPage = () => {
   const [classOptions, setClassOptions] = useState<SelectOption[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedExamType, setSelectedExamType] = useState("");
+  const [printFormat, setPrintFormat] = useState<"class-wise" | "subject-wise">("class-wise");
   const [subjects, setSubjects] = useState<string[]>([]);
   const [students, setStudents] = useState<StudentResponse[]>([]);
   const [sheetReady, setSheetReady] = useState(false);
   const [loading, setLoading] = useState(false);
+  const subjectRowHeight = Math.max(16, Math.min(28, Math.floor(600 / Math.max(students.length, 1))));
 
   useEffect(() => {
     void loadClasses();
   }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle("subject-print-mode", printFormat === "subject-wise");
+
+    return () => {
+      document.body.classList.remove("subject-print-mode");
+    };
+  }, [printFormat]);
 
   const loadClasses = async () => {
     try {
@@ -134,6 +144,10 @@ const ExamSheetPage = () => {
           size: A4 landscape;
           margin: 8mm;
         }
+        @page subjectPortrait {
+          size: A4 portrait;
+          margin: 8mm;
+        }
         @media print {
           html,
           body {
@@ -182,6 +196,45 @@ const ExamSheetPage = () => {
             width: 100% !important;
             border-collapse: collapse;
           }
+          .subject-print-sheet {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.35rem;
+          }
+          body.subject-print-mode {
+            page: subjectPortrait;
+          }
+          .subject-section {
+            min-width: 0;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          .subject-section:nth-child(3n) {
+            break-after: page;
+            page-break-after: always;
+          }
+          .subject-section:last-child {
+            break-after: auto;
+            page-break-after: auto;
+          }
+          .subject-section .subject-header {
+            font-size: 8px !important;
+          }
+          .subject-section table {
+            font-size: 8px !important;
+          }
+          .subject-section th,
+          .subject-section td {
+            padding: 0.15rem !important;
+            height: var(--subject-row-height);
+            vertical-align: middle;
+          }
+          .subject-section tbody tr {
+            height: var(--subject-row-height);
+          }
+          .subject-section .subject-signature {
+            font-size: 8px !important;
+          }
         }
       `}</style>
       <div className="no-print">
@@ -225,6 +278,32 @@ const ExamSheetPage = () => {
               Print
             </Button>
           </div>
+
+          <fieldset className="w-full space-y-2">
+            <legend className="text-sm font-medium text-gray-700 dark:text-gray-300">Print Format</legend>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="radio"
+                  name="print-format"
+                  value="class-wise"
+                  checked={printFormat === "class-wise"}
+                  onChange={() => setPrintFormat("class-wise")}
+                />
+                Class-Wise
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="radio"
+                  name="print-format"
+                  value="subject-wise"
+                  checked={printFormat === "subject-wise"}
+                  onChange={() => setPrintFormat("subject-wise")}
+                />
+                Subject-Wise
+              </label>
+            </div>
+          </fieldset>
         </div>
       </div>
 
@@ -250,7 +329,7 @@ const ExamSheetPage = () => {
         </div>
       )}
 
-      {sheetReady && (
+      {sheetReady && printFormat === "class-wise" && (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-neutral-900 print-wrapper">
           <div className="mb-4 text-center">
             <div className="text-base font-semibold uppercase tracking-wide text-gray-900 dark:text-gray-100">
@@ -322,6 +401,43 @@ const ExamSheetPage = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {sheetReady && printFormat === "subject-wise" && (
+        <div
+          className="subject-print-sheet grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-neutral-900 print-wrapper"
+          style={{ "--subject-row-height": `${subjectRowHeight}px` } as React.CSSProperties}
+        >
+          {subjects.map((subject) => (
+            <section key={subject} className="subject-section rounded-lg border border-gray-300 p-3 dark:border-gray-700">
+              <div className="subject-header grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-900 dark:text-gray-100">
+                <div><span className="font-semibold">Teacher Name:</span> ____________________</div>
+                <div><span className="font-semibold">Class Name:</span> {classOptions.find((item) => String(item.id) === selectedClassId)?.title ?? ""}</div>
+                <div><span className="font-semibold">Subject Name:</span> {subject}</div>
+                <div><span className="font-semibold">Total Marks:</span> __________</div>
+              </div>
+              <table className="mt-2 w-full table-fixed border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-slate-900">
+                    <th className="w-[10%] border border-gray-300 px-2 py-1 text-left dark:border-gray-700">S.No.</th>
+                    <th className="border border-gray-300 px-2 py-1 text-left dark:border-gray-700">Student Name</th>
+                    <th className="w-[25%] border border-gray-300 px-2 py-1 text-left dark:border-gray-700">Marks Obtained</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student, index) => (
+                    <tr key={`${subject}-${student.student_id}`}>
+                      <td className="border border-gray-300 px-2 py-1 dark:border-gray-700">{index + 1}</td>
+                      <td className="border border-gray-300 px-2 py-1 dark:border-gray-700">{student.student_name}</td>
+                      <td className="border border-gray-300 px-2 py-1 dark:border-gray-700">&nbsp;</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="subject-signature mt-2 text-xs text-gray-900 dark:text-gray-100">Teacher Signature: __________________</div>
+            </section>
+          ))}
         </div>
       )}
     </div>

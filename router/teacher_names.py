@@ -80,7 +80,7 @@ def read_teachernames_for_attendance(
             TeacherNames.teacher_name_id,
             TeacherNames.teacher_name,
             TeacherNames.created_at,
-        ).where(TeacherNames.is_deleted == False)
+        )
     ).all()
     result = [
         TeacherNamesResponse(
@@ -109,7 +109,7 @@ def read_teachernames(
             TeacherNames.teacher_name_id,
             TeacherNames.teacher_name,
             TeacherNames.created_at,
-        ).where(TeacherNames.is_deleted == False)
+        )
     ).all()
     result = [
         TeacherNamesResponse(
@@ -128,12 +128,7 @@ def read_teachernames(
 
 @teachernames_router.get("/{teacher_name_id}", response_model=TeacherNamesResponse)
 def read_teachernames(current_user: Annotated[User, Depends(require_permission("setup_teachers", "view"))],teacher_name_id: int, session: Session = Depends(get_session)):
-    teachernames = session.exec(
-        select(TeacherNames).where(
-            TeacherNames.teacher_name_id == teacher_name_id,
-            TeacherNames.is_deleted == False,
-        )
-    ).first()
+    teachernames = session.get(TeacherNames, teacher_name_id)
     if not teachernames:
         raise HTTPException(
             status_code=404, detail="Teacher name not found")
@@ -152,16 +147,18 @@ def delete_teachernames(
     if not teachernames:
         raise HTTPException(
             status_code=404, detail="Teacher Name not found")
-
-    if teachernames.is_deleted:
-        cache_invalidate("teacher_names", payload.tenant_id)
-        return {"message": f"Teacher Name '{teacher_name}' is already soft deleted"}
-
-    teachernames.is_deleted = True
-    session.add(teachernames)
+    # Check for related records (adjust model and field as needed)
+    # related_records = session.exec(select(SomeRelatedModel).where(SomeRelatedModel.teacher_name == teacher_name)).all()
+    related_records = []  # <-- Replace with actual query if you have related records
+    if related_records:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete: There are records using this teacher names."
+        )
+    session.delete(teachernames)
     session.commit()
     cache_invalidate("teacher_names", payload.tenant_id)
-    return {"message": "Teacher Name soft deleted successfully"}
+    return {"message": "Teacher Name deleted successfully"}
 
 def _get_related_teacher_record_names(session: Session, teacher_id: int) -> list[str]:
     related_records: list[str] = []
@@ -191,36 +188,37 @@ def delete_teacher_by_id(
     session: Session = Depends(get_session),
     payload: TokenPayload = Depends(get_token_payload),
 ):
-    """Soft-delete a teacher by their ID while preserving related records."""
-    teacher = session.exec(
-        select(TeacherNames).where(TeacherNames.teacher_name_id == teacher_id)
-    ).first()
+    """Delete a teacher by their ID"""
+    teacher = session.get(TeacherNames, teacher_id)
     if not teacher:
         raise HTTPException(
             status_code=404,
             detail=f"Teacher with ID {teacher_id} not found"
         )
 
-    if teacher.is_deleted:
-        cache_invalidate("teacher_names", payload.tenant_id)
-        return {"message": f"Teacher with ID {teacher_id} is already soft deleted"}
-
-    try:
-        teacher.is_deleted = True
-        session.add(teacher)
-        session.commit()
-        cache_invalidate("teacher_names", payload.tenant_id)
-        return {"message": f"Teacher with ID {teacher_id} soft deleted successfully"}
-    except IntegrityError as e:
-        session.rollback()
-        logger.error(f"Error soft deleting teacher: {e}")
+    related_records = _get_related_teacher_record_names(session, teacher_id)
+    if related_records:
+        related_list = ", ".join(related_records)
         raise HTTPException(
             status_code=409,
-            detail="Cannot soft delete teacher due to a database integrity issue."
+            detail=f"Please delete related {related_list} records first before deleting this teacher."
+        )
+
+    try:
+        session.delete(teacher)
+        session.commit()
+        cache_invalidate("teacher_names", payload.tenant_id)
+        return {"message": f"Teacher with ID {teacher_id} deleted successfully"}
+    except IntegrityError as e:
+        session.rollback()
+        logger.error(f"Error deleting teacher: {e}")
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete teacher because related records still exist."
         )
     except Exception as e:
         session.rollback()
-        logger.error(f"Error soft deleting teacher: {e}")
+        logger.error(f"Error deleting teacher: {e}")
         raise HTTPException(
             status_code=500,
             detail="Error deleting teacher"

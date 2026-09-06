@@ -24,6 +24,7 @@ class Fee(SQLModel, table=True):
     fee_month: str = Field(nullable=False)
     fee_year: str = Field(nullable=False)  # Changed from int to str
     fee_status: FeeStatus = Field(nullable=False, default=FeeStatus.UNPAID)
+    remarks: Optional[str] = Field(default=None, nullable=True)
 
     # Relationships back to Student and ClassNames
     students: Optional["Students"] = Relationship(back_populates="fees") # type: ignore
@@ -36,6 +37,7 @@ class FeeCreate(SQLModel):
     fee_amount: Decimal
     fee_month: str
     fee_year: str  # Changed from int to str
+    remarks: Optional[str] = None
     # fee_status: FeeStatus = FeeStatus.UNPAID
 
 class FeeResponse(SQLModel):
@@ -48,6 +50,7 @@ class FeeResponse(SQLModel):
     fee_month: str
     fee_year: str  # Changed from int to str
     fee_status: FeeStatus
+    remarks: Optional[str] = None
 
     @field_serializer("fee_amount")
     def serialize_fee_amount(self, value: Optional[Decimal]):
