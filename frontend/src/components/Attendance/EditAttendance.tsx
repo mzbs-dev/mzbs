@@ -18,7 +18,7 @@ import { MarkAttUpdate } from "@/models/markattendance/markattendance";
 
 interface EditAttendanceProps {
   attendanceId: number;
-  onUpdate: () => void;
+  onUpdate: (status?: EditForm["attendanceStatus"]) => void;
 }
 
 interface APIResponse {
@@ -93,7 +93,7 @@ const EditAttendance = ({ attendanceId, onUpdate }: EditAttendanceProps) => {
           position: "bottom-center",
           duration: 3000,
         });
-        onUpdate();
+        onUpdate(data.attendanceStatus);
       } else {
         throw new Error(response.data.message || "Failed to update attendance");
       }

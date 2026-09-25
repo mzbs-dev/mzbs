@@ -20,7 +20,6 @@ import { AttendanceAPI as API } from "@/api/Attendance/AttendanceAPI";
 import { ClassNameAPI as API2 } from "@/api/ClassName/ClassNameAPI";
 import { AttendanceTimeAPI as API13 } from "@/api/AttendanceTime/attendanceTimeAPI";
 import { TeacherNameAPI as API4 } from "@/api/Teacher/TeacherAPI";
-import { StudentAPI as API5 } from "@/api/Student/StudentsAPI";
 import { usePrint } from "@/components/print/usePrint";
 import { toast } from "sonner";
 import { ChevronsUpDown } from "lucide-react";
@@ -93,11 +92,6 @@ interface TeacherResponse {
   teacher_name: string;
 }
 
-interface StudentResponse {
-  student_id: number;
-  student_name: string;
-}
-
 interface APIError {
   response: {
     data: {
@@ -125,13 +119,26 @@ const extractArrayData = <T,>(response: unknown): T[] => {
 };
 
 const AttendanceTable: React.FC = () => {
+  const today = new Date();
+  const todayValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
   const {
     register,
     setValue: setFormValue,
     getValues,              // FIX 1: needed to read current filter state on refresh
     formState: { errors },
     handleSubmit,
-  } = useForm<FilteredAttendance>();
+  } = useForm<FilteredAttendance>({
+    defaultValues: {
+      attendance_date: todayValue,
+      attendance_time_id: 0,
+      class_name_id: 0,
+      teacher_name_id: 0,
+      student_id: 0,
+      father_name: "",
+      attendance_value_id: 0,
+    },
+  });
   const { printRecords } = usePrint();
   const [isLoading, setIsLoading] = useState(false);
   const [dropdownsLoading, setDropdownsLoading] = useState(true); // FIX 2: separate loading state for dropdowns
@@ -154,9 +161,6 @@ const AttendanceTable: React.FC = () => {
     { id: 3, title: "Late" },
     { id: 4, title: "Leave" },
   ]); // FIX 4: add status filter options
-  const [studentsList, setStudentsList] = useState<SelectComponentOption[]>([]);
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState("");
   const [pageSize] = useState(15);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -175,6 +179,79 @@ const AttendanceTable: React.FC = () => {
   const canDeleteAttendance = permissionsLoaded
     ? !!permissions?.attendance?.delete
     : role === "ADMIN";
+
+  useEffect(() => {
+    if (classTimeList.length > 0) {
+      setFormValue("attendance_time_id", 0);
+    }
+  }, [classTimeList, setFormValue]);
+
+  useEffect(() => {
+    if (classNameList.length > 0) {
+      setFormValue("class_name_id", 0);
+    }
+  }, [classNameList, setFormValue]);
+
+  useEffect(() => {
+    if (teacherNameList.length > 0) {
+      setFormValue("teacher_name_id", 0);
+    }
+  }, [teacherNameList, setFormValue]);
+
+  const getOptionTitle = (
+    options: SelectComponentOption[],
+    id: number,
+    fallback: string
+  ) => options.find((option) => Number(option.id) === id)?.title?.toString() || fallback;
+
+  const formatResultDate = (dateValue: string) => {
+    if (!dateValue) return "all dates";
+    const [year, month, day] = dateValue.split("-").map(Number);
+    if (!year || !month || !day) return dateValue;
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date(year, month - 1, day));
+  };
+
+  const getResultDescription = () => {
+    if (!activeFilters) return "";
+
+    const count = totalRecords || attendanceRecords.length;
+    const date = formatResultDate(activeFilters.attendance_date);
+    const className = activeFilters.class_name_id
+      ? getOptionTitle(classNameList, activeFilters.class_name_id, "the selected class")
+      : "";
+    const teacherName = activeFilters.teacher_name_id
+      ? getOptionTitle(teacherNameList, activeFilters.teacher_name_id, "the selected teacher")
+      : "";
+    const status = activeFilters.attendance_value_id
+      ? getOptionTitle(statusList, activeFilters.attendance_value_id, "the selected status").toLowerCase()
+      : "";
+    if (status) {
+      const subject = `${count} student${count === 1 ? " was" : "s were"}`;
+      const statusText = status === "leave" ? "on leave" : `marked ${status}`;
+      const markedBy = teacherName ? ` by ${teacherName}` : "";
+      const classContext = className ? ` in ${className}` : "";
+      return `${subject} ${statusText}${markedBy}${classContext} on ${date}.`;
+    }
+
+    return `${count} attendance record${count === 1 ? "" : "s"} found on ${date}.`;
+  };
+
+  const getResultHeading = () => {
+    if (!activeFilters) return "Attendance Records";
+    const status = activeFilters.attendance_value_id
+      ? getOptionTitle(statusList, activeFilters.attendance_value_id, "Attendance").toLowerCase()
+      : "attendance";
+    const className = activeFilters.class_name_id
+      ? getOptionTitle(classNameList, activeFilters.class_name_id, "the selected class")
+      : "";
+    const date = formatResultDate(activeFilters.attendance_date);
+    const subject = status === "attendance" ? "Attendance Records" : `${status[0].toUpperCase()}${status.slice(1)} Students`;
+    return `${subject}${className ? ` — ${className}` : ""} — ${date}`;
+  };
 
   // ── Fetch Records ────────────────────────────────────────────────────────────
   // Define HandleSubmitForStudentGet first so handleAttendanceUpdate can reference it
@@ -271,10 +348,8 @@ const AttendanceTable: React.FC = () => {
   // stable and doesn't cause the actions column to re-mount on every render.
   const handleAttendanceUpdate = useCallback(async () => {
     const currentFilters = getValues();
-    // Restore student_id from combobox state (not registered in RHF)
-    currentFilters.student_id = Number(value) || 0;
     await HandleSubmitForStudentGet(currentFilters, currentPage);
-  }, [getValues, value, currentPage, HandleSubmitForStudentGet]);
+  }, [getValues, currentPage, HandleSubmitForStudentGet]);
 
   const handleDeleteAttendance = useCallback(
     async (attendanceId: number) => {
@@ -417,33 +492,11 @@ const AttendanceTable: React.FC = () => {
     [currentPage, pageSize, canEditAttendance, handleAttendanceUpdate, canDeleteAttendance, handleDeleteAttendance]
   );
 
-  // FIX 2: dropdowns load exactly once on mount — no dependency on formRefresh
+  // Load only the filters that are visible on this page.
   useEffect(() => {
-    Promise.all([GetClassName(), GetClassTime(), GetTeacherName(), GetStudents()])
+    Promise.all([GetClassName(), GetClassTime(), GetTeacherName()])
       .finally(() => setDropdownsLoading(false));
   }, []);
-
-  const GetStudents = async () => {
-    setIsLoading(true);
-    try {
-      const response = await API5.Get();
-      const students = extractArrayData<StudentResponse>(response);
-      const allStudents = [
-        { student_id: 0, student_name: "All Students" },
-        ...students,
-      ];
-      setStudentsList(
-        allStudents.map((student) => ({
-          id: student.student_id,
-          title: student.student_name,
-        }))
-      );
-    } catch (error) {
-      console.error("Error fetching students:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const GetClassName = async () => {
     try {
@@ -573,8 +626,8 @@ const AttendanceTable: React.FC = () => {
   // Once the full dataset lands, print it, then clear it out again.
   useEffect(() => {
     if (printData.length === 0) return;
-    const meta = `Total records: ${printData.length} · Printed: ${new Date().toLocaleDateString()}`;
-    printRecords('attendance-print-area-full', 'Attendance Report', meta);
+    const meta = `${getResultDescription()} Printed: ${new Date().toLocaleDateString()}`;
+    printRecords('attendance-print-area-full', getResultHeading(), meta);
     setPrintData([]);
     setIsPreparingPrint(false);
   }, [printData, printRecords]);
@@ -607,8 +660,8 @@ const AttendanceTable: React.FC = () => {
                   </h2>
                 </div>
                 {attendanceRecords.length > 0 && (
-                  <span className="text-xs font-semibold text-primary dark:text-blue-400 bg-primary/10 dark:bg-blue-900/30 px-2.5 py-1 rounded-full border border-primary/20 dark:border-blue-800">
-                    {totalRecords || attendanceRecords.length} Records Found
+                  <span className="text-sm font-semibold text-primary dark:text-blue-400 bg-primary/10 dark:bg-blue-900/30 px-3 py-2 rounded-lg border border-primary/20 dark:border-blue-800">
+                    {getResultDescription()}
                   </span>
                 )}
               </div>
@@ -640,6 +693,7 @@ const AttendanceTable: React.FC = () => {
                   <Select
                     options={classTimeList}
                     {...register("attendance_time_id", { valueAsNumber: true })}
+                    defaultValue={0}
                     DisplayItem="title"
                     className="h-10 text-sm rounded-lg w-full"
                   />
@@ -655,6 +709,7 @@ const AttendanceTable: React.FC = () => {
                   <Select
                     options={classNameList}
                     {...register("class_name_id", { valueAsNumber: true })}
+                    defaultValue={0}
                     DisplayItem="title"
                     className="h-10 text-sm rounded-lg w-full"
                   />
@@ -670,6 +725,7 @@ const AttendanceTable: React.FC = () => {
                   <Select
                     options={teacherNameList}
                     {...register("teacher_name_id", { valueAsNumber: true })}
+                    defaultValue={0}
                     DisplayItem="title"
                     className="h-10 text-sm rounded-lg w-full"
                   />
@@ -735,7 +791,7 @@ const AttendanceTable: React.FC = () => {
             <>
               {/* Header with title and print button */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 sm:p-4 no-print border-b border-border dark:border-border bg-card dark:bg-card">
-                <h3 className="text-lg font-semibold text-foreground dark:text-foreground">Attendance Records</h3>
+                <h3 className="text-lg font-semibold text-foreground dark:text-foreground">{getResultHeading()}</h3>
                 <button
                   onClick={handlePrintClick}
                   disabled={isPreparingPrint}

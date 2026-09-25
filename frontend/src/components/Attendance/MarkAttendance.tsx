@@ -34,6 +34,8 @@ import { Header } from "../dashboard/Header";
 
 type Attendance = {
   id: number;
+  attendanceId?: number;
+  originalStatus?: number;
   name: string;
   present: boolean;
   absent: boolean;
@@ -57,14 +59,21 @@ interface StudentResponse {
   student_id: number;
   student_name: string;
 }
+interface ExistingAttendanceResponse {
+  attendance_id: number;
+  student_id?: number;
+  attendance_value_id?: number;
+}
 export interface SelectOption {
   id: string | number;
   [key: string]: string | number;
 }
 interface BulkAttendanceResponse {
-  saved: { student_id: number; status: string }[];
+  created: { student_id: number; attendance_id: number }[];
+  updated: { student_id: number; attendance_id: number }[];
+  unchanged: { student_id: number; attendance_id: number }[];
   skipped: { student_id: number; reason: string }[];
-  summary: { total: number; saved: number; skipped: number };
+  summary: { total: number; created: number; updated: number; unchanged: number; skipped: number };
 }
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
@@ -181,6 +190,7 @@ const MarkAttendance = () => {
   const [teacherNameList, setTeacherNameList] = useState<SelectComponentOption[]>([]);
   const [data, setData] = useState<Attendance[]>([]);
   const [studentByFilter, setStudentByFilter] = useState<SelectComponentOption[]>([]);
+  const [existingAttendance, setExistingAttendance] = useState<ExistingAttendanceResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const today = new Date();
@@ -193,17 +203,28 @@ const MarkAttendance = () => {
   }, []);
 
   useEffect(() => {
-    setData(
-      studentByFilter.map((student) => ({
-        id: Number(student.id),
-        name: String(student.title),
-        present: false,
-        absent: false,
-        late: false,
-        leave: false,
-      }))
+    const existingByStudent = new Map(
+      existingAttendance
+        .filter((record) => record.student_id != null)
+        .map((record) => [record.student_id, record])
     );
-  }, [studentByFilter]);
+
+    setData(
+      studentByFilter.map((student) => {
+        const existing = existingByStudent.get(Number(student.id));
+        return {
+          id: Number(student.id),
+          attendanceId: existing?.attendance_id,
+          originalStatus: existing?.attendance_value_id,
+          name: String(student.title),
+          present: existing?.attendance_value_id === 1,
+          absent: existing?.attendance_value_id === 2,
+          late: existing?.attendance_value_id === 3,
+          leave: existing?.attendance_value_id === 4,
+        };
+      })
+    );
+  }, [studentByFilter, existingAttendance]);
 
   const GetClassName = async () => {
     try {
@@ -352,20 +373,25 @@ const MarkAttendance = () => {
   // ── Submit Attendance ───────────────────────────────────────────────────────
   const onSubmit = async (formData: MarkAttInput) => {
     setIsLoading(true);
-    const attendances = data.map((student) => {
+    const attendances = data.flatMap((student) => {
       let attendance_value_id = "";
       if (student.present) attendance_value_id = "1";
       if (student.absent) attendance_value_id = "2";
       if (student.late) attendance_value_id = "3";
       if (student.leave) attendance_value_id = "4";
-      return {
+      const selectedStatus = Number(attendance_value_id) || 0;
+      if (!selectedStatus || (student.attendanceId && selectedStatus === student.originalStatus)) {
+        return [];
+      }
+      return [{
+        attendance_id: student.attendanceId,
         attendance_date: formData.attendance_date,
         attendance_time_id: String(formData.attendance_time_id),
         class_name_id: String(formData.class_name_id),
         teacher_name_id: String(formData.teacher_name_id),
         student_id: String(student.id),
         attendance_value_id,
-      };
+      }];
     });
 
     const payload: MarkAttInput = {
@@ -385,13 +411,30 @@ const MarkAttendance = () => {
 
       if (status === 200 || status === 201) {
         const summary = data ?? {
-          saved: [],
+          created: [],
+          updated: [],
+          unchanged: [],
           skipped: [],
-          summary: { total: 0, saved: 0, skipped: 0 },
+          summary: { total: 0, created: 0, updated: 0, unchanged: 0, skipped: 0 },
         };
 
+        const persistedByStudent = new Map(
+          [...summary.created, ...summary.updated, ...summary.unchanged].map((item) => [
+            item.student_id,
+            item.attendance_id,
+          ])
+        );
+        setData((previous) =>
+          previous.map((student) => ({
+            ...student,
+            attendanceId: persistedByStudent.get(student.id) ?? student.attendanceId,
+            originalStatus:
+              student.present ? 1 : student.absent ? 2 : student.late ? 3 : student.leave ? 4 : undefined,
+          }))
+        );
+
         toast.success(
-          `Attendance submitted: ${summary.summary.saved} saved, ${summary.summary.skipped} skipped`,
+          `Attendance processed: ${summary.summary.created} new, ${summary.summary.updated} updated, ${summary.summary.unchanged} unchanged`,
           { position: "bottom-center", duration: 5000 }
         );
       } else {
@@ -416,17 +459,31 @@ const MarkAttendance = () => {
     try {
       setIsLoading(true);
       const classId = Number(formData.class_name_id);
-      const response = await API3.GetStudentsByFilter(classId);
-      const students = extractArrayData<StudentResponse>(response);
+      const [studentResponse, attendanceResponse] = await Promise.all([
+        API3.GetStudentsByFilter(classId),
+        AttendanceAPI.GetbyFilter({
+          attendance_date: formData.attendance_date,
+          attendance_time_id: Number(formData.attendance_time_id),
+          class_name_id: classId,
+          teacher_name_id: Number(formData.teacher_name_id),
+          student_id: 0,
+          father_name: "",
+          attendance_value_id: 0,
+        }, 1, 50),
+      ]);
+      const students = extractArrayData<StudentResponse>(studentResponse);
+      const existing = extractArrayData<ExistingAttendanceResponse>(attendanceResponse);
       setStudentByFilter(
         students.map((item) => ({
           id: item.student_id,
           title: item.student_name,
         }))
       );
+      setExistingAttendance(existing);
     } catch (error) {
       console.error("Error fetching students:", error);
       setStudentByFilter([]);
+      setExistingAttendance([]);
     }
     setIsLoading(false);
   };

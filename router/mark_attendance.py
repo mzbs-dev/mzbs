@@ -18,7 +18,8 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import case, func
 from typing import Annotated, List, Optional
 from user.user_models import User, UserRole
-from user.user_crud import require_permission
+from user.user_crud import get_current_user, has_permission, require_permission
+from token_deps import TokenPayload, get_token_payload
 from sqlalchemy.exc import IntegrityError
 from datetime import date, datetime, timedelta
 
@@ -54,6 +55,8 @@ def _build_response(att: Attendance) -> FilteredAttendanceResponse:
     """Safely build a FilteredAttendanceResponse from an ORM object."""
     return FilteredAttendanceResponse(
         attendance_id=att.attendance_id,
+        student_id=att.student_id,
+        attendance_value_id=att.attendance_value_id,
         attendance_date=att.attendance_date,
         attendance_time=att.attendance_time.attendance_time if att.attendance_time else "N/A",
         attendance_class=att.attendance_class.class_name if att.attendance_class else "N/A",
@@ -73,6 +76,22 @@ def _eager_select() -> any:
         joinedload(Attendance.attendance_student),
         joinedload(Attendance.attendance_value),
     )
+
+
+def require_attendance_write():
+    def checker(
+        current_user: Annotated[User, Depends(get_current_user)],
+        session: Session = Depends(get_session),
+        payload: TokenPayload = Depends(get_token_payload),
+    ):
+        if not (
+            has_permission(current_user.role, "attendance", "add", session, payload.tenant_id)
+            or has_permission(current_user.role, "attendance", "edit", session, payload.tenant_id)
+        ):
+            raise HTTPException(status_code=403, detail="Not permitted: attendance.add or attendance.edit")
+        return current_user
+
+    return checker
 
 
 # ─── Show All (paginated) ─────────────────────────────────────────────────────
@@ -156,13 +175,22 @@ def add_attendance(
 def add_bulk_attendance(
     bulk: BulkAttendanceCreate,
     session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(require_permission("attendance", "add"))] = None,
+    current_user: Annotated[User, Depends(require_attendance_write())] = None,
 ):
-    saved = []
+    created = []
+    updated = []
+    unchanged = []
     skipped = []
     today = date.today()
 
     for attendance in bulk.attendances:
+        if not attendance.attendance_value_id:
+            skipped.append({
+                "student_id": attendance.student_id,
+                "reason": "No attendance status selected",
+            })
+            continue
+
         att_date = (
             attendance.attendance_date.date()
             if hasattr(attendance.attendance_date, "date")
@@ -176,7 +204,29 @@ def add_bulk_attendance(
             })
             continue
 
-        # FIX 4: use session.exec (SQLModel style) instead of session.query (legacy)
+        if attendance.attendance_id:
+            exists = session.get(Attendance, attendance.attendance_id)
+            if not exists:
+                skipped.append({
+                    "student_id": attendance.student_id,
+                    "reason": "Attendance record not found",
+                })
+                continue
+            if exists.attendance_value_id == attendance.attendance_value_id:
+                unchanged.append({
+                    "student_id": attendance.student_id,
+                    "attendance_id": exists.attendance_id,
+                })
+                continue
+            exists.attendance_value_id = attendance.attendance_value_id
+            exists.updated_at = datetime.now()
+            session.add(exists)
+            updated.append({
+                "student_id": attendance.student_id,
+                "attendance_id": exists.attendance_id,
+            })
+            continue
+
         exists = session.exec(
             select(Attendance).where(
                 Attendance.student_id == attendance.student_id,
@@ -187,10 +237,19 @@ def add_bulk_attendance(
         ).first()
 
         if exists:
-            skipped.append({
-                "student_id": attendance.student_id,
-                "reason": "Already marked for this date & time",
-            })
+            if exists.attendance_value_id == attendance.attendance_value_id:
+                unchanged.append({
+                    "student_id": attendance.student_id,
+                    "attendance_id": exists.attendance_id,
+                })
+            else:
+                exists.attendance_value_id = attendance.attendance_value_id
+                exists.updated_at = datetime.now()
+                session.add(exists)
+                updated.append({
+                    "student_id": attendance.student_id,
+                    "attendance_id": exists.attendance_id,
+                })
             continue
 
         db_attendance = Attendance(
@@ -202,7 +261,12 @@ def add_bulk_attendance(
             attendance_value_id=attendance.attendance_value_id,
         )
         session.add(db_attendance)
-        saved.append({"student_id": attendance.student_id, "status": "Saved"})
+        session.flush()
+        created.append({
+            "student_id": attendance.student_id,
+            "attendance_id": db_attendance.attendance_id,
+            "status": "Saved",
+        })
 
     try:
         session.commit()
@@ -211,11 +275,15 @@ def add_bulk_attendance(
         raise HTTPException(status_code=400, detail=str(e.orig))
 
     return {
-        "saved": saved,
+        "created": created,
+        "updated": updated,
+        "unchanged": unchanged,
         "skipped": skipped,
         "summary": {
             "total": len(bulk.attendances),
-            "saved": len(saved),
+            "created": len(created),
+            "updated": len(updated),
+            "unchanged": len(unchanged),
             "skipped": len(skipped),
         },
     }

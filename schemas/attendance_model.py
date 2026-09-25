@@ -47,6 +47,7 @@ class Attendance(AttendanceBase, table=True):
 
 
 class AttendanceCreate(SQLModel):
+    attendance_id: Optional[int] = None
     attendance_date: datetime
     attendance_time_id: int
     class_name_id: int
@@ -66,6 +67,8 @@ class AttendanceUpdate(SQLModel):
 
 class FilteredAttendanceResponse(SQLModel):
     attendance_id: int
+    student_id: Optional[int] = None
+    attendance_value_id: Optional[int] = None
     attendance_date: datetime
     attendance_time: str
     attendance_class: str

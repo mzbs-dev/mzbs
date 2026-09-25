@@ -12,6 +12,7 @@ export interface MarkAttInput {
   class_name_id: number;
   teacher_name_id: number;
   attendances: {
+    attendance_id?: number;
     attendance_date: string;
     attendance_time_id: string;
     class_name_id: string;

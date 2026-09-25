@@ -7,7 +7,8 @@ from sqlalchemy.orm import joinedload
 from typing import List, Optional
 from typing import Annotated
 from user.user_models import User, UserRole
-from user.user_crud import get_current_user
+from user.user_crud import get_current_user, has_permission
+from token_deps import TokenPayload, get_token_payload
 from datetime import datetime
 
 from db import get_session
@@ -23,6 +24,28 @@ students_router = APIRouter(
     tags=["Students"],
     responses={404: {"description": "Not found"}}
 )
+
+
+def require_student_or_attendance_view():
+    def checker(
+        current_user: Annotated[User, Depends(get_current_user)],
+        session: Session = Depends(get_session),
+        payload: TokenPayload = Depends(get_token_payload),
+    ):
+        can_view_students = has_permission(
+            current_user.role, "students", "view", session, payload.tenant_id
+        )
+        can_view_attendance = has_permission(
+            current_user.role, "attendance", "view", session, payload.tenant_id
+        )
+        if not (can_view_students or can_view_attendance):
+            raise HTTPException(
+                status_code=403,
+                detail="Not permitted: students.view or attendance.view",
+            )
+        return current_user
+
+    return checker
 
 
 @students_router.post("/add/", response_model=StudentsResponse)
@@ -297,7 +320,7 @@ def get_students_by_class(
 
 @students_router.get("/by_class_id/", response_model=List[StudentsResponse])
 def get_students_by_class_id(
-    current_user: Annotated[User, Depends(require_permission("students", "view"))],
+    current_user: Annotated[User, Depends(require_student_or_attendance_view())],
     class_id: int, 
     session: Annotated[Session, Depends(get_session)]
 ):
