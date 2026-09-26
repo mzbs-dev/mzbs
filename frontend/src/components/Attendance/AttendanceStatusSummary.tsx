@@ -9,18 +9,11 @@ import { Header } from "@/components/dashboard/Header";
 import { toast } from "sonner";
 import { AttendanceAPI } from "@/api/Attendance/AttendanceAPI";
 import { ClassNameAPI } from "@/api/ClassName/ClassNameAPI";
-import AxiosInstance from "@/api/axiosInterceptorInstance";
 import Loader from "@/components/Loader";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
 interface ClassNamesData {
   class_name_id: number;
-  class_name: string;
-}
-
-interface StudentData {
-  student_id: number;
-  student_name: string;
-  father_name: string;
   class_name: string;
 }
 
@@ -40,16 +33,13 @@ interface AttendanceStatusResponse {
   };
 }
 
-interface TopStudentStats extends AttendanceStatusResponse {
-  count: number;
-}
-
 interface FormData {
   class_name: string;
-  student_id: number | string;
   from_date: string;
   to_date: string;
 }
+
+type SortColumn = "student_name" | "present" | "absent" | "late" | "leave";
 
 const AttendanceStatusSummary = () => {
   const {
@@ -62,60 +52,15 @@ const AttendanceStatusSummary = () => {
   const selectedClass = watch("class_name");
   const [isLoading, setIsLoading] = useState(false);
   const [classes, setClasses] = useState<ClassNamesData[]>([]);
-  const [students, setStudents] = useState<StudentData[]>([]);
-  const [allStudentsData, setAllStudentsData] = useState<StudentData[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
-  const [studentsLoading, setStudentsLoading] = useState(false);
-
-  // Top 10 results
-  const [topPresent, setTopPresent] = useState<TopStudentStats[]>([]);
-  const [topAbsent, setTopAbsent] = useState<TopStudentStats[]>([]);
-  const [topLate, setTopLate] = useState<TopStudentStats[]>([]);
-  const [topLeave, setTopLeave] = useState<TopStudentStats[]>([]);
+  const [summaryData, setSummaryData] = useState<AttendanceStatusResponse[]>([]);
   const [hasResults, setHasResults] = useState(false);
+  const [sortColumn, setSortColumn] = useState<SortColumn>("student_name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  // Load all classes on component mount
   useEffect(() => {
     loadClasses();
-    loadAllStudents();
   }, []);
-
-  // Load students when class is selected or the student list is ready
-  useEffect(() => {
-    if (!selectedClass) {
-      setStudents([]);
-      return;
-    }
-
-    if (selectedClass === "ALL") {
-      setStudents(allStudentsData);
-    } else {
-      const filtered = allStudentsData.filter((s) => s.class_name === selectedClass);
-      setStudents(filtered);
-    }
-  }, [selectedClass, allStudentsData]);
-
-  const loadAllStudents = async () => {
-    try {
-      const response = await AxiosInstance.get(`/students/all_students/`, {
-        params: { page: 1, page_size: 50 },
-      });
-      const payload = response?.data;
-      const studentPayload = Array.isArray(payload)
-        ? payload
-        : (payload as { data?: unknown })?.data ?? [];
-      const normalizedStudents = Array.isArray(studentPayload)
-        ? (studentPayload as StudentData[])
-        : [];
-
-      const sortedStudents = [...normalizedStudents].sort((a: StudentData, b: StudentData) =>
-        a.student_name.localeCompare(b.student_name)
-      );
-      setAllStudentsData(sortedStudents);
-    } catch (error) {
-      console.error("Error loading all students:", error);
-    }
-  };
 
   const loadClasses = async () => {
     try {
@@ -145,122 +90,71 @@ const AttendanceStatusSummary = () => {
       }
 
       const response = await AttendanceAPI.GetAttendanceStatusSummary(
-        data.student_id && data.student_id !== "0" ? Number(data.student_id) : undefined,
+        undefined,
         data.class_name,
         data.from_date || undefined,
         data.to_date || undefined
       );
-      const summaryData = response.data;
-
-      if (summaryData.length === 0) {
-        setTopPresent([]);
-        setTopAbsent([]);
-        setTopLate([]);
-        setTopLeave([]);
-        setHasResults(false);
-        toast.info("No attendance records match the selected criteria");
-        return;
-      }
-
-      // Calculate top 10 for each attendance type
-      const topPresentList = summaryData
-        .map(s => ({ ...s, count: s.present }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-
-      const topAbsentList = summaryData
-        .map(s => ({ ...s, count: s.absent }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-
-      const topLateList = summaryData
-        .map(s => ({ ...s, count: s.late }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-
-      const topLeaveList = summaryData
-        .map(s => ({ ...s, count: s.leave }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-
-      setTopPresent(topPresentList);
-      setTopAbsent(topAbsentList);
-      setTopLate(topLateList);
-      setTopLeave(topLeaveList);
+      setSummaryData(response.data);
       setHasResults(true);
-
       toast.success("Attendance summary loaded successfully");
     } catch (error) {
       console.error("Error fetching attendance summary:", error);
       if (axios.isAxiosError(error) && error.response?.status === 404) {
-        setTopPresent([]);
-        setTopAbsent([]);
-        setTopLate([]);
-        setTopLeave([]);
+        setSummaryData([]);
+        setHasResults(true);
         toast.info("No attendance records match the selected criteria");
       } else {
         toast.error("Failed to fetch attendance summary");
+        setHasResults(false);
       }
-      setHasResults(false);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const TopStudentsTable = ({ title, data, color }: { title: string; data: TopStudentStats[]; color: string }) => (
-    <div className="bg-card dark:bg-background rounded-xl shadow-sm border border-border dark:border-secondary overflow-hidden">
-      <div className={`px-6 py-4 bg-${color}-50 dark:bg-${color}-900/20 border-b border-border dark:border-border`}>
-        <h3 className={`text-lg font-semibold text-${color}-700 dark:text-${color}-400`}>
-          {title}
-        </h3>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-muted dark:bg-card border-b border-border dark:border-border">
-              <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Rank</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Student Name</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Father Name</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-foreground dark:text-foreground">Class</th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold text-${color}-600 dark:text-${color}-400`}>Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.length > 0 ? (
-              data.map((student, index) => (
-                <tr
-                  key={index}
-                  className="border-b border-border dark:border-border hover:bg-muted dark:hover:bg-gray-800/50 transition-colors"
-                >
-                  <td className="px-4 py-3 text-sm font-bold text-foreground dark:text-foreground">
-                    #{index + 1}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-foreground dark:text-foreground">
-                    {student.student_name}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground dark:text-muted-foreground">
-                    {student.father_name}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground dark:text-muted-foreground">
-                    {student.class_name}
-                  </td>
-                  <td className={`px-4 py-3 text-center text-sm font-bold text-${color}-600 dark:text-${color}-400`}>
-                    {student.count}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} className="px-4 py-3 text-center text-sm text-muted-foreground dark:text-muted-foreground">
-                  No data available
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+  const sortedSummary = [...summaryData].sort((left, right) => {
+    const leftValue = left[sortColumn];
+    const rightValue = right[sortColumn];
+    const comparison = typeof leftValue === "number" && typeof rightValue === "number"
+      ? leftValue - rightValue
+      : String(leftValue).localeCompare(String(rightValue));
+    if (comparison !== 0) return comparison * (sortDirection === "asc" ? 1 : -1);
+    return left.student_name.localeCompare(right.student_name);
+  });
+
+  const sortBy = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((direction) => direction === "asc" ? "desc" : "asc");
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection(column === "student_name" ? "asc" : "desc");
+  };
+
+  const totals = summaryData.reduce(
+    (result, student) => ({
+      present: result.present + student.present,
+      absent: result.absent + student.absent,
+      late: result.late + student.late,
+      leave: result.leave + student.leave,
+      total: result.total + student.total,
+    }),
+    { present: 0, absent: 0, late: 0, leave: 0, total: 0 }
   );
+
+  const statusHeaders: { key: SortColumn; label: string }[] = [
+    { key: "present", label: "Present" },
+    { key: "absent", label: "Absent" },
+    { key: "late", label: "Late" },
+    { key: "leave", label: "Leave" },
+  ];
+  const sortedByLabel = statusHeaders.find(({ key }) => key === sortColumn)?.label ?? "Student";
+  const sortDirectionLabel = sortColumn === "student_name"
+    ? (sortDirection === "asc" ? "A to Z" : "Z to A")
+    : (sortDirection === "asc" ? "lowest to highest" : "highest to lowest");
+  const activeHeaderClass = "bg-primary/10 text-primary border-b-2 border-primary";
+  const activeColumnClass = "bg-primary/[0.06] dark:bg-primary/[0.12]";
 
   return (
     <div className="mx-auto w-auto px-2 sm:px-4">
@@ -270,7 +164,7 @@ const AttendanceStatusSummary = () => {
       {/* Filter Form */}
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="bg-card dark:bg-background rounded-xl shadow-sm border border-border dark:border-secondary p-4 sm:p-6 mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Class Dropdown */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground dark:text-foreground">
@@ -295,25 +189,6 @@ const AttendanceStatusSummary = () => {
                   {errors.class_name.message}
                 </span>
               )}
-            </div>
-
-            {/* Student Dropdown */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground dark:text-foreground">
-                Student
-              </label>
-              <select
-                {...register("student_id")}
-                disabled={!selectedClass}
-                className="w-full border bg-card rounded-md px-3 py-2 text-sm focus:ring focus:ring-primary/20 dark:bg-card dark:text-foreground dark:border-border h-10 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="0">-- All Students --</option>
-                {students.map((student) => (
-                  <option key={student.student_id} value={student.student_id}>
-                    {student.student_name}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* From Date */}
@@ -359,16 +234,61 @@ const AttendanceStatusSummary = () => {
       {/* Results */}
       {hasResults && (
         <div className="mt-8">
-          <h2 className="text-2xl font-bold text-foreground dark:text-foreground mb-6">Top 10 Students Statistics</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top 10 Present */}
-            <TopStudentsTable title="Top 10 Present" data={topPresent} color="green" />
-            {/* Top 10 Absent */}
-            <TopStudentsTable title="Top 10 Absent" data={topAbsent} color="red" />
-            {/* Top 10 Late */}
-            <TopStudentsTable title="Top 10 Late" data={topLate} color="yellow" />
-            {/* Top 10 Leave */}
-            <TopStudentsTable title="Top 10 Leave" data={topLeave} color="blue" />
+          <h2 className="text-xl font-semibold text-foreground mb-4">Class Attendance Summary</h2>
+          <p className="mb-2 flex items-center gap-1.5 text-sm text-muted-foreground" aria-live="polite">
+            Sorted by <span className="font-semibold text-foreground">{sortedByLabel}</span>, {sortDirectionLabel}
+            {sortDirection === "asc" ? <ArrowUp aria-hidden="true" className="h-4 w-4 text-primary" /> : <ArrowDown aria-hidden="true" className="h-4 w-4 text-primary" />}
+          </p>
+          <div className="overflow-x-auto rounded-lg border border-border bg-card">
+            <table className="w-full min-w-[760px]">
+              <thead>
+                <tr className="border-b border-border bg-muted text-left">
+                  <th aria-sort={sortColumn === "student_name" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className={`px-4 py-3 text-sm font-semibold ${sortColumn === "student_name" ? activeHeaderClass : ""}`}>
+                    <button type="button" onClick={() => sortBy("student_name")} className="flex items-center gap-1.5 hover:underline">
+                      Student{sortColumn === "student_name" && (sortDirection === "asc" ? <ArrowUp aria-hidden="true" className="h-4 w-4" /> : <ArrowDown aria-hidden="true" className="h-4 w-4" />)}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-sm font-semibold">Father Name</th>
+                  <th className="px-4 py-3 text-sm font-semibold">Class</th>
+                  {statusHeaders.map(({ key, label }) => (
+                    <th key={key} aria-sort={sortColumn === key ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className={`px-4 py-3 text-center text-sm font-semibold ${sortColumn === key ? activeHeaderClass : ""}`}>
+                      <button type="button" onClick={() => sortBy(key)} className="mx-auto flex items-center gap-1.5 hover:underline">
+                        {label}{sortColumn === key && (sortDirection === "asc" ? <ArrowUp aria-hidden="true" className="h-4 w-4" /> : <ArrowDown aria-hidden="true" className="h-4 w-4" />)}
+                      </button>
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 text-center text-sm font-semibold">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedSummary.length ? sortedSummary.map((student) => (
+                  <tr key={student.student_id} className="border-b border-border last:border-0 hover:bg-muted/60">
+                    <td className={`px-4 py-3 text-sm font-medium ${sortColumn === "student_name" ? activeColumnClass : ""}`}>{student.student_name}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{student.father_name}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{student.class_name}</td>
+                    <td className={`px-4 py-3 text-center text-sm ${sortColumn === "present" ? activeColumnClass : ""}`}>{student.present}</td>
+                    <td className={`px-4 py-3 text-center text-sm ${sortColumn === "absent" ? activeColumnClass : ""}`}>{student.absent}</td>
+                    <td className={`px-4 py-3 text-center text-sm ${sortColumn === "late" ? activeColumnClass : ""}`}>{student.late}</td>
+                    <td className={`px-4 py-3 text-center text-sm ${sortColumn === "leave" ? activeColumnClass : ""}`}>{student.leave}</td>
+                    <td className="px-4 py-3 text-center text-sm font-semibold">{student.total}</td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">No students found for this selection.</td></tr>
+                )}
+              </tbody>
+              {summaryData.length > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 border-border bg-muted font-semibold">
+                    <td colSpan={3} className="px-4 py-3 text-sm">Class total</td>
+                    <td className="px-4 py-3 text-center text-sm">{totals.present}</td>
+                    <td className="px-4 py-3 text-center text-sm">{totals.absent}</td>
+                    <td className="px-4 py-3 text-center text-sm">{totals.late}</td>
+                    <td className="px-4 py-3 text-center text-sm">{totals.leave}</td>
+                    <td className="px-4 py-3 text-center text-sm">{totals.total}</td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
           </div>
         </div>
       )}
@@ -377,7 +297,7 @@ const AttendanceStatusSummary = () => {
       {!hasResults && !isLoading && (
         <div className="mt-6 bg-card dark:bg-background rounded-xl shadow-sm border border-border dark:border-secondary p-8 text-center">
           <p className="text-muted-foreground dark:text-muted-foreground">
-            Select a class and click "Get Summary" to view Top 10 students statistics for Present, Absent, Late, and Leave. Optionally filter by a specific student or date range.
+            Select a class and date range, then click &quot;Get Summary&quot; to view attendance totals for every student. Select a status column header to sort the whole class by that status.
           </p>
         </div>
       )}

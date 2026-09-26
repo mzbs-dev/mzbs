@@ -15,7 +15,7 @@ from schemas.attendance_model import (
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 from sqlalchemy.orm import joinedload
-from sqlalchemy import case, func
+from sqlalchemy import and_, case, func
 from typing import Annotated, List, Optional
 from user.user_models import User, UserRole
 from user.user_crud import get_current_user, has_permission, require_permission
@@ -459,6 +459,14 @@ def get_attendance_status_summary(
 ):
     """Get grouped attendance summaries for one student or an entire class."""
 
+    attendance_conditions = [Attendance.student_id == Students.student_id]
+    if from_date:
+        from_dt = _parse_date(from_date, "from_date")
+        attendance_conditions.append(Attendance.attendance_date >= from_dt)
+    if to_date:
+        to_dt = _parse_date(to_date, "to_date")
+        attendance_conditions.append(Attendance.attendance_date < to_dt + timedelta(days=1))
+
     query = (
         select(
             Students.student_id,
@@ -470,8 +478,9 @@ def get_attendance_status_summary(
             func.coalesce(func.sum(case((func.lower(AttendanceValue.attendance_value) == "late", 1), else_=0)), 0).label("late"),
             func.coalesce(func.sum(case((func.lower(AttendanceValue.attendance_value) == "leave", 1), else_=0)), 0).label("leave"),
         )
-        .join(Attendance, Attendance.student_id == Students.student_id)
-        .join(AttendanceValue, Attendance.attendance_value_id == AttendanceValue.attendance_value_id)
+        .select_from(Students)
+        .outerjoin(Attendance, and_(*attendance_conditions))
+        .outerjoin(AttendanceValue, Attendance.attendance_value_id == AttendanceValue.attendance_value_id)
         .group_by(Students.student_id, Students.student_name, Students.father_name, Students.class_name)
     )
 
@@ -479,15 +488,6 @@ def get_attendance_status_summary(
         query = query.where(Students.student_id == student_id)
     if class_name and class_name != "ALL":
         query = query.where(Students.class_name == class_name)
-
-    if from_date:
-        from_dt = _parse_date(from_date, "from_date")
-        query = query.where(Attendance.attendance_date >= from_dt)
-
-    if to_date:
-        to_dt = _parse_date(to_date, "to_date")
-        # Include the full to_date day
-        query = query.where(Attendance.attendance_date < to_dt + timedelta(days=1))
 
     records = session.exec(query).all()
     return [
