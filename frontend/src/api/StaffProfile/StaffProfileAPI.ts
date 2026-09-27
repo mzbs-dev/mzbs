@@ -17,10 +17,17 @@ export interface StaffShiftAssignmentResponse {
 }
 
 export interface PreviousAttendanceRow {
-  staff_attendance_id: number;
+  staff_attendance_id: number | null;
+  is_calendar_holiday: boolean;
+  holiday_label: string | null;
   attendance_date: string;
+  weekday: string;
   attendance_time_id: number | null;
   attendance_time_name: string | null;
+  schedule_id: number | null;
+  expected_start_time: string | null;
+  expected_end_time: string | null;
+  schedule_is_legacy: boolean;
   final_status: string | null;
   final_remarks: string | null;
   arrival_time: string | null;

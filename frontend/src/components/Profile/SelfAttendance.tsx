@@ -210,7 +210,16 @@ const SelfAttendance: React.FC = () => {
 
           const cardTitle = (
             <div className="flex items-center justify-between">
-              <span>{entry.attendance_time_name ?? "Today's Attendance"}</span>
+              <span className="inline-flex items-center gap-2">
+                {entry.attendance_time_name ?? "Today's Attendance"}
+                <span className="font-bold text-foreground">
+                  {entry.schedule_is_legacy
+                    ? "Historical timing unavailable"
+                    : entry.expected_start_time && entry.expected_end_time
+                    ? `${entry.expected_start_time.slice(0, 5)} - ${entry.expected_end_time.slice(0, 5)}`
+                    : "Timing not configured"}
+                </span>
+              </span>
               {isFinalized && (
                 <span className="text-xs font-normal text-muted-foreground">
                   Finalized{entry.final_status ? ` — ${entry.final_status}` : ""} — no longer editable
@@ -227,7 +236,11 @@ const SelfAttendance: React.FC = () => {
                     type="button"
                     variant={form.self_availability === "AVAILABLE" ? "default" : "outline"}
                     disabled={isFinalized || !canSubmitThis}
-                    onClick={() => updateForm(key, { self_availability: "AVAILABLE" })}
+                    onClick={() => updateForm(key, {
+                      self_availability: "AVAILABLE",
+                      arrival_time: form.arrival_time || entry.expected_start_time?.slice(0, 5) || "",
+                      departure_time: form.departure_time || entry.expected_end_time?.slice(0, 5) || "",
+                    })}
                     className="flex-1"
                   >
                     Available
@@ -304,13 +317,16 @@ const SelfAttendance: React.FC = () => {
               <span>
                 Page {historyPage} of {Math.max(1, Math.ceil(history.length / 10))}
               </span>
-              <span>{history.length} finalized record{history.length === 1 ? "" : "s"}</span>
+              <span>
+                {history.filter((row) => !row.is_calendar_holiday).length} finalized record(s)
+              </span>
             </div>
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="min-w-full text-sm">
                 <thead className="bg-muted text-left">
                   <tr>
                     <th className="px-3 py-2">Date</th>
+                    <th className="px-3 py-2">Day</th>
                     <th className="px-3 py-2">Shift</th>
                     <th className="px-3 py-2">Final Status</th>
                     <th className="px-3 py-2">Arrival</th>
@@ -322,15 +338,34 @@ const SelfAttendance: React.FC = () => {
                   {history
                     .slice((historyPage - 1) * 10, historyPage * 10)
                     .map((row) => (
-                      <tr key={row.staff_attendance_id} className="border-t border-border">
+                      <tr
+                        key={row.staff_attendance_id ?? `holiday-${row.attendance_date}`}
+                        className={`border-t border-border ${row.is_calendar_holiday ? "bg-muted/40" : ""}`}
+                      >
                         <td className="px-3 py-2">
                           {new Date(row.attendance_date).toLocaleDateString("en-GB")}
                         </td>
-                        <td className="px-3 py-2">{row.attendance_time_name ?? "General / No Shift Assigned"}</td>
-                        <td className="px-3 py-2">{row.final_status ?? "—"}</td>
+                        <td className="px-3 py-2">{row.weekday}</td>
+                        <td className="px-3 py-2">
+                          {row.is_calendar_holiday ? "—" : (
+                            <>
+                              <div>{row.attendance_time_name ?? "General / No Shift Assigned"}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {row.expected_start_time && row.expected_end_time
+                                  ? `${row.expected_start_time.slice(0, 5)} - ${row.expected_end_time.slice(0, 5)}`
+                                  : "Historical timing unavailable"}
+                              </div>
+                            </>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {row.is_calendar_holiday ? (
+                            <span className="inline-flex rounded-md border border-border bg-muted px-2 py-1 text-xs font-semibold">HOLIDAY</span>
+                          ) : row.final_status ?? "—"}
+                        </td>
                         <td className="px-3 py-2">{row.arrival_time ?? "—"}</td>
                         <td className="px-3 py-2">{row.departure_time ?? "—"}</td>
-                        <td className="px-3 py-2">{row.final_remarks ?? "—"}</td>
+                        <td className="px-3 py-2">{row.holiday_label ?? row.final_remarks ?? "—"}</td>
                       </tr>
                     ))}
                 </tbody>

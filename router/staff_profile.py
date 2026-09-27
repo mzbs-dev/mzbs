@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,6 +15,7 @@ from schemas.staff_shift_assignment_model import (
 )
 from schemas.teacher_names_model import TeacherNames
 from router.staff import _calculate_total_stay
+from services.attendance_calendar import list_attendance_holidays
 from user.user_crud import require_permission
 from user.user_models import User
 
@@ -90,8 +92,13 @@ def get_staff_profile(
             PreviousAttendanceRow(
                 staff_attendance_id=record.staff_attendance_id,
                 attendance_date=record.attendance_date,
+                weekday=record.attendance_date.strftime("%A"),
                 attendance_time_id=record.attendance_time_id,
                 attendance_time_name=shift_name,
+                schedule_id=record.schedule_id,
+                expected_start_time=record.expected_start_time_snapshot,
+                expected_end_time=record.expected_end_time_snapshot,
+                schedule_is_legacy=record.schedule_is_legacy,
                 final_status=record.final_status,
                 final_remarks=record.final_remarks,
                 arrival_time=record.arrival_time,
@@ -99,6 +106,26 @@ def get_staff_profile(
             )
         )
 
+    previous_attendance.extend(
+        PreviousAttendanceRow(
+            staff_attendance_id=None,
+            is_calendar_holiday=True,
+            holiday_label=holiday["label"],
+            attendance_date=holiday["attendance_date"],
+            weekday=holiday["weekday"],
+            final_status="HOLIDAY",
+            final_remarks=holiday["label"],
+        )
+        for holiday in list_attendance_holidays(
+            session,
+            staff.created_at.date(),
+            date.today(),
+        )
+    )
+    previous_attendance.sort(
+        key=lambda row: (row.attendance_date, not row.is_calendar_holiday),
+        reverse=True,
+    )
     return StaffProfileResponse(
         staff_id=staff.teacher_name_id,
         staff_name=staff.teacher_name,

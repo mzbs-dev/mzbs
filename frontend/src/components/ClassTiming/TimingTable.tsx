@@ -28,6 +28,7 @@ import AddClassTime from "./CreateTIming";
 import DelConfirmMsg from "../DelConfMsg";
 import { toast } from "sonner";
 import { useRole } from "@/context/RoleContext";
+import TimingVersionDialog from "./TimingVersionDialog";
 
 export default function ClassTiming() {
   const [globalFilter, setGlobalFilter] = useState("");
@@ -105,9 +106,22 @@ export default function ClassTiming() {
     },
   ];
 
+  const timingColumn: ColumnDef<ClassTiming> = {
+    id: "timing_versions",
+    header: "Staff Hours",
+    cell: ({ row }) => (
+      <TimingVersionDialog
+        attendanceTimeId={row.original.attendance_time_id}
+        attendanceTime={row.original.attendance_time}
+        canEdit={permissionsLoaded && !!permissions?.setup_timings?.edit}
+      />
+    ),
+  };
+
   const columns: ColumnDef<ClassTiming>[] = canDeleteTiming
     ? [
         ...baseColumns,
+        timingColumn,
         {
           id: "delete",
           header: "Delete",
@@ -119,7 +133,7 @@ export default function ClassTiming() {
           ),
         },
       ]
-    : baseColumns;
+    : [...baseColumns, timingColumn];
 
   const table = useReactTable({
     data,
@@ -247,6 +261,13 @@ export default function ClassTiming() {
                   />
                 </div>
               )}
+              <div className="flex justify-end pt-1">
+                <TimingVersionDialog
+                  attendanceTimeId={row.original.attendance_time_id}
+                  attendanceTime={row.original.attendance_time}
+                  canEdit={permissionsLoaded && !!permissions?.setup_timings?.edit}
+                />
+              </div>
             </div>
           ))
         ) : (

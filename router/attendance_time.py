@@ -133,7 +133,7 @@
 #         )
 
 from asyncio.log import logger
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
@@ -149,6 +149,12 @@ from schemas.attendance_time_shift_config_model import (
     AttendanceTimeShiftConfigUpsert,
     AttendanceTimeShiftConfigResponse,
 )
+from schemas.staff_shift_timing_model import (
+    StaffShiftTimingVersion,
+    StaffShiftTimingVersionCreate,
+    StaffShiftTimingVersionResponse,
+)
+from services.staff_shift_timing import validate_timing_range
 from user.user_crud import require_permission, require_authenticated
 from user.user_models import User
 attendance_time_router = APIRouter(
@@ -156,6 +162,99 @@ attendance_time_router = APIRouter(
     tags=["Attendance Time"],
     responses={404: {"Description": "Not found"}}
 )
+
+
+def _timing_version_response(
+    session: Session,
+    version: StaffShiftTimingVersion,
+) -> StaffShiftTimingVersionResponse:
+    shift = session.get(AttendanceTime, version.attendance_time_id)
+    return StaffShiftTimingVersionResponse(
+        schedule_id=version.schedule_id,
+        attendance_time_id=version.attendance_time_id,
+        attendance_time=shift.attendance_time if shift else "",
+        start_time=version.start_time,
+        end_time=version.end_time,
+        effective_from=version.effective_from,
+        created_by=version.created_by,
+        created_at=version.created_at,
+        is_migration_baseline=version.is_migration_baseline,
+    )
+
+
+@attendance_time_router.get(
+    "/{attendance_time_id}/timing-versions",
+    response_model=List[StaffShiftTimingVersionResponse],
+)
+def list_timing_versions(
+    attendance_time_id: int,
+    current_user: Annotated[User, Depends(require_authenticated())],
+    session: Session = Depends(get_session),
+):
+    if not session.get(AttendanceTime, attendance_time_id):
+        raise HTTPException(status_code=404, detail="Attendance Time not found")
+    versions = session.exec(
+        select(StaffShiftTimingVersion)
+        .where(StaffShiftTimingVersion.attendance_time_id == attendance_time_id)
+        .order_by(StaffShiftTimingVersion.effective_from.desc())
+    ).all()
+    return [_timing_version_response(session, version) for version in versions]
+
+
+@attendance_time_router.post(
+    "/{attendance_time_id}/timing-versions",
+    response_model=StaffShiftTimingVersionResponse,
+)
+def create_timing_version(
+    attendance_time_id: int,
+    timing: StaffShiftTimingVersionCreate,
+    user: Annotated[User, Depends(require_permission("setup_timings", "edit"))],
+    session: Session = Depends(get_session),
+):
+    if not session.get(AttendanceTime, attendance_time_id):
+        raise HTTPException(status_code=404, detail="Attendance Time not found")
+    validate_timing_range(timing.start_time, timing.end_time)
+    version = StaffShiftTimingVersion(
+        attendance_time_id=attendance_time_id,
+        start_time=timing.start_time,
+        end_time=timing.end_time,
+        effective_from=timing.effective_from,
+        created_by=user.id,
+    )
+    session.add(version)
+    try:
+        session.commit()
+        session.refresh(version)
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A timing version already exists for this shift and effective date.",
+        )
+    return _timing_version_response(session, version)
+
+
+@attendance_time_router.get(
+    "/{attendance_time_id}/timing-version",
+    response_model=StaffShiftTimingVersionResponse,
+)
+def get_timing_version_for_date(
+    attendance_time_id: int,
+    current_user: Annotated[User, Depends(require_authenticated())],
+    for_date: date = Query(...),
+    session: Session = Depends(get_session),
+):
+    version = session.exec(
+        select(StaffShiftTimingVersion)
+        .where(
+            StaffShiftTimingVersion.attendance_time_id == attendance_time_id,
+            StaffShiftTimingVersion.effective_from <= for_date,
+        )
+        .order_by(StaffShiftTimingVersion.effective_from.desc())
+    ).first()
+    if not version:
+        raise HTTPException(status_code=404, detail="No timing version applies to this date")
+    return _timing_version_response(session, version)
 
 
 @attendance_time_router.get("/", response_model=dict)

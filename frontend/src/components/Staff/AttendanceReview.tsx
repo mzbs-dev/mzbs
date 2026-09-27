@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { CalendarDays, LoaderCircle } from "lucide-react";
+import { CalendarDays, LoaderCircle, LockKeyhole } from "lucide-react";
 import { toast } from "sonner";
 import { useRole } from "@/context/RoleContext";
 import {
@@ -26,7 +26,17 @@ import {
 import { Button } from "@/components/ui/button";
 
 type FinalStatus = "PRESENT" | "LATE" | "ABSENT" | "LEAVE";
+type AttendanceDraft = {
+  final_status: FinalStatus;
+  final_remarks: string;
+  arrival_time: string;
+  departure_time: string;
+};
+type RowFilter = "pending" | "finalized" | "all";
 const FINAL_STATUSES: FinalStatus[] = ["PRESENT", "LATE", "ABSENT", "LEAVE"];
+
+const getRowKey = (row: AttendanceReviewRow) =>
+  `${row.staff_id}-${row.attendance_time_id ?? "none"}`;
 
 const statusStyles: Record<FinalStatus | "PENDING", string> = {
   PRESENT: "bg-primary/10 text-primary border-primary/20 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800",
@@ -38,7 +48,7 @@ const statusStyles: Record<FinalStatus | "PENDING", string> = {
 
 function StatusBadge({ status }: { status: FinalStatus | null }) {
   const key = status ?? "PENDING";
-  const label = status ?? "Pending / Not Submitted";
+  const label = status ?? "Pending";
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusStyles[key]}`}>
       {label}
@@ -49,14 +59,17 @@ function StatusBadge({ status }: { status: FinalStatus | null }) {
 export default function AttendanceReview() {
   const { permissions } = useRole();
   const canFinalize = permissions?.attendance_review?.add ?? false;
-  const canEdit = permissions?.attendance_review?.edit ?? false;
-  const canDelete = permissions?.attendance_review?.delete ?? false;
 
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [timings, setTimings] = useState<Array<{ attendance_time_id: number; attendance_time: string }>>([]);
   const [selectedTimingId, setSelectedTimingId] = useState<number | null>(null);
   const [rows, setRows] = useState<AttendanceReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rowFilter, setRowFilter] = useState<RowFilter>("pending");
+  const [arrivalDefault, setArrivalDefault] = useState("");
+  const [departureDefault, setDepartureDefault] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, AttendanceDraft>>({});
+  const [batchErrors, setBatchErrors] = useState<Record<string, string>>({});
 
   // Modal state
   const [editingRow, setEditingRow] = useState<AttendanceReviewRow | null>(null);
@@ -65,6 +78,10 @@ export default function AttendanceReview() {
   const [modalArrivalTime, setModalArrivalTime] = useState("");
   const [modalDepartureTime, setModalDepartureTime] = useState("");
   const [saving, setSaving] = useState(false);
+  const [finalizingBatch, setFinalizingBatch] = useState(false);
+  const [selectedYear, selectedMonth, selectedDay] = selectedDate.split("-").map(Number);
+  const selectedWeekday = new Date(selectedYear, selectedMonth - 1, selectedDay)
+    .toLocaleDateString(undefined, { weekday: "long" });
 
   useEffect(() => {
     void (async () => {
@@ -77,11 +94,44 @@ export default function AttendanceReview() {
             attendance_time: it.attendance_time,
           }))
         );
+        if (items.length > 0) {
+          setSelectedTimingId((current) => current ?? items[0].attendance_time_id);
+        }
       } catch {
         // Non-fatal — filter just stays empty
       }
     })();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setArrivalDefault("");
+    setDepartureDefault("");
+    if (selectedTimingId == null) return;
+
+    void AttendanceTimeAPI.getTimingVersionForDate(selectedTimingId, selectedDate)
+      .then((timing) => {
+        if (cancelled) return;
+        setArrivalDefault(timing.start_time?.slice(0, 5) ?? "");
+        setDepartureDefault(timing.end_time?.slice(0, 5) ?? "");
+      })
+      .catch(async () => {
+        try {
+          const { data } = await AttendanceTimeAPI.getShiftConfig(selectedTimingId);
+          if (cancelled) return;
+          setArrivalDefault(data.expected_arrival_time?.slice(0, 5) ?? "");
+          setDepartureDefault(data.expected_departure_time?.slice(0, 5) ?? "");
+        } catch {
+          if (cancelled) return;
+          setArrivalDefault("");
+          setDepartureDefault("");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate, selectedTimingId]);
 
   const loadRows = useCallback(async () => {
     setLoading(true);
@@ -103,8 +153,8 @@ export default function AttendanceReview() {
     setEditingRow(row);
     setModalStatus((row.final_status as FinalStatus) || "");
     setModalRemarks(row.final_remarks ?? "");
-    setModalArrivalTime(row.arrival_time ?? "");
-    setModalDepartureTime(row.departure_time ?? "");
+    setModalArrivalTime(row.arrival_time?.slice(0, 5) ?? "");
+    setModalDepartureTime(row.departure_time?.slice(0, 5) ?? "");
   };
 
   const closeModal = () => {
@@ -167,6 +217,126 @@ export default function AttendanceReview() {
     }
   };
 
+  const pendingRows = rows.filter((row) => !row.is_finalized);
+  const finalizedRows = rows.filter((row) => row.is_finalized);
+  const draftedCount = pendingRows.filter((row) => drafts[getRowKey(row)]).length;
+  const visibleRows = rows.filter((row) => {
+    if (rowFilter === "pending") return !row.is_finalized;
+    if (rowFilter === "finalized") return row.is_finalized;
+    return true;
+  });
+
+  const handleScopeChange = (changeScope: () => void) => {
+    if (Object.keys(drafts).length > 0 && !window.confirm("Discard unsaved attendance edits and change the date or shift?")) {
+      return;
+    }
+    setDrafts({});
+    setBatchErrors({});
+    changeScope();
+  };
+
+  const handleApplyDefaults = () => {
+    if (selectedTimingId == null) {
+      toast.error("Select a shift before applying defaults.");
+      return;
+    }
+    if (!arrivalDefault || !departureDefault) {
+      toast.error("Enter the default arrival and departure times.");
+      return;
+    }
+    const applicableRows = pendingRows.filter(
+      (row) => row.attendance_time_id === selectedTimingId
+    );
+    if (applicableRows.length === 0) {
+      toast.error("There are no pending staff rows for this shift.");
+      return;
+    }
+    if (Object.keys(drafts).length > 0 && !window.confirm("Replace the current draft with these defaults?")) {
+      return;
+    }
+
+    const nextDrafts: Record<string, AttendanceDraft> = {};
+    for (const row of applicableRows) {
+      nextDrafts[getRowKey(row)] = {
+        final_status: "PRESENT",
+        final_remarks: row.final_remarks ?? "",
+        arrival_time: arrivalDefault,
+        departure_time: departureDefault,
+      };
+    }
+    setDrafts(nextDrafts);
+    setBatchErrors({});
+    toast.success(`Defaults applied to ${applicableRows.length} pending staff row(s).`);
+  };
+
+  const updateDraft = (row: AttendanceReviewRow, updates: Partial<AttendanceDraft>) => {
+    const key = getRowKey(row);
+    setDrafts((current) => ({ ...current, [key]: { ...current[key], ...updates } }));
+    setBatchErrors((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const handleFinalizeBatch = async () => {
+    if (selectedTimingId == null) {
+      toast.error("Select a shift before finalizing.");
+      return;
+    }
+    const batchRows = pendingRows.filter((row) => drafts[getRowKey(row)]);
+    if (batchRows.length === 0) {
+      toast.error("Apply defaults to pending staff before finalizing.");
+      return;
+    }
+    if (!window.confirm(`Submit ${batchRows.length} reviewed attendance row(s)? Valid rows will be saved and locked; invalid rows will remain pending.`)) {
+      return;
+    }
+
+    setFinalizingBatch(true);
+    try {
+      const result = await AttendanceReviewAPI.batchFinalize({
+        attendance_date: selectedDate,
+        attendance_time_id: selectedTimingId,
+        records: batchRows.map((row) => {
+          const draft = drafts[getRowKey(row)];
+          return {
+            staff_id: row.staff_id,
+            final_status: draft.final_status,
+            final_remarks: draft.final_remarks || undefined,
+            arrival_time: draft.arrival_time || undefined,
+            departure_time: draft.departure_time || undefined,
+          };
+        }),
+      });
+
+      const successfulKeys = new Set<string>();
+      const errors: Record<string, string> = {};
+      for (const rowResult of result.results) {
+        const row = batchRows.find((item) => item.staff_id === rowResult.staff_id);
+        if (!row) continue;
+        const key = getRowKey(row);
+        if (rowResult.finalized) successfulKeys.add(key);
+        else errors[key] = rowResult.error ?? "Unable to finalize this row.";
+      }
+      setDrafts((current) => Object.fromEntries(
+        Object.entries(current).filter(([key]) => !successfulKeys.has(key))
+      ));
+      setBatchErrors(errors);
+      if (result.failed_count > 0) {
+        toast.error(`${result.finalized_count} finalized; ${result.failed_count} row(s) need correction.`);
+      } else {
+        toast.success(`${result.finalized_count} attendance record(s) finalized.`);
+      }
+      await loadRows();
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : "Batch finalization failed. Your draft is unchanged.");
+    } finally {
+      setFinalizingBatch(false);
+    }
+  };
+
   return (
     <div className="space-y-4 p-4 md:p-6">
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -177,26 +347,26 @@ export default function AttendanceReview() {
               Review staff self-reports and assign official attendance status.
             </p>
           </div>
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+          <div className="grid min-w-0 grid-cols-1 gap-2 min-[520px]:grid-cols-[minmax(0,1fr)_minmax(150px,180px)]">
+            <label className="flex min-w-0 items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
               <input
                 type="date"
                 value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent outline-none"
+                onChange={(e) => handleScopeChange(() => setSelectedDate(e.target.value))}
+                className="min-w-0 flex-1 bg-transparent outline-none"
               />
+              <span className="whitespace-nowrap text-xs text-muted-foreground">{selectedWeekday}</span>
             </label>
 
             <Select
-              value={selectedTimingId != null ? String(selectedTimingId) : "all"}
-              onValueChange={(v) => setSelectedTimingId(v === "all" ? null : Number(v))}
+              value={selectedTimingId != null ? String(selectedTimingId) : undefined}
+              onValueChange={(v) => handleScopeChange(() => setSelectedTimingId(Number(v)))}
             >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All shifts" />
+              <SelectTrigger className="w-full min-w-0">
+                <SelectValue placeholder="Select shift" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All shifts</SelectItem>
                 {timings.map((t) => (
                   <SelectItem key={t.attendance_time_id} value={String(t.attendance_time_id)}>
                     {t.attendance_time}
@@ -204,6 +374,76 @@ export default function AttendanceReview() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="grid min-w-0 grid-cols-1 gap-3 min-[520px]:grid-cols-2">
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">Default actual arrival</span>
+              <input
+                type="time"
+                value={selectedTimingId == null ? "" : arrivalDefault}
+                onChange={(e) => setArrivalDefault(e.target.value)}
+                disabled={selectedTimingId == null}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">Default actual departure</span>
+              <input
+                type="time"
+                value={selectedTimingId == null ? "" : departureDefault}
+                onChange={(e) => setDepartureDefault(e.target.value)}
+                disabled={selectedTimingId == null}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+              />
+            </label>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <div className="inline-flex rounded-md border border-border p-1" role="group" aria-label="Attendance status filter">
+                {([
+                  ["pending", "Pending", pendingRows.length],
+                  ["finalized", "Finalized", finalizedRows.length],
+                  ["all", "All", rows.length],
+                ] as const).map(([filter, label, count]) => (
+                  <Button
+                    key={filter}
+                    type="button"
+                    size="sm"
+                    variant={rowFilter === filter ? "secondary" : "ghost"}
+                    aria-pressed={rowFilter === filter}
+                    onClick={() => setRowFilter(filter)}
+                  >
+                    {label} <span className="ml-1 tabular-nums">{count}</span>
+                  </Button>
+                ))}
+              </div>
+              {canFinalize && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading || selectedTimingId == null || pendingRows.length === 0}
+                onClick={handleApplyDefaults}
+              >
+                Apply Defaults
+              </Button>
+              )}
+              {canFinalize && draftedCount > 0 && (
+                <Button
+                  type="button"
+                  disabled={finalizingBatch || loading}
+                  onClick={() => void handleFinalizeBatch()}
+                >
+                  {finalizingBatch ? <LoaderCircle className="h-4 w-4 animate-spin" /> : `Confirm / Finalize ${draftedCount}`}
+                </Button>
+              )}
+            </div>
+            {draftedCount > 0 && (
+              <p className="text-sm text-muted-foreground" aria-live="polite">
+                {draftedCount} pending row(s) staged for review.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -215,9 +455,9 @@ export default function AttendanceReview() {
               <th className="px-4 py-3">Staff</th>
               <th className="px-4 py-3">Shift</th>
               <th className="px-4 py-3">Self-Attendance</th>
+              <th className="px-4 py-3">Confirmed</th>
               <th className="px-4 py-3">Arrival</th>
               <th className="px-4 py-3">Departure</th>
-              <th className="px-4 py-3">Confirmed</th>
               <th className="px-4 py-3">Remarks</th>
               <th className="px-4 py-3 text-center">Action</th>
             </tr>
@@ -232,15 +472,18 @@ export default function AttendanceReview() {
                   </div>
                 </td>
               </tr>
-            ) : rows.length === 0 ? (
+            ) : visibleRows.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                  No staff/shift rows found for this date.
+                  {rows.length === 0
+                    ? "No staff/shift rows found for this date."
+                    : `No ${rowFilter} attendance rows for this date and shift.`}
                 </td>
               </tr>
             ) : (
-              rows.map((row) => {
-                const rowKey = `${row.staff_id}-${row.attendance_time_id ?? "none"}`;
+              visibleRows.map((row) => {
+                const rowKey = getRowKey(row);
+                const draft = drafts[rowKey];
                 const selfLabel =
                   row.self_availability === "AVAILABLE"
                     ? "Available"
@@ -250,40 +493,91 @@ export default function AttendanceReview() {
                 return (
                   <tr key={rowKey} className="border-t border-border">
                     <td className="px-4 py-3 font-medium">{row.staff_name}</td>
-                    <td className="px-4 py-3">{row.attendance_time_name ?? "General / No Shift Assigned"}</td>
+                    <td className="px-4 py-3">
+                      <div>{row.attendance_time_name ?? "General / No Shift Assigned"}</div>
+                    </td>
                     <td className="px-4 py-3">{selfLabel}</td>
                     <td className="px-4 py-3">
-                      {row.arrival_time ?? "—"}
-                      {row.is_likely_late && (
+                      {draft ? (
+                        <Select
+                          value={draft.final_status}
+                          onValueChange={(value) => {
+                            const status = value as FinalStatus;
+                            updateDraft(row, {
+                              final_status: status,
+                              ...(status === "ABSENT" || status === "LEAVE"
+                                ? { arrival_time: "", departure_time: "" }
+                                : {}),
+                            });
+                          }}
+                        >
+                          <SelectTrigger className="w-[130px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FINAL_STATUSES.map((status) => (
+                              <SelectItem key={status} value={status}>{status}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <StatusBadge status={row.final_status as FinalStatus | null} />
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {draft ? (
+                        <input
+                          aria-label={`${row.staff_name} arrival time`}
+                          type="time"
+                          value={draft.arrival_time}
+                          onChange={(e) => updateDraft(row, { arrival_time: e.target.value })}
+                          className="h-9 w-32 rounded-md border border-input bg-background px-2"
+                        />
+                      ) : row.arrival_time?.slice(0, 5) ?? "—"}
+                      {!draft && row.is_likely_late && (
                         <span className="ml-2 inline-block rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs px-2 py-0.5">
                           Reported later than expected
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3">{row.departure_time ?? "—"}</td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={row.final_status as FinalStatus | null} />
+                      {draft ? (
+                        <input
+                          aria-label={`${row.staff_name} departure time`}
+                          type="time"
+                          value={draft.departure_time}
+                          onChange={(e) => updateDraft(row, { departure_time: e.target.value })}
+                          className="h-9 w-32 rounded-md border border-input bg-background px-2"
+                        />
+                      ) : row.departure_time?.slice(0, 5) ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground max-w-[220px]">
                       {row.self_remarks && <div>Self: {row.self_remarks}</div>}
-                      {row.final_remarks && <div>Admin: {row.final_remarks}</div>}
+                      {(draft?.final_remarks || row.final_remarks) && <div>Admin: {draft?.final_remarks || row.final_remarks}</div>}
                       {!row.self_remarks && !row.final_remarks && "—"}
                     </td>
                     <td className="px-4 py-3 text-center space-x-2 whitespace-nowrap">
-                      {!row.is_finalized && canFinalize && (
+                      {batchErrors[rowKey] && (
+                        <div className="mb-1 max-w-48 whitespace-normal text-left text-xs text-destructive">
+                          {batchErrors[rowKey]}
+                        </div>
+                      )}
+                      {!row.is_finalized && !draft && canFinalize && row.attendance_time_id != null && (
                         <Button size="sm" onClick={() => openModal(row)}>
                           Finalize
                         </Button>
                       )}
-                      {row.is_finalized && canEdit && (
-                        <Button size="sm" variant="outline" onClick={() => openModal(row)}>
-                          Edit
-                        </Button>
+                      {!row.is_finalized && row.attendance_time_id == null && (
+                        <span className="text-xs text-muted-foreground">No shift assigned</span>
                       )}
-                      {row.is_finalized && canDelete && (
-                        <Button size="sm" variant="destructive" onClick={() => handleDelete(row)}>
-                          Delete
-                        </Button>
+                      {!row.is_finalized && draft && (
+                        <span className="text-xs font-medium text-muted-foreground">In review</span>
+                      )}
+                      {row.is_finalized && (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
+                          <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
+                          Locked
+                        </span>
                       )}
                     </td>
                   </tr>

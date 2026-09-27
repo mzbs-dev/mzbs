@@ -1,3 +1,5 @@
+from schemas.attendance_value_model import AttendanceValue
+from schemas.staff_shift_timing_model import StaffShiftTimingVersion
 from datetime import date, datetime, time
 from typing import List, Optional
 from sqlmodel import Field, SQLModel
@@ -10,6 +12,10 @@ class StaffAttendance(SQLModel, table=True):
     staff_attendance_id: Optional[int] = Field(default=None, primary_key=True)
     staff_id: int = Field(foreign_key="teachernames.teacher_name_id", nullable=False, index=True)
     attendance_time_id: Optional[int] = Field(default=None, foreign_key="attendancetime.attendance_time_id", index=True, nullable=True)
+    schedule_id: Optional[int] = Field(default=None, foreign_key="staff_shift_timing_version.schedule_id", index=True, nullable=True)
+    expected_start_time_snapshot: Optional[time] = Field(default=None, nullable=True)
+    expected_end_time_snapshot: Optional[time] = Field(default=None, nullable=True)
+    schedule_is_legacy: bool = Field(default=False, nullable=False)
     attendance_date: date = Field(default_factory=date.today, index=True)
 
     # DEPRECATED (kept nullable for rollback reference only — migration 0007
@@ -97,12 +103,17 @@ class StaffAttendanceResponse(SQLModel):
     staff_attendance_id: int
     staff_id: int
     attendance_date: date
+    weekday: str = ""
     attendance_status: str
     staff_name: str
     joining_date: datetime
     total_stay: str
     attendance_time_id: Optional[int]
     attendance_time: Optional[str]
+    schedule_id: Optional[int] = None
+    expected_start_time: Optional[time] = None
+    expected_end_time: Optional[time] = None
+    schedule_is_legacy: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -124,7 +135,14 @@ class AttendanceReviewRow(SQLModel):
     staff_attendance_id: Optional[int] = None
     attendance_time_id: Optional[int] = None
     attendance_time_name: Optional[str] = None
+    schedule_id: Optional[int] = None
+    expected_start_time: Optional[time] = None
+    expected_end_time: Optional[time] = None
+    schedule_is_legacy: bool = False
     attendance_date: date
+    weekday: str = ""
+    is_holiday: bool = False
+    holiday_label: Optional[str] = None
     self_availability: Optional[str] = None
     self_remarks: Optional[str] = None
     arrival_time: Optional[time] = None
@@ -145,6 +163,48 @@ class AttendanceReviewFinalizePayload(SQLModel):
     departure_time: Optional[time] = None
 
 
+class AttendanceReviewFinalizeAllPayload(SQLModel):
+    attendance_date: date
+    attendance_time_id: Optional[int] = None
+
+
+class AttendanceReviewFinalizeAllResponse(SQLModel):
+    attendance_date: date
+    attendance_time_id: Optional[int] = None
+    finalized_count: int
+    already_finalized_count: int
+    incomplete_staff: List[str] = Field(default_factory=list)
+
+
+class AttendanceReviewBatchRowPayload(SQLModel):
+    staff_id: int
+    final_status: str
+    final_remarks: Optional[str] = None
+    arrival_time: Optional[time] = None
+    departure_time: Optional[time] = None
+
+
+class AttendanceReviewBatchFinalizePayload(SQLModel):
+    attendance_date: date
+    attendance_time_id: int
+    records: List[AttendanceReviewBatchRowPayload]
+
+
+class AttendanceReviewBatchRowResult(SQLModel):
+    staff_id: int
+    staff_name: Optional[str] = None
+    finalized: bool
+    error: Optional[str] = None
+
+
+class AttendanceReviewBatchFinalizeResponse(SQLModel):
+    attendance_date: date
+    attendance_time_id: int
+    finalized_count: int
+    failed_count: int
+    results: List[AttendanceReviewBatchRowResult]
+
+
 class AttendanceReviewEditPayload(SQLModel):
     attendance_date: date
     attendance_time_id: Optional[int] = None
@@ -160,8 +220,15 @@ class AttendanceReviewHistoryRow(SQLModel):
     staff_id: int
     staff_name: str
     attendance_date: date
+    weekday: str = ""
+    is_holiday: bool = False
+    holiday_label: Optional[str] = None
     attendance_time_id: Optional[int] = None
     attendance_time_name: Optional[str] = None
+    schedule_id: Optional[int] = None
+    expected_start_time: Optional[time] = None
+    expected_end_time: Optional[time] = None
+    schedule_is_legacy: bool = False
     final_status: Optional[str] = None
     final_remarks: Optional[str] = None
     self_availability: Optional[str] = None
@@ -183,7 +250,12 @@ class SelfAttendanceEntry(SQLModel):
     staff_attendance_id: Optional[int] = None  # null if not yet submitted for this shift today
     attendance_time_id: Optional[int] = None
     attendance_time_name: Optional[str] = None  # "General / No Shift Assigned" for the fallback case
+    schedule_id: Optional[int] = None
+    expected_start_time: Optional[time] = None
+    expected_end_time: Optional[time] = None
+    schedule_is_legacy: bool = False
     attendance_date: date
+    weekday: str = ""
     self_availability: Optional[str] = None
     self_remarks: Optional[str] = None
     arrival_time: Optional[time] = None
@@ -214,10 +286,17 @@ class SelfAttendanceUpdate(SQLModel):
 
 
 class SelfAttendanceHistoryRow(SQLModel):
-    staff_attendance_id: int
+    staff_attendance_id: Optional[int] = None
+    is_calendar_holiday: bool = False
+    holiday_label: Optional[str] = None
     attendance_date: date
+    weekday: str = ""
     attendance_time_id: Optional[int]
     attendance_time_name: Optional[str] = None
+    schedule_id: Optional[int] = None
+    expected_start_time: Optional[time] = None
+    expected_end_time: Optional[time] = None
+    schedule_is_legacy: bool = False
     final_status: Optional[str] = None
     final_remarks: Optional[str] = None
     self_availability: Optional[str] = None

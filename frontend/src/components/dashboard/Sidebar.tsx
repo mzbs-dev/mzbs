@@ -360,6 +360,12 @@ const menuList: MenuItem[] = [
         icon: GoDotFill,
         path: "/dashboard/setup/appearance",
       },
+      {
+        id: 25,
+        name: "Attendance Calendar",
+        icon: GoDotFill,
+        path: "/dashboard/setup/attendance_policy",
+      },
     ],
   },
   { id: 5, name: "Logout", icon: LogOut, path: "/login" },

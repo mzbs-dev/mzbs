@@ -14,9 +14,12 @@ from schemas.staff_attendance_model import (
 )
 from schemas.staff_shift_assignment_model import StaffShiftAssignment
 from schemas.attendance_time_model import AttendanceTime
+from schemas.staff_shift_timing_model import StaffShiftTimingVersion
 from schemas.teacher_names_model import TeacherNames
 from user.user_crud import require_permission, get_current_user
 from user.user_models import User
+from services.attendance_calendar import list_attendance_holidays
+from services.staff_shift_timing import apply_shift_timing
 
 self_attendance_router = APIRouter(
     prefix="/self-attendance",
@@ -69,13 +72,36 @@ def _shift_name(session: Session, attendance_time_id: Optional[int]) -> Optional
     return shift.attendance_time if shift else None
 
 
+def _timing_for_date(
+    session: Session,
+    attendance_time_id: Optional[int],
+    attendance_date: date,
+) -> Optional[StaffShiftTimingVersion]:
+    if attendance_time_id is None:
+        return None
+    return session.exec(
+        select(StaffShiftTimingVersion)
+        .where(
+            StaffShiftTimingVersion.attendance_time_id == attendance_time_id,
+            StaffShiftTimingVersion.effective_from <= attendance_date,
+        )
+        .order_by(StaffShiftTimingVersion.effective_from.desc())
+    ).first()
+
+
 def _to_entry(session: Session, record: Optional[StaffAttendance], attendance_time_id: Optional[int], today: date) -> SelfAttendanceEntry:
     if record:
+        legacy_timing = _timing_for_date(session, record.attendance_time_id, record.attendance_date)
         return SelfAttendanceEntry(
             staff_attendance_id=record.staff_attendance_id,
             attendance_time_id=record.attendance_time_id,
             attendance_time_name=_shift_name(session, record.attendance_time_id),
+            schedule_id=record.schedule_id,
+            expected_start_time=record.expected_start_time_snapshot or (legacy_timing.start_time if legacy_timing else None),
+            expected_end_time=record.expected_end_time_snapshot or (legacy_timing.end_time if legacy_timing else None),
+            schedule_is_legacy=record.schedule_is_legacy,
             attendance_date=record.attendance_date,
+            weekday=record.attendance_date.strftime("%A"),
             self_availability=record.self_availability,
             self_remarks=record.self_remarks,
             arrival_time=record.arrival_time,
@@ -86,11 +112,27 @@ def _to_entry(session: Session, record: Optional[StaffAttendance], attendance_ti
             attendance_source=record.attendance_source,
             marked_by_user_id=record.marked_by_user_id,
         )
+    timing = None
+    if attendance_time_id is not None:
+        timing = session.exec(
+            select(StaffShiftTimingVersion)
+            .where(
+                StaffShiftTimingVersion.attendance_time_id == attendance_time_id,
+                StaffShiftTimingVersion.effective_from <= today,
+            )
+            .order_by(StaffShiftTimingVersion.effective_from.desc())
+        ).first()
+
     return SelfAttendanceEntry(
         staff_attendance_id=None,
         attendance_time_id=attendance_time_id,
         attendance_time_name=_shift_name(session, attendance_time_id),
+        schedule_id=timing.schedule_id if timing else None,
+        expected_start_time=timing.start_time if timing else None,
+        expected_end_time=timing.end_time if timing else None,
+        schedule_is_legacy=False,
         attendance_date=today,
+        weekday=today.strftime("%A"),
         is_finalized=False,
     )
 
@@ -102,12 +144,10 @@ def _validate_shift_for_staff(session: Session, staff_id: int, attendance_time_i
     assigned_ids = _get_assigned_shift_ids(session, staff_id)
 
     if not assigned_ids:
-        if attendance_time_id is not None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This staff member has no assigned shifts — attendance_time_id must be omitted/null.",
-            )
-        return
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This staff member has no assigned shifts.",
+        )
 
     if attendance_time_id not in assigned_ids:
         raise HTTPException(
@@ -198,6 +238,7 @@ def submit_today(
         marked_by_user_id=current_user.id,
         attendance_source="SELF",
     )
+    apply_shift_timing(session, record, payload.attendance_time_id, today)
     session.add(record)
     session.commit()
     session.refresh(record)
@@ -268,12 +309,25 @@ def get_history(
         .order_by(StaffAttendance.attendance_date.desc())
     ).all()
 
-    return [
+    history_rows = [
         SelfAttendanceHistoryRow(
             staff_attendance_id=r.staff_attendance_id,
             attendance_date=r.attendance_date,
+            weekday=r.attendance_date.strftime("%A"),
             attendance_time_id=r.attendance_time_id,
             attendance_time_name=_shift_name(session, r.attendance_time_id),
+            schedule_id=r.schedule_id,
+            expected_start_time=r.expected_start_time_snapshot or (
+                _timing_for_date(session, r.attendance_time_id, r.attendance_date).start_time
+                if _timing_for_date(session, r.attendance_time_id, r.attendance_date)
+                else None
+            ),
+            expected_end_time=r.expected_end_time_snapshot or (
+                _timing_for_date(session, r.attendance_time_id, r.attendance_date).end_time
+                if _timing_for_date(session, r.attendance_time_id, r.attendance_date)
+                else None
+            ),
+            schedule_is_legacy=r.schedule_is_legacy,
             final_status=r.final_status,
             final_remarks=r.final_remarks,
             self_availability=r.self_availability,
@@ -283,6 +337,29 @@ def get_history(
         )
         for r in records
     ]
+    history_rows.extend(
+        SelfAttendanceHistoryRow(
+            staff_attendance_id=None,
+            is_calendar_holiday=True,
+            holiday_label=holiday["label"],
+            attendance_date=holiday["attendance_date"],
+            weekday=holiday["weekday"],
+            attendance_time_id=None,
+            attendance_time_name=None,
+            final_status="HOLIDAY",
+            final_remarks=holiday["label"],
+        )
+        for holiday in list_attendance_holidays(
+            session,
+            staff.created_at.date(),
+            date.today(),
+        )
+    )
+    return sorted(
+        history_rows,
+        key=lambda row: (row.attendance_date, not row.is_calendar_holiday),
+        reverse=True,
+    )
 
 # ============================================================================
 # POST /self-attendance/for-staff/{staff_id} — ADMIN-ASSISTED
@@ -329,6 +406,8 @@ def submit_for_staff(
         existing.marked_by_user_id = current_user.id
         # attendance_source intentionally left unchanged — origin is set once.
         existing.updated_at = datetime.utcnow()
+        if existing.schedule_id is None:
+            apply_shift_timing(session, existing, payload.attendance_time_id, today)
         session.add(existing)
         session.commit()
         session.refresh(existing)
@@ -346,6 +425,7 @@ def submit_for_staff(
         marked_by_user_id=current_user.id,
         attendance_source="ADMIN_ASSISTED",
     )
+    apply_shift_timing(session, record, payload.attendance_time_id, today)
     session.add(record)
     session.commit()
     session.refresh(record)

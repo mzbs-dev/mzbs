@@ -5,6 +5,17 @@ import { ClassTiming, CreateTiming } from "@/models/classTiming/classTiming";
 
 // eslint-disable-next-line @typescript-eslint/no-namespace 
 export namespace AttendanceTimeAPI {
+  export interface TimingVersion {
+    schedule_id: number;
+    attendance_time_id: number;
+    attendance_time: string;
+    start_time: string;
+    end_time: string;
+    effective_from: string;
+    created_at: string;
+    is_migration_baseline: boolean;
+  }
+
   export const Get = async () => {
     try {
       
@@ -51,6 +62,32 @@ export namespace AttendanceTimeAPI {
       console.error("API Error:", error);
       throw error;
     }
+  };
+
+  export const getTimingVersions = async (attendanceTimeId: number) => {
+    const response = await AxiosInstance.get<TimingVersion[]>(
+      `/attendance_time/${attendanceTimeId}/timing-versions`
+    );
+    return response.data;
+  };
+
+  export const getTimingVersionForDate = async (attendanceTimeId: number, forDate: string) => {
+    const response = await AxiosInstance.get<TimingVersion>(
+      `/attendance_time/${attendanceTimeId}/timing-version`,
+      { params: { for_date: forDate } }
+    );
+    return response.data;
+  };
+
+  export const createTimingVersion = async (
+    attendanceTimeId: number,
+    data: { start_time: string; end_time: string; effective_from: string }
+  ) => {
+    const response = await AxiosInstance.post<TimingVersion>(
+      `/attendance_time/${attendanceTimeId}/timing-versions`,
+      data
+    );
+    return response.data;
   };
 
   export interface ShiftConfig {

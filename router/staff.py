@@ -2,7 +2,7 @@
 from datetime import date, datetime, timedelta
 from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
 
 from db import get_session
@@ -20,6 +20,7 @@ from schemas.staff_attendance_model import (
 from schemas.teacher_names_model import TeacherNames
 from schemas.attendance_time_model import AttendanceTime
 from schemas.attendance_time_shift_config_model import AttendanceTimeShiftConfig
+from services.staff_shift_timing import apply_shift_timing
 from user.user_crud import require_permission
 from user.user_models import User
 from utils.logging import logger
@@ -181,6 +182,11 @@ def create_staff_attendance_bulk(
             )
         ).first()
         if existing:
+            if existing.is_finalized:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Finalized attendance cannot be changed.",
+                )
             if existing.attendance_status != record.attendance_status:
                 existing.attendance_status = record.attendance_status
                 existing.updated_at = datetime.utcnow()
@@ -190,14 +196,14 @@ def create_staff_attendance_bulk(
                 skipped_count += 1
             continue
 
-        session.add(
-            StaffAttendance(
-                staff_id=record.staff_id,
-                attendance_date=payload.attendance_date,
-                attendance_time_id=payload.attendance_time_id,
-                attendance_status=record.attendance_status,
-            )
+        created = StaffAttendance(
+            staff_id=record.staff_id,
+            attendance_date=payload.attendance_date,
+            attendance_time_id=payload.attendance_time_id,
+            attendance_status=record.attendance_status,
         )
+        apply_shift_timing(session, created, payload.attendance_time_id, payload.attendance_date)
+        session.add(created)
         created_count += 1
 
     session.commit()
@@ -226,6 +232,10 @@ def create_staff_attendance_bulk(
                 total_stay=_calculate_total_stay(created_at),
                 attendance_time_id=item.attendance_time_id,
                 attendance_time=attendance_time_name,
+                schedule_id=item.schedule_id,
+                expected_start_time=item.expected_start_time_snapshot,
+                expected_end_time=item.expected_end_time_snapshot,
+                schedule_is_legacy=item.schedule_is_legacy,
                 created_at=item.created_at,
                 updated_at=item.updated_at,
             )
@@ -294,6 +304,8 @@ def update_staff_attendance(
     record = session.get(StaffAttendance, attendance_id)
     if not record:
         raise HTTPException(status_code=404, detail="Attendance record not found")
+    if record.is_finalized:
+        raise HTTPException(status_code=409, detail="Finalized attendance cannot be changed.")
     if payload.attendance_status is not None:
         if payload.attendance_status not in VALID_STATUSES:
             raise HTTPException(status_code=400, detail=f"Invalid attendance status: {payload.attendance_status}")
@@ -302,6 +314,8 @@ def update_staff_attendance(
         record.attendance_date = payload.attendance_date
     if getattr(payload, "attendance_time_id", None) is not None:
         record.attendance_time_id = payload.attendance_time_id
+    if record.schedule_is_legacy or payload.attendance_date is not None or payload.attendance_time_id is not None:
+        apply_shift_timing(session, record, record.attendance_time_id, record.attendance_date)
     record.updated_at = datetime.utcnow()
     session.add(record)
     session.commit()
@@ -317,6 +331,11 @@ def update_staff_attendance(
         staff_name=teacher.teacher_name if teacher else "Unknown",
         joining_date=created_at,
         total_stay=_calculate_total_stay(created_at),
+        attendance_time=record.attendance_time_id and session.get(AttendanceTime, record.attendance_time_id).attendance_time,
+        schedule_id=record.schedule_id,
+        expected_start_time=record.expected_start_time_snapshot,
+        expected_end_time=record.expected_end_time_snapshot,
+        schedule_is_legacy=record.schedule_is_legacy,
         created_at=record.created_at,
         updated_at=record.updated_at,
     )
@@ -331,6 +350,8 @@ def delete_staff_attendance(
     record = session.get(StaffAttendance, attendance_id)
     if not record:
         raise HTTPException(status_code=404, detail="Attendance record not found")
+    if record.is_finalized:
+        raise HTTPException(status_code=409, detail="Finalized attendance cannot be deleted.")
     session.delete(record)
     session.commit()
     return {"message": "Attendance record deleted successfully"}

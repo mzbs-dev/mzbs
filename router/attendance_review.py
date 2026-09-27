@@ -2,22 +2,30 @@ from datetime import date, datetime
 from typing import Annotated, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from db import get_session
 from schemas.attendance_time_model import AttendanceTime
-from schemas.attendance_time_shift_config_model import AttendanceTimeShiftConfig
 from schemas.staff_attendance_model import (
     AttendanceReviewEditPayload,
+    AttendanceReviewBatchFinalizePayload,
+    AttendanceReviewBatchFinalizeResponse,
+    AttendanceReviewBatchRowResult,
+    AttendanceReviewFinalizeAllPayload,
+    AttendanceReviewFinalizeAllResponse,
     AttendanceReviewFinalizePayload,
     AttendanceReviewHistoryRow,
     AttendanceReviewRow,
     StaffAttendance,
 )
 from schemas.staff_shift_assignment_model import StaffShiftAssignment
+from schemas.staff_shift_timing_model import StaffShiftTimingVersion
 from schemas.teacher_names_model import TeacherNames
 from user.user_crud import require_permission
 from user.user_models import User
+from services.staff_shift_timing import apply_shift_timing
+from services.attendance_calendar import resolve_attendance_calendar
 
 attendance_review_router = APIRouter(
     prefix="/attendance-review",
@@ -35,22 +43,107 @@ def _shift_name(session: Session, attendance_time_id: Optional[int]) -> Optional
     return shift.attendance_time if shift else None
 
 
-def _compute_is_likely_late(session: Session, attendance_time_id: Optional[int], arrival_time) -> Optional[bool]:
-    if attendance_time_id is None or arrival_time is None:
+def _timing_for_date(
+    session: Session,
+    attendance_time_id: Optional[int],
+    attendance_date: date,
+) -> Optional[StaffShiftTimingVersion]:
+    if attendance_time_id is None:
         return None
-    config = session.get(AttendanceTimeShiftConfig, attendance_time_id)
-    if config is None or config.expected_arrival_time is None:
+    return session.exec(
+        select(StaffShiftTimingVersion)
+        .where(
+            StaffShiftTimingVersion.attendance_time_id == attendance_time_id,
+            StaffShiftTimingVersion.effective_from <= attendance_date,
+        )
+        .order_by(StaffShiftTimingVersion.effective_from.desc())
+    ).first()
+
+
+def _compute_is_likely_late(record: StaffAttendance) -> Optional[bool]:
+    arrival_time = record.arrival_time
+    if arrival_time is None:
         return None
-    return arrival_time > config.expected_arrival_time
+    if record.expected_start_time_snapshot is None:
+        return None
+    return arrival_time > record.expected_start_time_snapshot
 
 
 def _build_review_row(session: Session, record: StaffAttendance, staff_name: str) -> AttendanceReviewRow:
+    calendar = resolve_attendance_calendar(session, record.attendance_date)
+    legacy_timing = _timing_for_date(session, record.attendance_time_id, record.attendance_date)
+    expected_start_time = record.expected_start_time_snapshot or (
+        legacy_timing.start_time if legacy_timing else None
+    )
+    expected_end_time = record.expected_end_time_snapshot or (
+        legacy_timing.end_time if legacy_timing else None
+    )
     return AttendanceReviewRow(
         staff_id=record.staff_id,
         staff_name=staff_name,
         staff_attendance_id=record.staff_attendance_id,
         attendance_time_id=record.attendance_time_id,
         attendance_time_name=_shift_name(session, record.attendance_time_id),
+        schedule_id=record.schedule_id,
+        expected_start_time=expected_start_time,
+        expected_end_time=expected_end_time,
+        schedule_is_legacy=record.schedule_is_legacy,
+        attendance_date=record.attendance_date,
+        weekday=record.attendance_date.strftime("%A"),
+        is_holiday=calendar["is_holiday"],
+        holiday_label=calendar["label"],
+        self_availability=record.self_availability,
+        self_remarks=record.self_remarks,
+        arrival_time=record.arrival_time,
+        departure_time=record.departure_time,
+        final_status=record.final_status,
+        final_remarks=record.final_remarks,
+        is_finalized=record.is_finalized,
+        is_likely_late=(
+            record.arrival_time > expected_start_time
+            if record.arrival_time is not None and expected_start_time is not None
+            else None
+        ),
+        attendance_source=record.attendance_source,
+    )
+
+
+def _build_empty_review_row(
+    session: Session,
+    staff_id: int,
+    staff_name: str,
+    attendance_date: date,
+    attendance_time_id: Optional[int],
+) -> AttendanceReviewRow:
+    timing = _timing_for_date(session, attendance_time_id, attendance_date)
+    calendar = resolve_attendance_calendar(session, attendance_date)
+    return AttendanceReviewRow(
+        staff_id=staff_id,
+        staff_name=staff_name,
+        attendance_date=attendance_date,
+        attendance_time_id=attendance_time_id,
+        attendance_time_name=_shift_name(session, attendance_time_id),
+        schedule_id=timing.schedule_id if timing else None,
+        expected_start_time=timing.start_time if timing else None,
+        expected_end_time=timing.end_time if timing else None,
+        weekday=attendance_date.strftime("%A"),
+        is_holiday=calendar["is_holiday"],
+        holiday_label=calendar["label"],
+        is_finalized=False,
+    )
+    expected_end_time = record.expected_end_time_snapshot or (
+        legacy_timing.end_time if legacy_timing else None
+    )
+    return AttendanceReviewRow(
+        staff_id=record.staff_id,
+        staff_name=staff_name,
+        staff_attendance_id=record.staff_attendance_id,
+        attendance_time_id=record.attendance_time_id,
+        attendance_time_name=_shift_name(session, record.attendance_time_id),
+        schedule_id=record.schedule_id,
+        expected_start_time=expected_start_time,
+        expected_end_time=expected_end_time,
+        schedule_is_legacy=record.schedule_is_legacy,
         attendance_date=record.attendance_date,
         self_availability=record.self_availability,
         self_remarks=record.self_remarks,
@@ -59,14 +152,18 @@ def _build_review_row(session: Session, record: StaffAttendance, staff_name: str
         final_status=record.final_status,
         final_remarks=record.final_remarks,
         is_finalized=record.is_finalized,
-        is_likely_late=_compute_is_likely_late(session, record.attendance_time_id, record.arrival_time),
+        is_likely_late=(
+            record.arrival_time > expected_start_time
+            if record.arrival_time is not None and expected_start_time is not None
+            else None
+        ),
         attendance_source=record.attendance_source,
     )
 
 
 def _validate_shift_for_staff(session: Session, staff_id: int, attendance_time_id: Optional[int]) -> None:
     if attendance_time_id is None:
-        return
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A shift is required.")
 
     assignments = session.exec(
         select(StaffShiftAssignment.attendance_time_id)
@@ -124,16 +221,13 @@ def get_attendance_review_rows(
             if record:
                 rows.append(_build_review_row(session, record, staff.teacher_name))
             else:
-                rows.append(
-                    AttendanceReviewRow(
-                        staff_id=staff.teacher_name_id,
-                        staff_name=staff.teacher_name,
-                        attendance_date=selected_date,
-                        attendance_time_id=attendance_time_id,
-                        attendance_time_name=_shift_name(session, attendance_time_id),
-                        is_finalized=False,
-                    )
-                )
+                rows.append(_build_empty_review_row(
+                    session,
+                    staff.teacher_name_id,
+                    staff.teacher_name,
+                    selected_date,
+                    attendance_time_id,
+                ))
             continue
 
         # Show one row for every assigned shift, even before self-attendance is submitted.
@@ -143,16 +237,13 @@ def get_attendance_review_rows(
                 if record:
                     rows.append(_build_review_row(session, record, staff.teacher_name))
                 else:
-                    rows.append(
-                        AttendanceReviewRow(
-                            staff_id=staff.teacher_name_id,
-                            staff_name=staff.teacher_name,
-                            attendance_date=selected_date,
-                            attendance_time_id=shift_id,
-                            attendance_time_name=_shift_name(session, shift_id),
-                            is_finalized=False,
-                        )
-                    )
+                    rows.append(_build_empty_review_row(
+                        session,
+                        staff.teacher_name_id,
+                        staff.teacher_name,
+                        selected_date,
+                        shift_id,
+                    ))
         else:
             # Preserve the general row for staff without explicit assignments.
             staff_records = [
@@ -170,6 +261,9 @@ def get_attendance_review_rows(
                         attendance_date=selected_date,
                         attendance_time_id=None,
                         attendance_time_name=_shift_name(session, None),
+                        weekday=selected_date.strftime("%A"),
+                        is_holiday=resolve_attendance_calendar(session, selected_date)["is_holiday"],
+                        holiday_label=resolve_attendance_calendar(session, selected_date)["label"],
                         is_finalized=False,
                     )
                 )
@@ -219,6 +313,7 @@ def finalize_attendance_review(
             finalized_at=datetime.utcnow(),
             attendance_source="ADMIN_ASSISTED",
         )
+        apply_shift_timing(session, record, payload.attendance_time_id, payload.attendance_date)
         session.add(record)
     else:
         record.final_status = payload.final_status
@@ -234,6 +329,170 @@ def finalize_attendance_review(
     session.commit()
     session.refresh(record)
     return _build_review_row(session, record, staff.teacher_name)
+
+
+@attendance_review_router.post(
+    "/batch-finalize",
+    response_model=AttendanceReviewBatchFinalizeResponse,
+)
+def batch_finalize_attendance_review(
+    payload: AttendanceReviewBatchFinalizePayload,
+    current_user: Annotated[User, Depends(require_permission("attendance_review", "add"))],
+    session: Session = Depends(get_session),
+):
+    if not session.get(AttendanceTime, payload.attendance_time_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shift not found.")
+
+    staff_id_counts: dict[int, int] = {}
+    for item in payload.records:
+        staff_id_counts[item.staff_id] = staff_id_counts.get(item.staff_id, 0) + 1
+
+    finalized_count = 0
+    results: List[AttendanceReviewBatchRowResult] = []
+    for item in payload.records:
+        staff = session.get(TeacherNames, item.staff_id)
+        if staff is None:
+            results.append(AttendanceReviewBatchRowResult(
+                staff_id=item.staff_id,
+                finalized=False,
+                error="Staff member not found.",
+            ))
+            continue
+
+        if staff_id_counts[item.staff_id] > 1:
+            results.append(AttendanceReviewBatchRowResult(
+                staff_id=item.staff_id,
+                staff_name=staff.teacher_name,
+                finalized=False,
+                error="Duplicate staff row in this batch.",
+            ))
+            continue
+
+        try:
+            if item.final_status not in VALID_FINAL_STATUSES:
+                raise HTTPException(status_code=400, detail="Invalid final status.")
+
+            _validate_shift_for_staff(session, item.staff_id, payload.attendance_time_id)
+            record = session.exec(
+                select(StaffAttendance)
+                .where(
+                    StaffAttendance.staff_id == item.staff_id,
+                    StaffAttendance.attendance_date == payload.attendance_date,
+                    StaffAttendance.attendance_time_id == payload.attendance_time_id,
+                )
+                .with_for_update()
+            ).first()
+
+            if record and record.is_finalized:
+                raise HTTPException(status_code=409, detail="Attendance is already finalized.")
+
+            now = datetime.utcnow()
+            if record is None:
+                record = StaffAttendance(
+                    staff_id=item.staff_id,
+                    attendance_date=payload.attendance_date,
+                    attendance_time_id=payload.attendance_time_id,
+                    attendance_source="ADMIN_ASSISTED",
+                )
+                apply_shift_timing(
+                    session,
+                    record,
+                    payload.attendance_time_id,
+                    payload.attendance_date,
+                )
+
+            record.final_status = item.final_status
+            record.final_remarks = item.final_remarks
+            record.arrival_time = item.arrival_time
+            record.departure_time = item.departure_time
+            record.is_finalized = True
+            record.finalized_by = current_user.id
+            record.finalized_at = now
+            record.updated_at = now
+            session.add(record)
+            session.commit()
+            finalized_count += 1
+            results.append(AttendanceReviewBatchRowResult(
+                staff_id=item.staff_id,
+                staff_name=staff.teacher_name,
+                finalized=True,
+            ))
+        except HTTPException as exc:
+            session.rollback()
+            results.append(AttendanceReviewBatchRowResult(
+                staff_id=item.staff_id,
+                staff_name=staff.teacher_name,
+                finalized=False,
+                error=str(exc.detail),
+            ))
+        except IntegrityError:
+            session.rollback()
+            results.append(AttendanceReviewBatchRowResult(
+                staff_id=item.staff_id,
+                staff_name=staff.teacher_name,
+                finalized=False,
+                error="Could not save this row; refresh and retry.",
+            ))
+
+    return AttendanceReviewBatchFinalizeResponse(
+        attendance_date=payload.attendance_date,
+        attendance_time_id=payload.attendance_time_id,
+        finalized_count=finalized_count,
+        failed_count=len(results) - finalized_count,
+        results=results,
+    )
+
+
+@attendance_review_router.post(
+    "/finalize-all",
+    response_model=AttendanceReviewFinalizeAllResponse,
+)
+def finalize_all_attendance_review(
+    payload: AttendanceReviewFinalizeAllPayload,
+    current_user: Annotated[User, Depends(require_permission("attendance_review", "add"))],
+    session: Session = Depends(get_session),
+):
+    query = select(StaffAttendance).where(
+        StaffAttendance.attendance_date == payload.attendance_date
+    )
+    if payload.attendance_time_id is not None:
+        query = query.where(StaffAttendance.attendance_time_id == payload.attendance_time_id)
+    records = session.exec(query.with_for_update()).all()
+
+    incomplete = [
+        str(record.staff_id)
+        for record in records
+        if record.final_status is None
+    ]
+    if incomplete:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "All existing attendance records must have a final status before finalization.",
+                "incomplete_staff_ids": incomplete,
+            },
+        )
+
+    finalized_count = 0
+    already_finalized_count = 0
+    now = datetime.utcnow()
+    for record in records:
+        if record.is_finalized:
+            already_finalized_count += 1
+            continue
+        record.is_finalized = True
+        record.finalized_by = current_user.id
+        record.finalized_at = now
+        record.updated_at = now
+        session.add(record)
+        finalized_count += 1
+    session.commit()
+    return AttendanceReviewFinalizeAllResponse(
+        attendance_date=payload.attendance_date,
+        attendance_time_id=payload.attendance_time_id,
+        finalized_count=finalized_count,
+        already_finalized_count=already_finalized_count,
+    )
 
 
 @attendance_review_router.patch("/{staff_id}", response_model=AttendanceReviewRow)
@@ -259,8 +518,10 @@ def update_attendance_review_record(
         )
     ).first()
 
-    if not record or not record.is_finalized:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finalized attendance record not found.")
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attendance record not found.")
+    if record.is_finalized:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Finalized attendance cannot be edited.")
 
     if payload.final_status is not None:
         if payload.final_status not in VALID_FINAL_STATUSES:
@@ -300,6 +561,8 @@ def delete_attendance_review_record(
     ).first()
     if not record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attendance record not found.")
+    if record.is_finalized:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Finalized attendance cannot be deleted.")
 
     session.delete(record)
     session.commit()
@@ -334,8 +597,19 @@ def get_attendance_review_history(
             staff_id=record.staff_id,
             staff_name=staff_names.get(record.staff_id, "Unknown"),
             attendance_date=record.attendance_date,
+            weekday=record.attendance_date.strftime("%A"),
+            is_holiday=resolve_attendance_calendar(session, record.attendance_date)["is_holiday"],
+            holiday_label=resolve_attendance_calendar(session, record.attendance_date)["label"],
             attendance_time_id=record.attendance_time_id,
             attendance_time_name=_shift_name(session, record.attendance_time_id),
+            schedule_id=record.schedule_id,
+            expected_start_time=record.expected_start_time_snapshot or (
+                timing.start_time if (timing := _timing_for_date(session, record.attendance_time_id, record.attendance_date)) else None
+            ),
+            expected_end_time=record.expected_end_time_snapshot or (
+                timing.end_time if timing else None
+            ),
+            schedule_is_legacy=record.schedule_is_legacy,
             final_status=record.final_status,
             final_remarks=record.final_remarks,
             self_availability=record.self_availability,

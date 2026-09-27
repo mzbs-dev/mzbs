@@ -31,7 +31,12 @@ export default function StaffProfile() {
   const [activeTab, setActiveTab] = useState<TabKey>("basic");
 
   // Shift assignment editing state
-  const [allShifts, setAllShifts] = useState<Array<{ attendance_time_id: number; attendance_time: string }>>([]);
+  const [allShifts, setAllShifts] = useState<Array<{
+    attendance_time_id: number;
+    attendance_time: string;
+    start_time: string | null;
+    end_time: string | null;
+  }>>([]);
   const [selectedShiftIds, setSelectedShiftIds] = useState<Set<number>>(new Set());
   const [savingShifts, setSavingShifts] = useState(false);
 
@@ -49,12 +54,25 @@ export default function StaffProfile() {
       try {
         const t = await AttendanceTimeAPI.Get();
         const items = Array.isArray(t?.data) ? t.data : [];
-        setAllShifts(
-          items.map((it: any) => ({
-            attendance_time_id: it.attendance_time_id,
-            attendance_time: it.attendance_time,
-          }))
+        const now = new Date();
+        const forDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+          now.getDate()
+        ).padStart(2, "0")}`;
+        const shifts = await Promise.all(
+          items.map(async (it: any) => {
+            const timing = await AttendanceTimeAPI.getTimingVersionForDate(
+              it.attendance_time_id,
+              forDate
+            ).catch(() => null);
+            return {
+              attendance_time_id: it.attendance_time_id,
+              attendance_time: it.attendance_time,
+              start_time: timing?.start_time ?? null,
+              end_time: timing?.end_time ?? null,
+            };
+          })
         );
+        setAllShifts(shifts);
       } catch {
         // Non-fatal — shift assignment control just stays empty
       }
@@ -104,6 +122,16 @@ export default function StaffProfile() {
     }
   };
 
+  const previousAttendance = useMemo(() => {
+    const holidayDates = new Set<string>();
+    return (profile?.previous_attendance ?? []).filter((row) => {
+      if (!row.is_calendar_holiday) return true;
+      if (holidayDates.has(row.attendance_date)) return false;
+      holidayDates.add(row.attendance_date);
+      return true;
+    });
+  }, [profile?.previous_attendance]);
+
   const tabConfig = useMemo(
     () => [
       { key: "basic" as const, label: "Basic Information" },
@@ -122,15 +150,15 @@ export default function StaffProfile() {
       {/* Filter Card */}
       <div className="bg-card border border-border rounded-lg shadow-sm">
         <div className="p-4 sm:p-6">
-          <h3 className="text-lg font-semibold mb-6">Select Staff</h3>
+          <h3 className="text-lg font-semibold mb-4">Select Staff</h3>
           <form
             onSubmit={(e) => {
               e.preventDefault();
               void handleGetProfile();
             }}
-            className="space-y-6"
+            className="space-y-4"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-[minmax(0,1fr)_auto] min-[480px]:items-end">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block">
                   Staff Member
@@ -142,8 +170,8 @@ export default function StaffProfile() {
                   className="h-10 text-sm rounded-lg w-full"
                 />
               </div>
-              <div className="flex items-end col-span-1 sm:col-span-2 lg:col-span-1">
-                <Button type="submit" disabled={loading} className="w-full">
+              <div>
+                <Button type="submit" disabled={loading} className="h-10 w-full min-[480px]:w-36">
                   {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "Get Profile"}
                 </Button>
               </div>
@@ -229,7 +257,14 @@ export default function StaffProfile() {
                             disabled={!canEdit}
                             onCheckedChange={() => toggleShift(shift.attendance_time_id)}
                           />
-                          {shift.attendance_time}
+                          <span className="flex flex-col">
+                            <span>{shift.attendance_time}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {shift.start_time && shift.end_time
+                                ? `${shift.start_time.slice(0, 5)} - ${shift.end_time.slice(0, 5)}`
+                                : "Timing not configured"}
+                            </span>
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -245,7 +280,7 @@ export default function StaffProfile() {
 
             {activeTab === "attendance" && (
               <div>
-                {profile.previous_attendance.length === 0 ? (
+                {previousAttendance.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No finalized attendance records found.</p>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border border-border">
@@ -253,6 +288,7 @@ export default function StaffProfile() {
                       <thead className="bg-muted text-left">
                         <tr>
                           <th className="px-3 py-2">Date</th>
+                          <th className="px-3 py-2">Day</th>
                           <th className="px-3 py-2">Shift</th>
                           <th className="px-3 py-2">Final Status</th>
                           <th className="px-3 py-2">Arrival</th>
@@ -261,16 +297,37 @@ export default function StaffProfile() {
                         </tr>
                       </thead>
                       <tbody>
-                        {profile.previous_attendance.map((row) => (
-                          <tr key={row.staff_attendance_id} className="border-t border-border">
+                        {previousAttendance.map((row) => (
+                          <tr
+                            key={row.staff_attendance_id ?? `holiday-${row.attendance_date}`}
+                            className={`border-t border-border ${row.is_calendar_holiday ? "bg-muted/40" : ""}`}
+                          >
                             <td className="px-3 py-2">
                               {new Date(row.attendance_date).toLocaleDateString("en-GB")}
                             </td>
-                            <td className="px-3 py-2">{row.attendance_time_name ?? "General / No Shift Assigned"}</td>
-                            <td className="px-3 py-2">{row.final_status ?? "—"}</td>
+                            <td className="px-3 py-2">{row.weekday}</td>
+                            <td className="px-3 py-2">
+                              {row.is_calendar_holiday ? "—" : (
+                                <>
+                                  <div>{row.attendance_time_name ?? "General / No Shift Assigned"}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {row.schedule_is_legacy
+                                      ? "Historical timing unavailable"
+                                      : row.expected_start_time && row.expected_end_time
+                                      ? `${row.expected_start_time.slice(0, 5)} - ${row.expected_end_time.slice(0, 5)}`
+                                      : "Timing not configured"}
+                                  </div>
+                                </>
+                              )}
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.is_calendar_holiday ? (
+                                <span className="inline-flex rounded-md border border-border bg-muted px-2 py-1 text-xs font-semibold">HOLIDAY</span>
+                              ) : row.final_status ?? "—"}
+                            </td>
                             <td className="px-3 py-2">{row.arrival_time ?? "—"}</td>
                             <td className="px-3 py-2">{row.departure_time ?? "—"}</td>
-                            <td className="px-3 py-2">{row.final_remarks ?? "—"}</td>
+                            <td className="px-3 py-2">{row.holiday_label ?? row.final_remarks ?? "—"}</td>
                           </tr>
                         ))}
                       </tbody>
