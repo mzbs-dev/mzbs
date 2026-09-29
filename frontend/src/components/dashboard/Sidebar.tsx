@@ -17,6 +17,8 @@ import {
   Banknote,
   BookOpen,
   User,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { RiCashLine } from "react-icons/ri";
 import { BsCashCoin } from "react-icons/bs";
@@ -25,6 +27,7 @@ import { useRole } from "@/context/RoleContext";
 import { canAccessSection, canAccessSubmenuItem } from "@/utils/rolePermissions";
 import axiosInstance from "@/api/axiosInterceptorInstance";
 import { useBranding } from "@/context/BrandingContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type MenuItem = {
   id: number;
@@ -43,6 +46,8 @@ type MenuItem = {
 type SidebarProps = {
   isOpen: boolean;
   onClose: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 };
 
 const menuList: MenuItem[] = [
@@ -389,16 +394,22 @@ const getMenuItemSection = (path: string): string => {
   return "dashboard";
 };
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed: desktopIsCollapsed = false, onToggleCollapse }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { role, isLoading, clearRole, permissions } = useRole();
+  const { role, clearRole, permissions } = useRole();
   const { schoolName } = useBranding();
+  const isMobile = useIsMobile();
+  const isCollapsed = desktopIsCollapsed && !isMobile;
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [userData, setUserData] = useState<string | null>(null);
   const normalizedRole = role?.toUpperCase() ?? null;
   const isAdmin = normalizedRole === "ADMIN";
+
+  useEffect(() => {
+    if (isMobile) onClose();
+  }, [pathname, isMobile, onClose]);
   
   
   useEffect(() => {
@@ -449,6 +460,60 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     return pathname === path;
   };
 
+  const navItemButtonStyle = (active: boolean) => ({
+    borderColor: active ? `hsl(var(--sidebar-ring) / 0.3)` : "transparent",
+    backgroundColor: active ? `hsl(var(--sidebar-primary) / 0.15)` : "transparent",
+    color: active ? `hsl(var(--sidebar-primary))` : `hsl(var(--sidebar-foreground))`,
+    boxShadow: active ? `0 1px 3px hsl(var(--sidebar-ring) / 0.1)` : "none",
+  });
+
+  const renderNavIcon = (item: MenuItem, active: boolean) => (
+    <span
+      className={`flex shrink-0 items-center justify-center rounded-lg p-1.5 transition-all ${isCollapsed ? "mx-auto" : "mr-3"}`}
+      style={{
+        backgroundColor: active ? `hsl(var(--sidebar-primary) / 0.25)` : `hsl(var(--muted) / 0.5)`,
+        color: active ? `hsl(var(--sidebar-primary))` : `hsl(var(--muted-foreground))`,
+      }}
+    >
+      <item.icon className="h-4 w-4" />
+    </span>
+  );
+
+  const handleSidebarToggle = () => {
+    onToggleCollapse?.();
+  };
+
+  const renderSubmenuItems = (item: MenuItem) => item.submenu
+    ?.filter((subItem) => {
+      const section = getMenuItemSection(subItem.path);
+      const adminOnlyPaths = [
+        "/dashboard/setup/role_permissions",
+        "/dashboard/setup/manage_user",
+        "/dashboard/setup/appearance",
+      ];
+
+      if (adminOnlyPaths.includes(subItem.path.toLowerCase())) {
+        return isAdmin;
+      }
+
+      return canAccessSection(role, section, permissions) && canAccessSubmenuItem(role, subItem.path, permissions);
+    })
+    .map((subItem) => (
+      <Link
+        key={subItem.id}
+        href={subItem.path}
+        title={subItem.name}
+        aria-label={subItem.name}
+        className={`flex items-center rounded-lg px-2 py-2 text-sm transition hover:bg-sidebar-accent/50 ${isCollapsed ? "justify-center" : ""}`}
+        style={{
+          color: `hsl(var(--sidebar-accent-foreground))`,
+        }}
+      >
+        <subItem.icon className={`${isCollapsed ? "h-3.5 w-3.5" : "mr-2 mt-0.5 h-3.5 w-3.5"}`} />
+        {!isCollapsed && <span>{subItem.name}</span>}
+      </Link>
+    ));
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -461,193 +526,172 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed z-50 top-0 left-0 h-screen w-72 bg-white/90 dark:bg-neutral-950/90 border-r border-slate-200/80 dark:border-neutral-800 p-4 flex flex-col transform transition-all duration-300 shadow-[12px_0_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl
-          ${
-            isOpen ? "translate-x-0" : "-translate-x-full"
-          } md:translate-x-0 md:static md:z-auto`}
+        className={`fixed z-50 top-0 left-0 h-screen w-72 bg-white/90 dark:bg-neutral-950/90 border-r border-slate-200/80 dark:border-neutral-800 p-4 flex flex-col transform transition-all duration-300 shadow-[12px_0_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0 md:static md:z-auto ${isCollapsed ? "md:w-20" : "md:w-72"}`}
       >
-        <div 
-          className="rounded-2xl border p-3 shadow-lg"
-          style={{
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={handleSidebarToggle}
+            className="sr-only"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          </button>
+        )}
+
+        <div className="mb-3">
+          <div className="rounded-2xl border p-3 shadow-lg" style={{
             borderColor: `hsl(var(--sidebar-border))`,
             backgroundImage: `linear-gradient(to bottom right, hsl(var(--sidebar-primary) / 0.9), hsl(var(--sidebar-accent) / 0.8))`,
             color: `hsl(var(--foreground))`,
-          }}
-        >
-        <div className="flex flex-col items-center gap-2 text-center">
-          <Image
-              src="/logo.png"
-              alt="Logo"
-              width={56}
-              height={56}
-              className="rounded-full bg-white/90 p-1 object-cover"
-              unoptimized
-            />
-            <div>
-              <h2 className="text-sm font-semibold leading-tight" style={{ color: `hsl(var(--foreground))` }}>
-                Madrasah Management System
-              </h2>
-              <p className="mt-0.5 text-xs font-medium opacity-80" style={{ color: `hsl(var(--foreground))` }}>
-                 {schoolName}
-              </p>
-            </div>
-        </div>
-          {/* <div className="flex items-center gap-3">
-            <Image
-              src="/logo.png"
-              alt="Logo"
-              width={44}
-              height={44}
-              className="rounded-xl bg-white/90 p-1 dark:invert"
-              unoptimized
-            />
-            <div>
-              <h2 className="text-sm font-semibold leading-tight" style={{ color: `hsl(var(--foreground))` }}>
-                Madrasah Management System
-              </h2>
-            </div>
-          </div> */}
-        </div>
-
-        <div 
-          className="mt-4 rounded-2xl border p-3 shadow-sm"
-          style={{
-            borderColor: `hsl(var(--sidebar-border))`,
-            backgroundColor: `hsl(var(--sidebar-background) / 0.8)`,
-          }}
-        >
-          <div className="flex items-center space-x-3">
-            <Image
-              src="/image.png"
-              alt="User"
-              width={42}
-              height={42}
-              className="rounded-full border"
-              style={{
-                borderColor: `hsl(var(--sidebar-border))`,
-              }}
-            />
-            <div className="min-w-0">
-              <h2 className="truncate text-sm font-semibold uppercase" style={{ color: `hsl(var(--sidebar-foreground))` }}>
-                {userData ? JSON.parse(userData).username : "Guest"}
-              </h2>
-              {/* <p className="truncate text-xs font-medium uppercase" style={{ color: `hsl(var(--muted-foreground))` }}>
-                {role === "PRINCIPAL" ? "ناظمِ تعلیمات" : role === "FEE_MANAGER" ? "ناظمُ الامور" : role || "Loading..."}
-              </p> */}
+          }}>
+            <div className={`flex ${isCollapsed ? "justify-center" : "flex-col items-center gap-2 text-center"}`}>
+              <Image
+                src="/logo.png"
+                alt="Logo"
+                width={isCollapsed ? 32 : 56}
+                height={isCollapsed ? 32 : 56}
+                className="rounded-full bg-white/90 p-1 object-cover"
+                unoptimized
+              />
+              {!isCollapsed && (
+                <div>
+                  <h2 className="text-sm font-semibold leading-tight" style={{ color: `hsl(var(--foreground))` }}>
+                    Madrasah Management System
+                  </h2>
+                  <p className="mt-0.5 text-xs font-medium opacity-80" style={{ color: `hsl(var(--foreground))` }}>
+                    {schoolName}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
+
+        {!isCollapsed && (
+          <div
+            className="mt-1 rounded-2xl border p-3 shadow-sm"
+            style={{
+              borderColor: `hsl(var(--sidebar-border))`,
+              backgroundColor: `hsl(var(--sidebar-background) / 0.8)`,
+            }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center space-x-3">
+                <Image
+                  src="/image.png"
+                  alt="User"
+                  width={42}
+                  height={42}
+                  className="rounded-full border"
+                  style={{
+                    borderColor: `hsl(var(--sidebar-border))`,
+                  }}
+                />
+                <div className="min-w-0">
+                  <h2 className="truncate text-sm font-semibold uppercase" style={{ color: `hsl(var(--sidebar-foreground))` }}>
+                    {userData ? JSON.parse(userData).username : "Guest"}
+                  </h2>
+                </div>
+              </div>
+
+              {onToggleCollapse && (
+                <button
+                  type="button"
+                  onClick={handleSidebarToggle}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border transition hover:bg-accent/60"
+                  style={{
+                    borderColor: `hsl(var(--sidebar-border))`,
+                    backgroundColor: `hsl(var(--sidebar-background))`,
+                    color: `hsl(var(--sidebar-foreground))`,
+                  }}
+                  aria-label="Collapse sidebar"
+                  title="Collapse sidebar"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isCollapsed && onToggleCollapse && (
+          <div className="mb-3 flex justify-center">
+            <button
+              type="button"
+              onClick={handleSidebarToggle}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition hover:bg-accent/60"
+              style={{
+                borderColor: `hsl(var(--sidebar-border))`,
+                backgroundColor: `hsl(var(--sidebar-background))`,
+                color: `hsl(var(--sidebar-foreground))`,
+              }}
+              aria-label="Expand sidebar"
+              title="Expand sidebar"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         <nav className="mt-4 flex-1 space-y-1 overflow-y-auto pr-1">
           {visibleMenuItems.map((item) => (
             <div key={item.id}>
               {item.hasSubmenu ? (
                 <button
+                  type="button"
                   onClick={() => toggleSubmenu(item.id)}
-                  className="group flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all"
-                  style={{
-                    borderColor: isActivePath(item.path) ? `hsl(var(--sidebar-ring) / 0.3)` : 'transparent',
-                    backgroundColor: isActivePath(item.path) ? `hsl(var(--sidebar-primary) / 0.15)` : 'transparent',
-                    color: isActivePath(item.path) ? `hsl(var(--sidebar-primary))` : `hsl(var(--sidebar-foreground))`,
-                    boxShadow: isActivePath(item.path) ? `0 1px 3px hsl(var(--sidebar-ring) / 0.1)` : 'none',
-                  }}
+                  className={`group flex w-full items-center ${isCollapsed ? "justify-center" : "justify-between"} rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all`}
+                  style={navItemButtonStyle(isActivePath(item.path))}
+                  aria-label={item.name}
+                  title={item.name}
+                  aria-expanded={openSubmenu === item.id}
                 >
-                  <div className="flex items-center">
-                    <span 
-                      className="mr-3 rounded-lg p-1.5"
-                      style={{
-                        backgroundColor: isActivePath(item.path) ? `hsl(var(--sidebar-primary) / 0.25)` : `hsl(var(--muted) / 0.5)`,
-                        color: isActivePath(item.path) ? `hsl(var(--sidebar-primary))` : `hsl(var(--muted-foreground))`,
-                      }}
-                    >
-                      <item.icon className="h-4 w-4" />
-                    </span>
-                    <span>{item.name}</span>
+                  <div className={`flex items-center ${isCollapsed ? "justify-center" : ""}`}>
+                    {renderNavIcon(item, isActivePath(item.path))}
+                    {!isCollapsed && <span>{item.name}</span>}
                   </div>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${
-                      openSubmenu === item.id ? "rotate-180" : "rotate-0"
-                    }`}
-                  />
+                  {!isCollapsed && (
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${
+                        openSubmenu === item.id ? "rotate-180" : "rotate-0"
+                      }`}
+                    />
+                  )}
                 </button>
               ) : item.name === "Logout" ? (
                 <button
+                  type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center rounded-xl border border-transparent px-3 py-2.5 text-left text-sm font-medium transition-all hover:border-destructive/30 hover:bg-destructive/10"
-                  style={{
-                    color: `hsl(var(--sidebar-foreground))`,
-                  }}
+                  className={`flex w-full items-center rounded-xl border border-transparent px-3 py-2.5 text-left text-sm font-medium transition-all hover:border-destructive/30 hover:bg-destructive/10 ${isCollapsed ? "justify-center" : ""}`}
+                  style={{ color: `hsl(var(--sidebar-foreground))` }}
+                  aria-label="Logout"
+                  title="Logout"
                 >
-                  <span 
-                    className="mr-3 rounded-lg p-1.5"
-                    style={{
-                      backgroundColor: `hsl(var(--destructive) / 0.15)`,
-                      color: `hsl(var(--destructive))`,
-                    }}
-                  >
-                    <item.icon className="h-4 w-4" />
-                  </span>
-                  <span>{item.name}</span>
+                  {renderNavIcon(item, false)}
+                  {!isCollapsed && <span>{item.name}</span>}
                 </button>
               ) : (
                 <Link
                   href={item.path}
-                  className="flex items-center rounded-xl border px-3 py-2.5 text-sm font-medium transition-all"
-                  style={{
-                    borderColor: isExactPath(item.path) ? `hsl(var(--sidebar-ring) / 0.3)` : 'transparent',
-                    backgroundColor: isExactPath(item.path) ? `hsl(var(--sidebar-primary) / 0.15)` : 'transparent',
-                    color: isExactPath(item.path) ? `hsl(var(--sidebar-primary))` : `hsl(var(--sidebar-foreground))`,
-                    boxShadow: isExactPath(item.path) ? `0 1px 3px hsl(var(--sidebar-ring) / 0.1)` : 'none',
-                  }}
+                  className={`flex items-center rounded-xl border px-3 py-2.5 text-sm font-medium transition-all ${isCollapsed ? "justify-center" : ""}`}
+                  style={navItemButtonStyle(isExactPath(item.path))}
+                  title={item.name}
+                  aria-label={item.name}
                 >
-                  <span 
-                    className="mr-3 rounded-lg p-1.5"
-                    style={{
-                      backgroundColor: isExactPath(item.path) ? `hsl(var(--sidebar-primary) / 0.25)` : `hsl(var(--muted) / 0.5)`,
-                      color: isExactPath(item.path) ? `hsl(var(--sidebar-primary))` : `hsl(var(--muted-foreground))`,
-                    }}
-                  >
-                    <item.icon className="h-4 w-4" />
-                  </span>
-                  <span>{item.name}</span>
+                  {renderNavIcon(item, isExactPath(item.path))}
+                  {!isCollapsed && <span>{item.name}</span>}
                 </Link>
               )}
               {item.hasSubmenu && openSubmenu === item.id && (
-                <div 
-                  className="ml-6 mt-1 space-y-1 border-l pl-3"
-                  style={{
-                    borderColor: `hsl(var(--sidebar-border))`,
-                  }}
+                <div
+                  className={`mt-1 space-y-1 ${isCollapsed ? "px-2" : "ml-6 border-l pl-3"}`}
+                  style={isCollapsed ? undefined : { borderColor: `hsl(var(--sidebar-border))` }}
                 >
-                  {item.submenu
-                    ?.filter((subItem) => {
-                      const section = getMenuItemSection(subItem.path);
-                      const adminOnlyPaths = [
-                        "/dashboard/setup/role_permissions",
-                        "/dashboard/setup/manage_user",
-                        "/dashboard/setup/appearance",
-                      ];
-
-                      // Enforce ADMIN-only visibility for specific setup pages
-                      if (adminOnlyPaths.includes(subItem.path.toLowerCase())) {
-                        return isAdmin;
-                      }
-
-                      return canAccessSection(role, section, permissions) && canAccessSubmenuItem(role, subItem.path, permissions);
-                    })
-                    .map((subItem) => (
-                      <Link
-                        key={subItem.id}
-                        href={subItem.path}
-                        className="flex rounded-lg px-2 py-2 text-sm transition hover:bg-sidebar-accent/50"
-                        style={{
-                          color: `hsl(var(--sidebar-accent-foreground))`,
-                        }}
-                      >
-                        <subItem.icon className="mr-2 mt-0.5 h-3.5 w-3.5" />
-                        {subItem.name}
-                      </Link>
-                    ))}
+                  {renderSubmenuItems(item)}
                 </div>
               )}
             </div>
@@ -655,23 +699,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </nav>
 
         <button
+          type="button"
           onClick={() => {
             setIsDarkMode(!isDarkMode);
             document.documentElement.classList.toggle("dark");
           }}
-          className="mt-auto flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition"
+          className={`mt-auto flex items-center ${isCollapsed ? "justify-center" : "justify-center gap-2"} rounded-xl border px-3 py-2.5 text-sm font-medium transition`}
           style={{
             borderColor: `hsl(var(--sidebar-border))`,
             backgroundColor: `hsl(var(--sidebar-background))`,
             color: `hsl(var(--sidebar-foreground))`,
           }}
+          aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+          title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
         >
           {isDarkMode ? (
             <Sun className="h-4 w-4" />
           ) : (
             <Moon className="h-4 w-4" />
           )}
-          <span>{isDarkMode ? "Light mode" : "Dark mode"}</span>
+          {!isCollapsed && <span>{isDarkMode ? "Light mode" : "Dark mode"}</span>}
         </button>
       </aside>
     </>

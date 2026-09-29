@@ -78,3 +78,132 @@ def test_batch_finalize_saves_valid_rows_and_reports_invalid_rows(
     assert attendance.arrival_time == time(8, 0)
     assert attendance.departure_time == time(14, 0)
     assert attendance.expected_start_time_snapshot == time(7, 45)
+
+
+def test_attendance_review_summary_counts_staff_shifts_and_statuses(
+    test_client,
+    test_session,
+    admin_token,
+):
+    attendance_date = date(2026, 9, 29)
+    morning = AttendanceTime(attendance_time="Summary Morning")
+    afternoon = AttendanceTime(attendance_time="Summary Afternoon")
+    multi_shift_staff = TeacherNames(teacher_name="Summary Multi Shift")
+    unmarked_staff = TeacherNames(teacher_name="Summary Unmarked")
+    leave_staff = TeacherNames(teacher_name="Summary Leave")
+    general_staff = TeacherNames(teacher_name="Summary General")
+    deleted_staff = TeacherNames(teacher_name="Summary Deleted", is_deleted=True)
+    test_session.add_all([
+        morning,
+        afternoon,
+        multi_shift_staff,
+        unmarked_staff,
+        leave_staff,
+        general_staff,
+        deleted_staff,
+    ])
+    test_session.commit()
+    for item in (morning, afternoon, multi_shift_staff, unmarked_staff, leave_staff, general_staff, deleted_staff):
+        test_session.refresh(item)
+
+    test_session.add_all([
+        StaffShiftAssignment(staff_id=multi_shift_staff.teacher_name_id, attendance_time_id=morning.attendance_time_id),
+        StaffShiftAssignment(staff_id=multi_shift_staff.teacher_name_id, attendance_time_id=afternoon.attendance_time_id),
+        StaffShiftAssignment(staff_id=unmarked_staff.teacher_name_id, attendance_time_id=morning.attendance_time_id),
+        StaffShiftAssignment(staff_id=leave_staff.teacher_name_id, attendance_time_id=afternoon.attendance_time_id),
+        StaffShiftAssignment(staff_id=deleted_staff.teacher_name_id, attendance_time_id=morning.attendance_time_id),
+        StaffAttendance(
+            staff_id=multi_shift_staff.teacher_name_id,
+            attendance_time_id=morning.attendance_time_id,
+            attendance_date=attendance_date,
+            final_status="PRESENT",
+            is_finalized=False,
+        ),
+        StaffAttendance(
+            staff_id=multi_shift_staff.teacher_name_id,
+            attendance_time_id=afternoon.attendance_time_id,
+            attendance_date=attendance_date,
+            final_status="LATE",
+            is_finalized=True,
+        ),
+        StaffAttendance(
+            staff_id=leave_staff.teacher_name_id,
+            attendance_time_id=afternoon.attendance_time_id,
+            attendance_date=attendance_date,
+            final_status="LEAVE",
+            is_finalized=False,
+        ),
+        StaffAttendance(
+            staff_id=general_staff.teacher_name_id,
+            attendance_time_id=None,
+            attendance_date=attendance_date,
+            final_status="ABSENT",
+            is_finalized=True,
+        ),
+        StaffAttendance(
+            staff_id=deleted_staff.teacher_name_id,
+            attendance_time_id=morning.attendance_time_id,
+            attendance_date=attendance_date,
+            final_status="PRESENT",
+            is_finalized=False,
+        ),
+        StaffAttendance(
+            staff_id=multi_shift_staff.teacher_name_id,
+            attendance_time_id=morning.attendance_time_id,
+            attendance_date=date(2026, 9, 28),
+            final_status="ABSENT",
+            is_finalized=True,
+        ),
+    ])
+    test_session.commit()
+
+    response = test_client.get(
+        "/attendance-review/summary",
+        params={"attendance_date": attendance_date.isoformat()},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200, response.text
+    summary = response.json()
+    assert summary["total"] == 5
+    assert summary["finalized"] == 2
+    assert summary["pending"] == 3
+    assert summary["present"] == 2
+    assert summary["leave"] == 1
+    assert summary["absent"] == 1
+    assert summary["unmarked"] == 1
+    assert {shift["attendance_time_name"]: shift for shift in summary["shifts"]} == {
+        "Summary Morning": {
+            "attendance_time_id": morning.attendance_time_id,
+            "attendance_time_name": "Summary Morning",
+            "total": 2,
+            "finalized": 0,
+            "pending": 2,
+            "present": 1,
+            "leave": 0,
+            "absent": 0,
+            "unmarked": 1,
+        },
+        "Summary Afternoon": {
+            "attendance_time_id": afternoon.attendance_time_id,
+            "attendance_time_name": "Summary Afternoon",
+            "total": 2,
+            "finalized": 1,
+            "pending": 1,
+            "present": 1,
+            "leave": 1,
+            "absent": 0,
+            "unmarked": 0,
+        },
+        "General / No Shift Assigned": {
+            "attendance_time_id": None,
+            "attendance_time_name": "General / No Shift Assigned",
+            "total": 1,
+            "finalized": 1,
+            "pending": 0,
+            "present": 0,
+            "leave": 0,
+            "absent": 1,
+            "unmarked": 0,
+        },
+    }

@@ -8,6 +8,7 @@ import SalarySummarySection from "@/components/Salary/SalarySummarySection";
 import { motion } from "framer-motion";
 import { extractPayloadData } from "@/utils/apiResponse";
 import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
+import StaffAttendanceDashboardCard from "@/components/dashboard/StaffAttendanceDashboardCard";
 import { DebitAPI } from "@/api/Debit/DebitAPI";
 import {
   BarChart,
@@ -774,6 +775,8 @@ export function AdminDashboard() {
               </>
             )}
           </SectionCard>
+
+            <StaffAttendanceDashboardCard />
 
           {/* ══════════════════════════════════════════
               SECTION 2 — Student Attendance Distribution

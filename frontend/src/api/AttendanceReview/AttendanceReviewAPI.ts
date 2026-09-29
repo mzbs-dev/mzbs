@@ -25,6 +25,23 @@ export interface AttendanceReviewRow {
   attendance_source: string | null;
 }
 
+export interface AttendanceReviewShiftSummary {
+  attendance_time_id: number | null;
+  attendance_time_name: string;
+  total: number;
+  finalized: number;
+  pending: number;
+  present: number;
+  leave: number;
+  absent: number;
+  unmarked: number;
+}
+
+export interface AttendanceReviewSummary extends AttendanceReviewShiftSummary {
+  attendance_date: string;
+  shifts: AttendanceReviewShiftSummary[];
+}
+
 export interface AttendanceReviewFinalizePayload {
   attendance_date: string;
   attendance_time_id: number | null;
@@ -110,14 +127,23 @@ export interface AttendanceReviewHistoryRow {
 }
 
 export namespace AttendanceReviewAPI {
+  export const getSummary = async (attendanceDate: string): Promise<AttendanceReviewSummary> => {
+    const response = await axiosInstance.get<AttendanceReviewSummary>("/attendance-review/summary", {
+      params: { attendance_date: attendanceDate },
+    });
+    return response.data;
+  };
+
   export const getRows = async (
     attendanceDate?: string,
-    attendanceTimeId?: number | null
+    attendanceTimeId?: number | null,
+    unassignedOnly = false
   ): Promise<AttendanceReviewRow[]> => {
     try {
       const params: Record<string, string | number> = {};
       if (attendanceDate) params.attendance_date = attendanceDate;
       if (attendanceTimeId != null) params.attendance_time_id = attendanceTimeId;
+      if (unassignedOnly) params.unassigned_only = "true";
       const response = await axiosInstance.get<AttendanceReviewRow[]>("/attendance-review/rows", { params });
       return response.data;
     } catch (error) {

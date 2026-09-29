@@ -17,6 +17,8 @@ from schemas.staff_attendance_model import (
     AttendanceReviewFinalizePayload,
     AttendanceReviewHistoryRow,
     AttendanceReviewRow,
+    AttendanceReviewShiftSummary,
+    AttendanceReviewSummary,
     StaffAttendance,
 )
 from schemas.staff_shift_assignment_model import StaffShiftAssignment
@@ -187,9 +189,14 @@ def get_attendance_review_rows(
     session: Session = Depends(get_session),
     attendance_date: Optional[date] = Query(None),
     attendance_time_id: Optional[int] = Query(None),
+    unassigned_only: bool = Query(False),
 ):
     selected_date = attendance_date or date.today()
-    staff_members = session.exec(select(TeacherNames).order_by(TeacherNames.teacher_name)).all()
+    staff_members = session.exec(
+        select(TeacherNames)
+        .where(TeacherNames.is_deleted.is_(False))
+        .order_by(TeacherNames.teacher_name)
+    ).all()
     assignments = session.exec(select(StaffShiftAssignment)).all()
     assigned_shift_ids: dict[int, list[int]] = {}
     for assignment in assignments:
@@ -198,6 +205,8 @@ def get_attendance_review_rows(
     query = select(StaffAttendance).where(StaffAttendance.attendance_date == selected_date)
     if attendance_time_id is not None:
         query = query.where(StaffAttendance.attendance_time_id == attendance_time_id)
+    elif unassigned_only:
+        query = query.where(StaffAttendance.attendance_time_id.is_(None))
     records = session.exec(query).all()
 
     record_map: dict[Tuple[int, Optional[int]], StaffAttendance] = {
@@ -207,6 +216,8 @@ def get_attendance_review_rows(
     rows: List[AttendanceReviewRow] = []
     for staff in staff_members:
         staff_shifts = assigned_shift_ids.get(staff.teacher_name_id, [])
+        if unassigned_only and staff_shifts:
+            continue
         shifts = (
             [attendance_time_id]
             if attendance_time_id is not None and attendance_time_id in staff_shifts
@@ -269,6 +280,57 @@ def get_attendance_review_rows(
                 )
 
     return rows
+
+
+@attendance_review_router.get("/summary", response_model=AttendanceReviewSummary)
+def get_attendance_review_summary(
+    current_user: Annotated[User, Depends(require_permission("attendance_review", "view"))],
+    session: Session = Depends(get_session),
+    attendance_date: Optional[date] = Query(None),
+):
+    selected_date = attendance_date or date.today()
+    rows = get_attendance_review_rows(current_user, session, selected_date, None, False)
+
+    def summarize(review_rows: List[AttendanceReviewRow], shift_id: Optional[int], shift_name: str):
+        counts = {
+            "attendance_time_id": shift_id,
+            "attendance_time_name": shift_name,
+            "total": len(review_rows),
+            "finalized": sum(row.is_finalized for row in review_rows),
+            "pending": sum(not row.is_finalized for row in review_rows),
+            "present": 0,
+            "leave": 0,
+            "absent": 0,
+            "unmarked": 0,
+        }
+        for row in review_rows:
+            final_status = (row.final_status or "").upper()
+            if final_status in {"PRESENT", "LATE"}:
+                counts["present"] += 1
+            elif final_status == "LEAVE":
+                counts["leave"] += 1
+            elif final_status == "ABSENT":
+                counts["absent"] += 1
+            else:
+                counts["unmarked"] += 1
+        return counts
+
+    grouped_rows: dict[Tuple[Optional[int], str], List[AttendanceReviewRow]] = {}
+    for row in rows:
+        key = (row.attendance_time_id, row.attendance_time_name or "General / No Shift Assigned")
+        grouped_rows.setdefault(key, []).append(row)
+
+    shifts = [
+        AttendanceReviewShiftSummary(**summarize(shift_rows, shift_id, shift_name))
+        for (shift_id, shift_name), shift_rows in grouped_rows.items()
+    ]
+    shifts.sort(key=lambda shift: shift.attendance_time_name.casefold())
+    overall = summarize(rows, None, "All Shifts")
+    return AttendanceReviewSummary(
+        **overall,
+        attendance_date=selected_date,
+        shifts=shifts,
+    )
 
 
 @attendance_review_router.post("/{staff_id}/finalize", response_model=AttendanceReviewRow)

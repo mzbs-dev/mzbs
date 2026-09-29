@@ -154,6 +154,23 @@ class AttendanceReviewRow(SQLModel):
     attendance_source: Optional[str] = None
 
 
+class AttendanceReviewShiftSummary(SQLModel):
+    attendance_time_id: Optional[int] = None
+    attendance_time_name: str
+    total: int = 0
+    finalized: int = 0
+    pending: int = 0
+    present: int = 0
+    leave: int = 0
+    absent: int = 0
+    unmarked: int = 0
+
+
+class AttendanceReviewSummary(AttendanceReviewShiftSummary):
+    attendance_date: date
+    shifts: List[AttendanceReviewShiftSummary] = Field(default_factory=list)
+
+
 class AttendanceReviewFinalizePayload(SQLModel):
     attendance_date: date
     attendance_time_id: Optional[int] = None

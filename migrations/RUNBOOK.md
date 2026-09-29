@@ -6,19 +6,35 @@ dozens of independent tenant Postgres databases, no shared DB.
 ## Golden rules, in order
 
 1. **Test against the staging tenant first, always.**
-   `mzbs-staging-school` (from Phase 0) is the canary. Never run a new
-   migration against a real school's database before it has run cleanly here.
+   `mzbs-staging-school` (from Phase 0) is the canary. Use its exact
+   `tenant_id` from the control plane; tenant IDs are matched exactly. Never
+   run a new migration against a real school's database before it has run
+   cleanly here:
+   ```bash
+   uv run python -m migrations.run_all_tenants --tenant <staging_tenant_id>
+   ```
 
-2. **Dry-run across all real tenants before any real run.**
+2. **Dry-run across all active tenants before any real run.**
    ```bash
    uv run python -m migrations.run_all_tenants --dry-run
    ```
-   Read the `pending=[...]` list per tenant. If any tenant shows something
-   unexpected (e.g. a migration you thought was already applied everywhere),
-   stop and investigate before proceeding — don't run for real "to see what
-   happens."
+   This checks every tenant whose control-plane status is `active`. Read the
+   `pending=[...]` list per tenant. If any tenant shows something unexpected
+   (e.g. a migration you thought was already applied everywhere), stop and
+   investigate before proceeding — don't run for real "to see what happens."
+   Dry-run does not execute migration upgrades or write run-log entries, but
+   it does create the tenant's `schema_migrations` table if that table is
+   missing.
 
-3. **Use `--only` for risky or multi-phase migrations.**
+3. **Apply to all active tenants only after reviewing the dry-run output.**
+   ```bash
+   uv run python -m migrations.run_all_tenants
+   ```
+   This applies every pending migration to each active tenant. Already-applied
+   migrations are skipped. For a risky migration, use `--only` and follow the
+   staged procedure below instead of applying the full pending set.
+
+4. **Use `--only` for risky or multi-phase migrations.**
    The classic case is a Postgres native enum change (adding a new `UserRole`
    value), which must happen in separate steps that can't be undone within
    one transaction:
@@ -34,7 +50,7 @@ dozens of independent tenant Postgres databases, no shared DB.
    uv run python -m migrations.run_all_tenants --only 0008_backfill_new_role_data
    ```
 
-4. **After a real run, check `migration_run_log` for `failed` rows.**
+5. **After a real run, check `migration_run_log` for `failed` rows.**
    ```sql
    SELECT * FROM migration_run_log WHERE status = 'failed' ORDER BY run_at DESC;
    ```
@@ -45,14 +61,14 @@ dozens of independent tenant Postgres databases, no shared DB.
    data shape, a locked table, a connectivity blip worth distinguishing
    from a real schema conflict).
 
-5. **Never delete or renumber an already-applied migration file.**
+6. **Never delete or renumber an already-applied migration file.**
    `schema_migrations` (inside each tenant DB) references files by
    `migration_id`, and onboarding a brand-new school (#2, #3, ... #50) means
    running the *entire* historical sequence against a fresh empty database.
    Deleting an old file breaks that school's onboarding, not just historical
    record-keeping.
 
-6. **One tenant's failure never blocks another tenant's run.**
+7. **One tenant's failure never blocks another tenant's run.**
    This is built into `run_for_tenant()` — exceptions are caught per-tenant,
    not allowed to propagate and kill the loop. Confirm this behavior still
    holds after any change to `run_all_tenants.py`.
@@ -84,7 +100,7 @@ re-apply.
 
 | Command | Effect |
 |---|---|
-| `--dry-run` | Show pending migrations per tenant, apply nothing |
+| `--dry-run` | Show pending migrations per active tenant; does not run upgrades or write run-log rows, but may create a missing `schema_migrations` table |
 | `--only <migration_id>` | Restrict the run to one migration across all active tenants |
 | `--tenant <tenant_id>` | Restrict the run to one tenant across all pending migrations |
 | `--only ... --tenant ...` | Combine both — one migration, one tenant (rare, mostly for a targeted retry) |

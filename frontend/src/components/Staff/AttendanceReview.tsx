@@ -61,8 +61,10 @@ export default function AttendanceReview() {
   const canFinalize = permissions?.attendance_review?.add ?? false;
 
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [scopeInitialized, setScopeInitialized] = useState(false);
   const [timings, setTimings] = useState<Array<{ attendance_time_id: number; attendance_time: string }>>([]);
   const [selectedTimingId, setSelectedTimingId] = useState<number | null>(null);
+  const [selectedGeneralOnly, setSelectedGeneralOnly] = useState(false);
   const [rows, setRows] = useState<AttendanceReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [rowFilter, setRowFilter] = useState<RowFilter>("pending");
@@ -84,23 +86,46 @@ export default function AttendanceReview() {
     .toLocaleDateString(undefined, { weekday: "long" });
 
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const requestedDate = params.get("attendance_date");
+      const requestedShift = params.get("attendance_time_id");
+      if (requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+        setSelectedDate(requestedDate);
+      }
       try {
         const t = await AttendanceTimeAPI.Get();
         const items = Array.isArray(t?.data) ? t.data : [];
+        if (cancelled) return;
         setTimings(
           items.map((it: any) => ({
             attendance_time_id: it.attendance_time_id,
             attendance_time: it.attendance_time,
           }))
         );
-        if (items.length > 0) {
-          setSelectedTimingId((current) => current ?? items[0].attendance_time_id);
+        if (requestedShift === "all") {
+          setSelectedTimingId(null);
+          setSelectedGeneralOnly(false);
+        } else if (requestedShift === "none") {
+          setSelectedTimingId(null);
+          setSelectedGeneralOnly(true);
+        } else if (requestedShift && /^\d+$/.test(requestedShift)) {
+          setSelectedTimingId(Number(requestedShift));
+          setSelectedGeneralOnly(false);
+        } else if (items.length > 0) {
+          setSelectedTimingId(items[0].attendance_time_id);
+          setSelectedGeneralOnly(false);
         }
       } catch {
         // Non-fatal — filter just stays empty
+      } finally {
+        if (!cancelled) setScopeInitialized(true);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -134,16 +159,21 @@ export default function AttendanceReview() {
   }, [selectedDate, selectedTimingId]);
 
   const loadRows = useCallback(async () => {
+    if (!scopeInitialized) return;
     setLoading(true);
     try {
-      const data = await AttendanceReviewAPI.getRows(selectedDate, selectedTimingId ?? undefined);
+      const data = await AttendanceReviewAPI.getRows(
+        selectedDate,
+        selectedTimingId ?? undefined,
+        selectedGeneralOnly
+      );
       setRows(data);
     } catch {
       toast.error("Failed to load attendance review rows.");
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, selectedTimingId]);
+  }, [scopeInitialized, selectedDate, selectedTimingId, selectedGeneralOnly]);
 
   useEffect(() => {
     void loadRows();
@@ -360,13 +390,18 @@ export default function AttendanceReview() {
             </label>
 
             <Select
-              value={selectedTimingId != null ? String(selectedTimingId) : undefined}
-              onValueChange={(v) => handleScopeChange(() => setSelectedTimingId(Number(v)))}
+              value={selectedGeneralOnly ? "none" : selectedTimingId != null ? String(selectedTimingId) : "all"}
+              onValueChange={(value) => handleScopeChange(() => {
+                setSelectedGeneralOnly(value === "none");
+                setSelectedTimingId(value === "all" || value === "none" ? null : Number(value));
+              })}
             >
               <SelectTrigger className="w-full min-w-0">
-                <SelectValue placeholder="Select shift" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All shifts</SelectItem>
+                <SelectItem value="none">General / No Shift Assigned</SelectItem>
                 {timings.map((t) => (
                   <SelectItem key={t.attendance_time_id} value={String(t.attendance_time_id)}>
                     {t.attendance_time}

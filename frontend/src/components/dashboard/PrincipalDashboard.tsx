@@ -7,6 +7,7 @@ import { CardsSkeleton, ChartSkeleton } from "@/components/dashboard/Skeleton";
 import { motion } from "framer-motion";
 import { extractPayloadData } from "@/utils/apiResponse";
 import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
+import StaffAttendanceDashboardCard from "@/components/dashboard/StaffAttendanceDashboardCard";
 import {
   BarChart,
   Bar,
@@ -363,6 +364,8 @@ export function PrincipalDashboard() {
 
       <main className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8">
+
+          <StaffAttendanceDashboardCard />
 
           {/* ══════════════════════════════════════════
               SECTION 1 — Student Attendance Distribution
