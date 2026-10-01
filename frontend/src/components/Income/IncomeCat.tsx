@@ -33,10 +33,10 @@ export default function IncomeCat() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState<IncomeCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const { permissions, permissionsLoaded } = useRole();
+  const { role } = useRole();
 
-  const canAddIncomeCat = permissionsLoaded && !!permissions?.setup_income_categories?.add;
-  const canDeleteIncomeCat = permissionsLoaded && !!permissions?.setup_income_categories?.delete;
+  const canAddIncomeCat = role === "ADMIN";
+  const canDeleteIncomeCat = role === "ADMIN";
 
   // Fetch data from API
   useEffect(() => {

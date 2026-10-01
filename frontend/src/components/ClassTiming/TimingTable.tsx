@@ -34,10 +34,10 @@ export default function ClassTiming() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState<ClassTiming[]>([]);
   const [loading, setLoading] = useState(true);
-  const { permissions, permissionsLoaded } = useRole();
+  const { role } = useRole();
 
-  const canAddTiming = permissionsLoaded && !!permissions?.setup_timings?.add;
-  const canDeleteTiming = permissionsLoaded && !!permissions?.setup_timings?.delete;
+  const canAddTiming = role === "ADMIN";
+  const canDeleteTiming = role === "ADMIN";
 
   // Fetch data from API
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function ClassTiming() {
       <TimingVersionDialog
         attendanceTimeId={row.original.attendance_time_id}
         attendanceTime={row.original.attendance_time}
-        canEdit={permissionsLoaded && !!permissions?.setup_timings?.edit}
+        canEdit={role === "ADMIN"}
       />
     ),
   };
@@ -265,7 +265,7 @@ export default function ClassTiming() {
                 <TimingVersionDialog
                   attendanceTimeId={row.original.attendance_time_id}
                   attendanceTime={row.original.attendance_time}
-                  canEdit={permissionsLoaded && !!permissions?.setup_timings?.edit}
+                  canEdit={role === "ADMIN"}
                 />
               </div>
             </div>

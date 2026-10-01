@@ -6,6 +6,7 @@ import { StudentAPI } from '@/api/Student/StudentsAPI';
 import { adminResetStudentPassword } from '@/api/StudentPortal/StudentPortalAPI';
 import { Header } from '@/components/dashboard/Header';
 import { toast } from 'sonner';
+import { useRole } from '@/context/RoleContext';
 
 const extractArrayData = <T,>(response: unknown): T[] => {
   const payload = (response as { data?: unknown })?.data;
@@ -32,8 +33,11 @@ export default function ResetStudentPasswordPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const { role } = useRole();
+  const isAdmin = role === 'ADMIN';
 
   useEffect(() => {
+    if (!isAdmin) return;
     (async () => {
       try {
         const res = await ClassNameAPI.Get();
@@ -43,9 +47,10 @@ export default function ResetStudentPasswordPage() {
         console.error(err);
       }
     })();
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
+    if (!isAdmin) return;
     if (!selectedClass) {
       setStudents([]);
       setSelectedStudent(null);
@@ -78,10 +83,11 @@ export default function ResetStudentPasswordPage() {
         console.error(err);
       }
     })();
-  }, [classes, selectedClass]);
+  }, [classes, isAdmin, selectedClass]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isAdmin) return;
     if (!selectedStudent) return setMessage('Please select a student');
     if (!newPassword) return setMessage('Enter new password');
     if (newPassword !== confirmPassword) return setMessage('Passwords do not match');
@@ -101,6 +107,10 @@ export default function ResetStudentPasswordPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (!isAdmin) {
+    return <div className="p-6 text-sm text-muted-foreground">Only administrators can access this setup page.</div>;
   }
 
   return (

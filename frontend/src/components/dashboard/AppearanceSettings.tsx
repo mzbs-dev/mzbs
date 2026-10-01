@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PalettePicker } from "./PalettePicker";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { colorPalettes } from "@/config/colorPalettes";
+import { useRole } from "@/context/RoleContext";
 
 /**
  * Client component for appearance settings
@@ -12,6 +13,8 @@ import { colorPalettes } from "@/config/colorPalettes";
  */
 export const AppearanceSettings: React.FC = () => {
   const { currentPalette, isLoaded, changePalette } = useThemePalette();
+  const { role } = useRole();
+  const isAdmin = role === "ADMIN";
   const [selectedPalette, setSelectedPalette] = useState(currentPalette);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -20,6 +23,7 @@ export const AppearanceSettings: React.FC = () => {
   }, [currentPalette]);
 
   const handlePaletteChange = async (paletteId: string) => {
+    if (!isAdmin) return;
     setSelectedPalette(paletteId);
     setIsSaving(true);
     try {
@@ -52,7 +56,7 @@ export const AppearanceSettings: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Palette Picker */}
-      <fieldset disabled={isSaving} className="space-y-6">
+      <fieldset disabled={!isAdmin || isSaving} className="space-y-6">
         <PalettePicker
           selectedPaletteId={selectedPalette}
           onPaletteChange={handlePaletteChange}

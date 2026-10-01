@@ -20,15 +20,14 @@ export default function ClassSubjectManager() {
   const [newSubject, setNewSubject] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const { permissions, permissionsLoaded } = useRole();
+  const { role } = useRole();
 
   // This screen has no separate add/delete backend calls — everything is
   // persisted via a single ClassSubjectAPI.Set() that replaces the whole
   // subject list for a class. That maps most closely to "edit", so the
-  // entire edit surface (Save, remove, add-subject panel) is gated on
-  // setup_class_subjects.edit. Roles with view-only access still see the
-  // read-only subject list.
-  const canEditClassSubjects = permissionsLoaded && !!permissions?.setup_class_subjects?.edit;
+  // The setup area is restricted to ADMIN, so the full edit surface is
+  // available as soon as the authenticated role is known.
+  const canEditClassSubjects = role === "ADMIN";
 
   const selectedClass = useMemo(
     () => classes.find((item) => String(item.class_name_id) === selectedClassId),

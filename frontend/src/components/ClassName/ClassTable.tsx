@@ -50,15 +50,10 @@ export default function ModernStudentTable() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState<ClassNameModel[]>([]);
   const [loading, setLoading] = useState(true);
-  const { permissions, permissionsLoaded } = useRole();
+  const { role } = useRole();
 
-  // setup_classes is ADMIN-only by default in the seed matrix, but ADMIN can
-  // open it up to other roles via Manage Role Permissions (view is already
-  // opened to several roles today) — so this must read the real permission,
-  // not assume ADMIN-only. Hidden while permissions are still loading to
-  // avoid a flash of controls that then disappear.
-  const canAddClass = permissionsLoaded && !!permissions?.setup_classes?.add;
-  const canDeleteClass = permissionsLoaded && !!permissions?.setup_classes?.delete;
+  const canAddClass = role === "ADMIN";
+  const canDeleteClass = role === "ADMIN";
 
   const GetData = async () => {
     setLoading(true);

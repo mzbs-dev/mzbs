@@ -13,6 +13,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { PermissionsAPI } from "@/api/Permissions/PermissionsAPI";
 import { RolePermission } from "@/models/permissions/Permission";
+import { useRole } from "@/context/RoleContext";
 
 const ROLES = [
   "ADMIN",
@@ -84,8 +85,14 @@ const ManageRolePermissions: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [openRoles, setOpenRoles] = useState<Set<string>>(new Set());
   const [pendingCell, setPendingCell] = useState<string | null>(null); // "module:role:action" while a PATCH is in flight
+  const { role } = useRole();
+  const isAdmin = role === "ADMIN";
 
   useEffect(() => {
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
         const response = await PermissionsAPI.GetAll();
@@ -98,7 +105,7 @@ const ManageRolePermissions: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [isAdmin]);
 
   const toggleRole = (role: string) => {
     setOpenRoles((prev) => {
@@ -111,6 +118,7 @@ const ManageRolePermissions: React.FC = () => {
 
   const handleToggle = useCallback(
     async (module: string, role: string, action: string, newValue: boolean) => {
+      if (!isAdmin) return;
       const cellKey = `${module}:${role}:${action}`;
 
       // Optimistic update
@@ -148,8 +156,12 @@ const ManageRolePermissions: React.FC = () => {
         setPendingCell(null);
       }
     },
-    []
+    [isAdmin]
   );
+
+  if (!isAdmin) {
+    return <div className="p-4 text-sm text-muted-foreground">Only administrators can manage permissions.</div>;
+  }
 
   if (loading) {
     return <div className="p-4 text-sm text-gray-500">Loading permissions…</div>;

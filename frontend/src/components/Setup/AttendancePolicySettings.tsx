@@ -7,6 +7,7 @@ import { AttendancePolicyAPI, AttendancePolicy, AttendanceDateException } from "
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { useRole } from "@/context/RoleContext";
 import {
   Select,
   SelectContent,
@@ -24,6 +25,8 @@ export default function AttendancePolicySettings() {
   const [label, setLabel] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { role } = useRole();
+  const isAdmin = role === "ADMIN";
 
   const load = async () => {
     setLoading(true);
@@ -39,6 +42,7 @@ export default function AttendancePolicySettings() {
   useEffect(() => { void load(); }, []);
 
   const toggleDay = async (day: number) => {
+    if (!isAdmin) return;
     const next = policy.weekly_holidays.includes(day)
       ? policy.weekly_holidays.filter((item) => item !== day)
       : [...policy.weekly_holidays, day].sort();
@@ -53,6 +57,7 @@ export default function AttendancePolicySettings() {
   };
 
   const addException = async () => {
+    if (!isAdmin) return;
     if (!date) {
       toast.error("Select an exception date.");
       return;
@@ -73,6 +78,7 @@ export default function AttendancePolicySettings() {
   };
 
   const removeException = async (exception: AttendanceDateException) => {
+    if (!isAdmin) return;
     try {
       await AttendancePolicyAPI.deleteException(exception.id);
       setPolicy((current) => ({ ...current, date_exceptions: current.date_exceptions.filter((item) => item.id !== exception.id) }));
@@ -94,7 +100,7 @@ export default function AttendancePolicySettings() {
               <Checkbox
                 id={`weekly-holiday-${index}`}
                 checked={policy.weekly_holidays.includes(index)}
-                disabled={saving}
+                disabled={!isAdmin || saving}
                 onCheckedChange={() => void toggleDay(index)}
               />
               {day}
@@ -106,8 +112,8 @@ export default function AttendancePolicySettings() {
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <h3 className="text-lg font-semibold">Date Exceptions</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
-          <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-          <Select value={kind} onValueChange={(value) => setKind(value as "HOLIDAY" | "WORKING_DAY")}>
+          <Input disabled={!isAdmin} type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+          <Select disabled={!isAdmin} value={kind} onValueChange={(value) => setKind(value as "HOLIDAY" | "WORKING_DAY")}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -116,14 +122,14 @@ export default function AttendancePolicySettings() {
               <SelectItem value="WORKING_DAY">Working Day</SelectItem>
             </SelectContent>
           </Select>
-          <Input placeholder="Label (optional)" value={label} onChange={(event) => setLabel(event.target.value)} />
-          <Button type="button" onClick={() => void addException()}>Add Exception</Button>
+          <Input disabled={!isAdmin} placeholder="Label (optional)" value={label} onChange={(event) => setLabel(event.target.value)} />
+          <Button disabled={!isAdmin} type="button" onClick={() => void addException()}>Add Exception</Button>
         </div>
         <div className="mt-4 divide-y divide-border rounded-md border border-border">
           {policy.date_exceptions.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No date exceptions configured.</p> : policy.date_exceptions.map((exception) => (
             <div key={exception.id} className="flex items-center justify-between gap-3 p-3 text-sm">
               <span>{exception.exception_date} - {exception.label || exception.kind.replace("_", " ")}</span>
-              <Button type="button" size="icon" variant="ghost" title="Remove exception" aria-label="Remove exception" onClick={() => void removeException(exception)}><Trash2 className="h-4 w-4" /></Button>
+              <Button disabled={!isAdmin} type="button" size="icon" variant="ghost" title="Remove exception" aria-label="Remove exception" onClick={() => void removeException(exception)}><Trash2 className="h-4 w-4" /></Button>
             </div>
           ))}
         </div>

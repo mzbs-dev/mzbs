@@ -32,10 +32,10 @@ export default function TeacherTable() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState<TeacherModel[]>([]);
   const [loading, setLoading] = useState(true);
-  const { permissions, permissionsLoaded } = useRole();
+  const { role } = useRole();
 
-  const canAddTeacher = permissionsLoaded && !!permissions?.setup_teachers?.add;
-  const canDeleteTeacher = permissionsLoaded && !!permissions?.setup_teachers?.delete;
+  const canAddTeacher = role === "ADMIN";
+  const canDeleteTeacher = role === "ADMIN";
 
   useEffect(() => {
     GetData();

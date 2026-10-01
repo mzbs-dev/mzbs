@@ -33,10 +33,10 @@ export default function ExpenseCat() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const { permissions, permissionsLoaded } = useRole();
+  const { role } = useRole();
 
-  const canAddExpenseCat = permissionsLoaded && !!permissions?.setup_expense_categories?.add;
-  const canDeleteExpenseCat = permissionsLoaded && !!permissions?.setup_expense_categories?.delete;
+  const canAddExpenseCat = role === "ADMIN";
+  const canDeleteExpenseCat = role === "ADMIN";
 
   // Fetch data from API
   useEffect(() => {
