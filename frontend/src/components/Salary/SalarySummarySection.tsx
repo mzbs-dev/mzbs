@@ -5,7 +5,14 @@ import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { SalaryAPI, SalaryLedgerResponse, TeacherSalaryResponse } from "@/api/Salary/SalaryAPI";
 import { CardsSkeleton } from "@/components/dashboard/Skeleton";
-import { Users, TrendingUp, AlertCircle, DollarSign, RefreshCw } from "lucide-react";
+import { Users, TrendingUp, AlertCircle, DollarSign } from "lucide-react";
+import {
+  DashboardRefreshButton,
+  DashboardToolbar,
+  DashboardViewLink,
+  dashboardFilterGroupClassName,
+  dashboardSelectClassName,
+} from "@/components/dashboard/DashboardSectionActions";
 
 interface MonthlySalaryData {
   month: string;
@@ -375,10 +382,10 @@ const SalarySummarySection: React.FC = () => {
       className="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-300"
     >
       {/* Header with title, year selector and refresh */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-800">Salary Records & Summary</h2>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+        <DashboardToolbar>
+          <div className={dashboardFilterGroupClassName}>
             <label htmlFor="salary-year-select" className="mr-2 text-sm font-medium text-gray-600">
               Select Year:
             </label>
@@ -386,7 +393,7 @@ const SalarySummarySection: React.FC = () => {
               id="salary-year-select"
               value={selectedYear}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className={dashboardSelectClassName}
             >
               {availableYears.map((year) => (
                 <option key={year} value={year}>
@@ -395,14 +402,9 @@ const SalarySummarySection: React.FC = () => {
               ))}
             </select>
           </div>
-          <button
-            onClick={() => fetchSalaryData()}
-            title="Refresh"
-            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
+          <DashboardViewLink href="/dashboard/salary/index" />
+          <DashboardRefreshButton onClick={() => fetchSalaryData()} loading={isLoading} />
+        </DashboardToolbar>
       </div>
 
       {/* Summary Cards */}

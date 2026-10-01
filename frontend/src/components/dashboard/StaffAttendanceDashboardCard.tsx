@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, RefreshCw } from "lucide-react";
+import { DashboardDateInput } from "@/components/dashboard/DashboardSectionActions";
 import {
   AttendanceReviewAPI,
   AttendanceReviewSummary,
@@ -70,14 +71,12 @@ export default function StaffAttendanceDashboardCard() {
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-bold tracking-wide text-gray-800">STAFF ATTENDANCE</h2>
         <div className="flex items-center gap-2">
-          <label className="sr-only" htmlFor="staff-attendance-date">Attendance date</label>
-          <input
+          <DashboardDateInput
             id="staff-attendance-date"
-            type="date"
+            label="Attendance date"
             max={getLocalDate()}
             value={selectedDate}
-            onChange={(event) => setSelectedDate(event.target.value)}
-            className="min-w-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            onChange={setSelectedDate}
           />
           <button
             type="button"
@@ -85,7 +84,7 @@ export default function StaffAttendanceDashboardCard() {
             disabled={loading}
             title="Refresh staff attendance"
             aria-label="Refresh staff attendance"
-            className="rounded-md border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-100 disabled:cursor-wait disabled:opacity-60"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-600 transition hover:bg-gray-100 disabled:cursor-wait disabled:opacity-60"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </button>

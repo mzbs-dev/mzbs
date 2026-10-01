@@ -4,7 +4,13 @@ import React, { useEffect, useState } from "react";
 import { Header } from "@/components/dashboard/Header";
 import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
 import { CardsSkeleton } from "@/components/dashboard/Skeleton";
-import { RefreshCw } from "lucide-react";
+import {
+  DashboardRefreshButton,
+  DashboardToolbar,
+  DashboardViewLink,
+  dashboardFilterGroupClassName,
+  dashboardSelectClassName,
+} from "@/components/dashboard/DashboardSectionActions";
 import { motion } from "framer-motion";
 import {
   BarChart,
@@ -94,8 +100,8 @@ export function FeeManagerDashboard() {
                 Fee Collection Summary for {selectedYear}
               </h2>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+              <DashboardToolbar>
+                <div className={dashboardFilterGroupClassName}>
                   <label htmlFor="fee-year-select" className="mr-2 text-sm font-medium text-gray-600">
                     Select Year:
                   </label>
@@ -103,7 +109,7 @@ export function FeeManagerDashboard() {
                     id="fee-year-select"
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
-                    className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className={dashboardSelectClassName}
                   >
                     {getYearOptions(currentYear).map((year) => (
                       <option key={year} value={year}>
@@ -112,14 +118,9 @@ export function FeeManagerDashboard() {
                     ))}
                   </select>
                 </div>
-                <button
-                  onClick={() => fetchFeeSummary(selectedYear)}
-                  title="Refresh"
-                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-              </div>
+                <DashboardViewLink href="/dashboard/fees/view_fees" />
+                <DashboardRefreshButton onClick={() => fetchFeeSummary(selectedYear)} loading={isLoading} />
+              </DashboardToolbar>
             </div>
 
             {!isLoading && feeSummaryData && (

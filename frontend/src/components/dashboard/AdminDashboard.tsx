@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/dashboard/Header";
 import { CardsSkeleton, ChartSkeleton, Skeleton } from "@/components/dashboard/Skeleton";
@@ -9,6 +10,15 @@ import { motion } from "framer-motion";
 import { extractPayloadData } from "@/utils/apiResponse";
 import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
 import StaffAttendanceDashboardCard from "@/components/dashboard/StaffAttendanceDashboardCard";
+import {
+  DashboardDateInput,
+  DashboardRefreshButton,
+  DashboardToolbar,
+  DashboardViewLink,
+  dashboardFilterGroupClassName,
+  dashboardSelectClassName,
+  getAttendanceMarkHref,
+} from "@/components/dashboard/DashboardSectionActions";
 import { DebitAPI } from "@/api/Debit/DebitAPI";
 import {
   BarChart,
@@ -21,7 +31,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { CalendarDays, RefreshCw, ShieldCheck, Users } from "lucide-react";
+import { ArrowUpRight, CalendarDays, ShieldCheck, Users } from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Types
@@ -73,7 +83,9 @@ interface StudentSummaryData {
 interface AttendanceSummaryData {
   summary: {
     date: string;
+    class_name_id: number;
     class_name: string;
+    attendance_time_id: number;
     attendance_time: string;
     total_students: number;
     attendance_values: Record<string, number>;
@@ -199,18 +211,13 @@ const DateSelector = ({
 }: {
   id: string; value: string; onChange: (v: string) => void; label?: string;
 }) => (
-  <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
-    <CalendarDays className="w-4 h-4 text-gray-500 shrink-0" />
-    <label htmlFor={id} className="text-sm font-medium text-gray-600 whitespace-nowrap">{label}</label>
-    <input
+  <DashboardDateInput
       id={id}
-      type="date"
+      label={label}
       value={value}
       max={getTodayString()}
-      onChange={(e) => onChange(e.target.value)}
-      className="bg-white border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer"
-    />
-  </div>
+      onChange={onChange}
+  />
 );
 
 const YearMonthSelector = ({
@@ -221,19 +228,19 @@ const YearMonthSelector = ({
   currentYear: number; showMonth?: boolean;
 }) => (
   <div className="flex flex-wrap items-center gap-3">
-    <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+    <div className={dashboardFilterGroupClassName}>
       <label htmlFor={yearId} className="mr-2 text-sm font-medium text-gray-600">Year:</label>
       <select
         id={yearId}
         value={selectedYear}
         onChange={(e) => onYearChange(parseInt(e.target.value))}
-        className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        className={dashboardSelectClassName}
       >
         {YEAR_RANGE(currentYear).map((y) => <option key={y} value={y}>{y}</option>)}
       </select>
     </div>
     {showMonth && monthId && onMonthChange && (
-      <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+      <div className={dashboardFilterGroupClassName}>
         <label htmlFor={monthId} className="mr-2 text-sm font-medium text-gray-600">Month:</label>
         <select
           id={monthId}
@@ -242,7 +249,7 @@ const YearMonthSelector = ({
             const v = parseInt(e.target.value);
             onMonthChange(v === 0 ? null : v);
           }}
-          className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          className={dashboardSelectClassName}
         >
           {MONTH_NAMES.map((m, i) => <option key={i} value={i}>{m}</option>)}
         </select>
@@ -711,13 +718,10 @@ export function AdminDashboard() {
               title="Total Users Role-wise"
               subtitle="System-wide user distribution by role"
               controls={
-                <button
-                  onClick={fetchUserRoles}
-                  title="Refresh"
-                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
+                <DashboardToolbar>
+                  <DashboardViewLink href="/dashboard/setup/manage_user" label="Manage Users" />
+                  <DashboardRefreshButton onClick={fetchUserRoles} loading={userRolesLoading} />
+                </DashboardToolbar>
               }
             />
 
@@ -784,18 +788,11 @@ export function AdminDashboard() {
           <SectionCard delay={0.05}>
             <SectionHeader
               title="Student Attendance Distribution"
-              subtitle={formatDisplayDate(distDate)}
               controls={
-                <>
+                <DashboardToolbar>
                   <DateSelector id="admin-dist-date" value={distDate} onChange={setDistDate} />
-                  <button
-                    onClick={() => fetchStudentSummary(distDate)}
-                    title="Refresh"
-                    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
-                </>
+                  <DashboardRefreshButton onClick={() => fetchStudentSummary(distDate)} loading={studentSummaryLoading} />
+                </DashboardToolbar>
               }
             />
 
@@ -890,18 +887,17 @@ export function AdminDashboard() {
           <SectionCard delay={0.1}>
             <SectionHeader
               title={attendanceSummaryData?.graph.title || "Class Attendance Summary"}
-              subtitle={formatDisplayDate(classDate)}
               controls={
-                <>
+                <DashboardToolbar>
                   <DateSelector id="admin-class-date" value={classDate} onChange={setClassDate} />
                   {availableAttendanceTimes.length > 0 && (
-                    <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
+                    <div className={`${dashboardFilterGroupClassName} gap-2`}>
                       <label htmlFor="admin-time-select" className="text-sm font-medium text-gray-600 whitespace-nowrap">Time:</label>
                       <select
                         id="admin-time-select"
                         value={selectedAttendanceTime || "All"}
                         onChange={(e) => setSelectedAttendanceTime(e.target.value)}
-                        className="bg-white border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer"
+                        className={`${dashboardSelectClassName} cursor-pointer`}
                       >
                         {availableAttendanceTimes.map((time) => (
                           <option key={time} value={time}>
@@ -911,14 +907,8 @@ export function AdminDashboard() {
                       </select>
                     </div>
                   )}
-                  <button
-                    onClick={() => fetchAttendanceSummary(classDate)}
-                    title="Refresh"
-                    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
-                </>
+                  <DashboardRefreshButton onClick={() => fetchAttendanceSummary(classDate)} loading={attendanceSummaryLoading} />
+                </DashboardToolbar>
               }
             />
 
@@ -970,7 +960,7 @@ export function AdminDashboard() {
                 <table className="min-w-full divide-y divide-gray-200 rounded-lg overflow-hidden">
                   <thead className="bg-gray-50">
                     <tr>
-                      {["Class", "Time", "Total Students", "Present", "Absent", "Late", "Leave", "Unmarked"].map((col) => (
+                      {["Class", "Time", "Total Students", "Present", "Absent", "Late", "Leave", "Unmarked", "Review"].map((col) => (
                         <th key={col} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                           {col}
                         </th>
@@ -1000,6 +990,15 @@ export function AdminDashboard() {
                               {unmarked}
                             </span>
                           </td>
+                          <td className="px-4 py-3 text-right">
+                            <Link
+                              href={getAttendanceMarkHref(classDate, item.class_name_id, item.attendance_time_id)}
+                              className="inline-flex items-center gap-1 whitespace-nowrap font-medium text-blue-700 hover:text-blue-900"
+                            >
+                              Mark
+                              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                            </Link>
+                          </td>
                         </tr>
                       );
                     })}
@@ -1015,8 +1014,8 @@ export function AdminDashboard() {
           <SectionCard delay={0.15}>
             <SectionHeader
               title={incomeExpenseData?.graph.title || "Financial Summary"}
-              controls={
-                  <>
+                controls={
+                  <DashboardToolbar>
                     <YearMonthSelector
                       yearId="fin-year"
                       selectedYear={selectedYear}
@@ -1024,14 +1023,8 @@ export function AdminDashboard() {
                       currentYear={currentYear}
                       showMonth={false}
                     />
-                    <button
-                      onClick={() => fetchIncomeExpense(selectedYear)}
-                      title="Refresh"
-                      className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
-                  </>
+                    <DashboardRefreshButton onClick={() => fetchIncomeExpense(selectedYear)} loading={incomeExpenseLoading} />
+                  </DashboardToolbar>
                 }
             />
 
@@ -1113,28 +1106,23 @@ export function AdminDashboard() {
               title="Debit Summary"
               subtitle={`Yearly debit metrics for ${selectedYear}`}
               controls={
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+                <DashboardToolbar>
+                  <div className={dashboardFilterGroupClassName}>
                     <label htmlFor="debit-year-select" className="mr-2 text-sm font-medium text-gray-600">Year:</label>
                     <select
                       id="debit-year-select"
                       value={selectedYear}
                       onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
-                      className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      className={dashboardSelectClassName}
                     >
                       {YEAR_RANGE(currentYear).map((year) => (
                         <option key={year} value={year}>{year}</option>
                       ))}
                     </select>
                   </div>
-                  <button
-                    onClick={fetchDebitSummary}
-                    title="Refresh"
-                    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
-                </div>
+                  <DashboardViewLink href="/dashboard/debit/view" />
+                  <DashboardRefreshButton onClick={fetchDebitSummary} loading={debitSummaryLoading} />
+                </DashboardToolbar>
               }
             />
 
@@ -1235,21 +1223,16 @@ export function AdminDashboard() {
             <SectionHeader
               title={incomeSummaryData?.graph.title || `Income Category Details for ${selectedYear}`}
               controls={
-                  <>
+                  <DashboardToolbar>
                     <YearMonthSelector
                       yearId="income-year" monthId="income-month"
                       selectedYear={selectedYear} selectedMonth={selectedIncomeMonth}
                       onYearChange={setSelectedYear} onMonthChange={setSelectedIncomeMonth}
                       currentYear={currentYear}
                     />
-                    <button
-                      onClick={() => fetchIncomeSummary(selectedYear, selectedIncomeMonth)}
-                      title="Refresh"
-                      className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
-                  </>
+                    <DashboardViewLink href="/dashboard/income/view_income" />
+                    <DashboardRefreshButton onClick={() => fetchIncomeSummary(selectedYear, selectedIncomeMonth)} loading={incomeSummaryLoading} />
+                  </DashboardToolbar>
                 }
             />
 
@@ -1309,21 +1292,16 @@ export function AdminDashboard() {
             <SectionHeader
               title={expenseSummaryData?.graph.title || `Expense Category Details for ${selectedYear}`}
               controls={
-                  <>
+                  <DashboardToolbar>
                     <YearMonthSelector
                       yearId="expense-year" monthId="expense-month"
                       selectedYear={selectedYear} selectedMonth={selectedExpenseMonth}
                       onYearChange={setSelectedYear} onMonthChange={setSelectedExpenseMonth}
                       currentYear={currentYear}
                     />
-                    <button
-                      onClick={() => fetchExpenseSummary(selectedYear, selectedExpenseMonth)}
-                      title="Refresh"
-                      className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
-                  </>
+                    <DashboardViewLink href="/dashboard/expense/view_expense" />
+                    <DashboardRefreshButton onClick={() => fetchExpenseSummary(selectedYear, selectedExpenseMonth)} loading={expenseSummaryLoading} />
+                  </DashboardToolbar>
                 }
             />
 
@@ -1383,7 +1361,7 @@ export function AdminDashboard() {
             <SectionHeader
               title={`Fee Collection Summary for ${selectedYear}`}
               controls={
-                  <>
+                  <DashboardToolbar>
                     <YearMonthSelector
                       yearId="fee-year"
                       selectedYear={selectedYear}
@@ -1391,14 +1369,9 @@ export function AdminDashboard() {
                       currentYear={currentYear}
                       showMonth={false}
                     />
-                    <button
-                      onClick={() => fetchFeeSummary(selectedYear)}
-                      title="Refresh"
-                      className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
-                  </>
+                    <DashboardViewLink href="/dashboard/fees/view_fees" />
+                    <DashboardRefreshButton onClick={() => fetchFeeSummary(selectedYear)} loading={feeSummaryLoading} />
+                  </DashboardToolbar>
                 }
             />
 

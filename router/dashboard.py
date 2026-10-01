@@ -149,10 +149,12 @@ def get_attendance_summary(
         class_data = {}
         for class_obj in all_classes:
             for time_obj in attendance_times:
-                key = (class_obj.class_name_id, time_obj.attendance_time)
+                key = (class_obj.class_name_id, time_obj.attendance_time_id)
                 class_data[key] = {
                     "date": str(selected_date),
+                    "class_name_id": class_obj.class_name_id,
                     "class_name": class_obj.class_name,
+                    "attendance_time_id": time_obj.attendance_time_id,
                     "attendance_time": time_obj.attendance_time,
                     "total_students": 0,
                     "attendance_values": {
@@ -184,6 +186,7 @@ def get_attendance_summary(
             select(
                 ClassNames.class_name_id,
                 ClassNames.class_name,
+                AttendanceTime.attendance_time_id,
                 AttendanceTime.attendance_time,
                 AttendanceValue.attendance_value,
                 func.count(func.distinct(Attendance.student_id)).label("count")
@@ -193,7 +196,7 @@ def get_attendance_summary(
             .join(AttendanceValue, Attendance.attendance_value_id == AttendanceValue.attendance_value_id)
             .join(latest_att, and_(Attendance.attendance_id == latest_att.c.attendance_id, latest_att.c.rn == 1))
             .where(func.date(Attendance.attendance_date) == selected_date)
-            .group_by(ClassNames.class_name_id, ClassNames.class_name, AttendanceTime.attendance_time, AttendanceValue.attendance_value)
+            .group_by(ClassNames.class_name_id, ClassNames.class_name, AttendanceTime.attendance_time_id, AttendanceTime.attendance_time, AttendanceValue.attendance_value)
         )
 
         result = session.exec(stmt).all()
@@ -201,9 +204,9 @@ def get_attendance_summary(
         print(f"[attendance-summary] Total class-time combinations: {len(class_data)}")
 
         # Populate with attendance records
-        for class_id, class_name, attendance_time, value, count in result:
+        for class_id, class_name, attendance_time_id, attendance_time, value, count in result:
             norm_value = value.lower() if value else "unknown"
-            key = (class_id, attendance_time)
+            key = (class_id, attendance_time_id)
             if key in class_data and norm_value in class_data[key]["attendance_values"]:
                 class_data[key]["attendance_values"][norm_value] = count
         
@@ -217,25 +220,25 @@ def get_attendance_summary(
         
         # Get marked students per class-time for this date
         stmt_marked = (
-            select(Attendance.class_name_id, AttendanceTime.attendance_time, func.count(func.distinct(Attendance.student_id)).label("marked_students"))
+            select(Attendance.class_name_id, AttendanceTime.attendance_time_id, func.count(func.distinct(Attendance.student_id)).label("marked_students"))
             .join(AttendanceTime, Attendance.attendance_time_id == AttendanceTime.attendance_time_id)
             .where(func.date(Attendance.attendance_date) == selected_date)
-            .group_by(Attendance.class_name_id, AttendanceTime.attendance_time)
+            .group_by(Attendance.class_name_id, AttendanceTime.attendance_time_id)
         )
         class_time_marked_results = session.exec(stmt_marked).all()
         
         # Create lookup dictionaries
         class_total_lookup = {row.class_name_id: row.total_students for row in class_student_counts}
         class_time_marked_lookup = {}
-        for class_id, attendance_time, marked_count in class_time_marked_results:
-            class_time_marked_lookup[(class_id, attendance_time)] = marked_count
+        for class_id, attendance_time_id, marked_count in class_time_marked_results:
+            class_time_marked_lookup[(class_id, attendance_time_id)] = marked_count
         
         # Calculate unmarked for each class-time and set total_students
-        for (class_id, attendance_time) in class_data:
+        for (class_id, attendance_time_id) in class_data:
             total_in_class = class_total_lookup.get(class_id, 0)
-            marked_in_class_time = class_time_marked_lookup.get((class_id, attendance_time), 0)
-            class_data[(class_id, attendance_time)]["total_students"] = total_in_class
-            class_data[(class_id, attendance_time)]["attendance_values"]["unmarked"] = max(0, total_in_class - marked_in_class_time)
+            marked_in_class_time = class_time_marked_lookup.get((class_id, attendance_time_id), 0)
+            class_data[(class_id, attendance_time_id)]["total_students"] = total_in_class
+            class_data[(class_id, attendance_time_id)]["attendance_values"]["unmarked"] = max(0, total_in_class - marked_in_class_time)
 
         summary = [AttendanceSummary(**data) for data in class_data.values()]
 

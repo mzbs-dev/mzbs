@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/dashboard/Header";
 import { CardsSkeleton, ChartSkeleton } from "@/components/dashboard/Skeleton";
@@ -8,6 +9,14 @@ import { motion } from "framer-motion";
 import { extractPayloadData } from "@/utils/apiResponse";
 import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
 import StaffAttendanceDashboardCard from "@/components/dashboard/StaffAttendanceDashboardCard";
+import {
+  DashboardDateInput,
+  DashboardRefreshButton,
+  DashboardToolbar,
+  dashboardFilterGroupClassName,
+  dashboardSelectClassName,
+  getAttendanceMarkHref,
+} from "@/components/dashboard/DashboardSectionActions";
 import {
   BarChart,
   Bar,
@@ -19,8 +28,8 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { CalendarDays, RefreshCw } from "lucide-react";
 import { useRole } from "@/context/RoleContext";
+import { ArrowUpRight, CalendarDays } from "lucide-react";
 
 // ─────────────────────────────────────────────
 // Types
@@ -52,7 +61,9 @@ interface StudentSummaryData {
 interface AttendanceSummaryData {
   summary: {
     date: string;
+    class_name_id: number;
     class_name: string;
+    attendance_time_id: number;
     attendance_time: string;
     total_students: number;
     attendance_values: {
@@ -119,20 +130,13 @@ const DateSelector = ({
   onChange: (v: string) => void;
   label?: string;
 }) => (
-  <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
-    <CalendarDays className="w-4 h-4 text-gray-500 shrink-0" />
-    <label htmlFor={id} className="text-sm font-medium text-gray-600 whitespace-nowrap">
-      {label}
-    </label>
-    <input
+  <DashboardDateInput
       id={id}
-      type="date"
+      label={label}
       value={value}
       max={getTodayString()}
-      onChange={(e) => onChange(e.target.value)}
-      className="bg-white border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer"
-    />
-  </div>
+      onChange={onChange}
+  />
 );
 
 const StatCard = ({
@@ -382,24 +386,15 @@ export function PrincipalDashboard() {
                 <h2 className="text-xl font-bold text-gray-800">
                   Student Attendance Distribution
                 </h2>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {formatDisplayDate(distDate)}
-                </p>
               </div>
-              <div className="flex items-center gap-2">
+              <DashboardToolbar>
                 <DateSelector
                   id="dist-date-select"
                   value={distDate}
                   onChange={setDistDate}
                 />
-                <button
-                  onClick={() => fetchStudentSummary(distDate)}
-                  title="Refresh"
-                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-              </div>
+                <DashboardRefreshButton onClick={() => fetchStudentSummary(distDate)} loading={studentSummaryLoading} />
+              </DashboardToolbar>
             </div>
 
             {/* Stat cards */}
@@ -496,24 +491,21 @@ export function PrincipalDashboard() {
                 <h2 className="text-xl font-bold text-gray-800">
                   {attendanceSummaryData?.graph.title || "Class Attendance Summary"}
                 </h2>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {formatDisplayDate(classDate)}
-                </p>
               </div>
-              <div className="flex items-center gap-2">
+              <DashboardToolbar>
                 <DateSelector
                   id="class-date-select"
                   value={classDate}
                   onChange={setClassDate}
                 />
                 {availableAttendanceTimes.length > 0 && (
-                  <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
+                  <div className={`${dashboardFilterGroupClassName} gap-2`}>
                     <label htmlFor="principal-time-select" className="text-sm font-medium text-gray-600 whitespace-nowrap">Time:</label>
                     <select
                       id="principal-time-select"
                       value={selectedAttendanceTime || ""}
                       onChange={(e) => setSelectedAttendanceTime(e.target.value)}
-                      className="bg-white border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer"
+                      className={`${dashboardSelectClassName} cursor-pointer`}
                     >
                       {availableAttendanceTimes.map((time) => (
                         <option key={time} value={time}>{time}</option>
@@ -521,14 +513,8 @@ export function PrincipalDashboard() {
                     </select>
                   </div>
                 )}
-                <button
-                  onClick={() => fetchAttendanceSummary(classDate)}
-                  title="Refresh"
-                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-              </div>
+                <DashboardRefreshButton onClick={() => fetchAttendanceSummary(classDate)} loading={attendanceSummaryLoading} />
+              </DashboardToolbar>
             </div>
 
             {/* Stacked Bar Chart */}
@@ -580,7 +566,7 @@ export function PrincipalDashboard() {
                 <table className="min-w-full divide-y divide-gray-200 rounded-lg overflow-hidden">
                   <thead className="bg-gray-50">
                     <tr>
-                      {["Class", "Time", "Total Students", "Present", "Absent", "Late", "Leave"].map((col) => (
+                      {["Class", "Time", "Total Students", "Present", "Absent", "Late", "Leave", "Review"].map((col) => (
                         <th key={col} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                           {col}
                         </th>
@@ -626,6 +612,15 @@ export function PrincipalDashboard() {
                             <span className="px-2.5 py-1 rounded-full bg-orange-100 text-orange-800 font-medium">
                               {leave}
                             </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <Link
+                              href={getAttendanceMarkHref(classDate, item.class_name_id, item.attendance_time_id)}
+                              className="inline-flex items-center gap-1 whitespace-nowrap font-medium text-blue-700 hover:text-blue-900"
+                            >
+                              Mark
+                              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                            </Link>
                           </td>
                         </tr>
                       );

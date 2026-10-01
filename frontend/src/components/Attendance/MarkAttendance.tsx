@@ -192,14 +192,14 @@ const MarkAttendance = () => {
   const [studentByFilter, setStudentByFilter] = useState<SelectComponentOption[]>([]);
   const [existingAttendance, setExistingAttendance] = useState<ExistingAttendanceResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [optionsLoading, setOptionsLoading] = useState(true);
 
   const today = new Date();
   const todayValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   useEffect(() => {
-    GetClassName();
-    GetClassTime();
-    GetTeacherName();
+    Promise.all([GetClassName(), GetClassTime(), GetTeacherName()])
+      .finally(() => setOptionsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -296,6 +296,27 @@ const MarkAttendance = () => {
       setValue("attendance_time_id", Number(classTimeList[0].id));
     }
   }, [classTimeList, getValues, setValue]);
+
+  useEffect(() => {
+    if (optionsLoading) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const date = params.get("attendance_date");
+    const classNameId = Number(params.get("class_name_id"));
+    const attendanceTimeId = Number(params.get("attendance_time_id"));
+    if (
+      !date ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !classNameList.some((option) => Number(option.id) === classNameId) ||
+      !classTimeList.some((option) => Number(option.id) === attendanceTimeId)
+    ) {
+      return;
+    }
+
+    setValue("attendance_date", date);
+    setValue("class_name_id", classNameId);
+    setValue("attendance_time_id", attendanceTimeId);
+  }, [optionsLoading, classNameList, classTimeList, setValue]);
 
   // ── Mark All Helper ─────────────────────────────────────────────────────────
   const markAll = (field: "present" | "absent" | "late" | "leave") => {

@@ -7,7 +7,9 @@ class UserLoginSummary(BaseModel):
 
 class AttendanceSummary(BaseModel):
     date: str
+    class_name_id: int
     class_name: str
+    attendance_time_id: int
     attendance_time: str
     total_students: int
     attendance_values: Dict[str, int]  # e.g., {"present": 10, "absent": 5}

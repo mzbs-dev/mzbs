@@ -9,7 +9,13 @@ import { DashboardAPI } from "@/api/Dashboard/DashboardAPI";
 import { DebitAPI } from "@/api/Debit/DebitAPI";
 import { CardsSkeleton, Skeleton } from "@/components/dashboard/Skeleton";
 import SalarySummarySection from "@/components/Salary/SalarySummarySection";
-import { RefreshCw } from "lucide-react";
+import {
+  DashboardRefreshButton,
+  DashboardToolbar,
+  DashboardViewLink,
+  dashboardFilterGroupClassName,
+  dashboardSelectClassName,
+} from "@/components/dashboard/DashboardSectionActions";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LineChart, Line } from "recharts";
 import { extractPayloadData } from "@/utils/apiResponse";
@@ -317,11 +323,12 @@ export function AccountantDashboard() {
             transition={{ duration: 0.5, delay: 0.4 }}
             className="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-300"
           >
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-800">
                 {incomeExpenseSummaryData?.graph.title || "Financial Summary"}
               </h2>
-              <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+              <DashboardToolbar>
+              <div className={dashboardFilterGroupClassName}>
                 <label
                   htmlFor="year-select"
                   className="mr-2 text-sm font-medium text-gray-600"
@@ -332,7 +339,7 @@ export function AccountantDashboard() {
                   id="year-select"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className={dashboardSelectClassName}
                 >
                   {Array.from({ length: 7 }, (_, i) => currentYear - 4 + i).map(
                     (year) => (
@@ -343,13 +350,8 @@ export function AccountantDashboard() {
                   )}
                 </select>
               </div>
-              <button
-                onClick={() => fetchIncomeExpenseSummary(selectedYear)}
-                title="Refresh"
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
+              <DashboardRefreshButton onClick={() => fetchIncomeExpenseSummary(selectedYear)} loading={incomeExpenseLoading} />
+              </DashboardToolbar>
             </div>
 
             {/* Financial summary cards with improved styling */}
@@ -514,28 +516,23 @@ export function AccountantDashboard() {
                     Yearly debit metrics and monthly performance
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+                <DashboardToolbar>
+                  <div className={dashboardFilterGroupClassName}>
                     <label htmlFor="debit-year-select" className="mr-2 text-sm font-medium text-gray-600">Year:</label>
                     <select
                       id="debit-year-select"
                       value={selectedYear}
                       onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                      className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      className={dashboardSelectClassName}
                     >
                       {Array.from({ length: 7 }, (_, i) => currentYear - 4 + i).map((year) => (
                         <option key={year} value={year}>{year}</option>
                       ))}
                     </select>
                   </div>
-                  <button
-                    onClick={fetchDebitSummary}
-                    title="Refresh"
-                    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
-                </div>
+                  <DashboardViewLink href="/dashboard/debit/view" />
+                  <DashboardRefreshButton onClick={fetchDebitSummary} loading={debitSummaryLoading} />
+                </DashboardToolbar>
             </div>
 
             {!debitSummaryLoading && debitSummaryData ? (
@@ -641,8 +638,8 @@ export function AccountantDashboard() {
               <h2 className="text-xl font-bold text-gray-800 mb-2 sm:mb-0">
                 {incomeSummaryData?.graph.title || "Income Category Details for 2026"}
               </h2>
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+              <DashboardToolbar>
+                <div className={dashboardFilterGroupClassName}>
                   <label
                     htmlFor="income-year-select"
                     className="mr-2 text-sm font-medium text-gray-600"
@@ -653,7 +650,7 @@ export function AccountantDashboard() {
                     id="income-year-select"
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                    className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className={dashboardSelectClassName}
                   >
                     {Array.from(
                       { length: 7 },
@@ -666,7 +663,7 @@ export function AccountantDashboard() {
                   </select>
                 </div>
 
-                <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+                <div className={dashboardFilterGroupClassName}>
                   <label
                     htmlFor="income-month-select"
                     className="mr-2 text-sm font-medium text-gray-600"
@@ -680,7 +677,7 @@ export function AccountantDashboard() {
                       const value = parseInt(e.target.value);
                       setSelectedMonth(value === 0 ? null : value);
                     }}
-                    className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className={dashboardSelectClassName}
                   >
                     {monthNames.map((month, index) => (
                       <option key={index} value={index}>
@@ -689,14 +686,9 @@ export function AccountantDashboard() {
                     ))}
                   </select>
                 </div>
-                <button
-                  onClick={() => fetchIncomeSummary(selectedYear, selectedMonth)}
-                  title="Refresh"
-                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-              </div>
+                <DashboardViewLink href="/dashboard/income/view_income" />
+                <DashboardRefreshButton onClick={() => fetchIncomeSummary(selectedYear, selectedMonth)} loading={incomeSummaryLoading} />
+              </DashboardToolbar>
             </div>
 
             {/* Income summary total */}
@@ -778,8 +770,8 @@ export function AccountantDashboard() {
               <h2 className="text-xl font-bold text-gray-800 mb-2 sm:mb-0">
                 {expenseSummaryData?.graph.title || "Expense Category Details for 2026"}
               </h2>
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+              <DashboardToolbar>
+                <div className={dashboardFilterGroupClassName}>
                   <label
                     htmlFor="expense-year-select"
                     className="mr-2 text-sm font-medium text-gray-600"
@@ -790,7 +782,7 @@ export function AccountantDashboard() {
                     id="expense-year-select"
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                    className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className={dashboardSelectClassName}
                   >
                     {Array.from(
                       { length: 7 },
@@ -803,7 +795,7 @@ export function AccountantDashboard() {
                   </select>
                 </div>
 
-                <div className="flex items-center bg-gray-100 p-2 rounded-lg">
+                <div className={dashboardFilterGroupClassName}>
                   <label
                     htmlFor="expense-month-select"
                     className="mr-2 text-sm font-medium text-gray-600"
@@ -819,7 +811,7 @@ export function AccountantDashboard() {
                       const value = parseInt(e.target.value);
                       setSelectedExpenseMonth(value === 0 ? null : value);
                     }}
-                    className="bg-white border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className={dashboardSelectClassName}
                   >
                     {monthNames.map((month, index) => (
                       <option key={index} value={index}>
@@ -828,14 +820,9 @@ export function AccountantDashboard() {
                     ))}
                   </select>
                 </div>
-                <button
-                  onClick={() => fetchExpenseSummary(selectedYear, selectedExpenseMonth)}
-                  title="Refresh"
-                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-              </div>
+                <DashboardViewLink href="/dashboard/expense/view_expense" />
+                <DashboardRefreshButton onClick={() => fetchExpenseSummary(selectedYear, selectedExpenseMonth)} loading={expenseSummaryLoading} />
+              </DashboardToolbar>
             </div>
 
             {/* Expense summary total */}
@@ -919,6 +906,7 @@ export function AccountantDashboard() {
               <h2 className="text-xl font-bold text-gray-800">
                 Fee Collection Summary for {selectedYear}
               </h2>
+              <DashboardToolbar>
               <div className="flex items-center bg-gray-100 p-2 rounded-lg">
                 <label
                   htmlFor="fee-year-select"
@@ -941,13 +929,9 @@ export function AccountantDashboard() {
                   )}
                 </select>
               </div>
-              <button
-                onClick={() => fetchFeeSummary(selectedYear)}
-                title="Refresh"
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-500"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
+              <DashboardViewLink href="/dashboard/fees/view_fees" />
+              <DashboardRefreshButton onClick={() => fetchFeeSummary(selectedYear)} loading={feeSummaryLoading} />
+              </DashboardToolbar>
             </div>
 
             {/* Fee summary total */}
