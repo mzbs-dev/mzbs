@@ -43,6 +43,8 @@ class UserUpdate(SQLModel):
     email: Optional[str] = None
     password: Optional[str] = None
     role: Optional[UserRole] = None
+    is_active: Optional[bool] = None
+    teacher_name_id: Optional[int] = None
 
 class AdminUserUpdate(SQLModel):
     role: UserRole = Field(description=f"Must be one of: {', '.join(r.value for r in UserRole)}")
@@ -52,6 +54,7 @@ class User(UserBase, table=True):
     email: str = Field(index=True, unique=True, nullable=False)
     password: str = Field(nullable=False)
     role: UserRole = Field(default=UserRole.STUDENT)
+    is_active: bool = Field(default=True, nullable=False)
     # Phase 2 follow-up (migration 0008): links this login to a staff
     # identity. Nullable — not every staff member has a login. Unique —
     # one staff record can never be claimed by two User accounts. NULL
@@ -69,6 +72,7 @@ class UserCreate(SQLModel):
     email: str
     password: str
     role: UserRole = UserRole.STUDENT
+    teacher_name_id: Optional[int] = Field(default=None, nullable=True)
 
     @field_validator('username')
     @classmethod
@@ -98,6 +102,8 @@ class UserResponse(SQLModel):
     email: str
     role: UserRole
     id: int
+    is_active: bool = True
+    teacher_name_id: Optional[int] = None
 
 class LoginResponse(SQLModel):
     access_token: str

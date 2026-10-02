@@ -9,6 +9,8 @@ export interface UserResponse {
   username: string;
   email: string;
   role: string;
+  is_active: boolean;
+  teacher_name_id?: number | null;
 }
 
 export interface UserCreate {
@@ -16,6 +18,7 @@ export interface UserCreate {
   email: string;
   password: string;
   role: string;
+  teacher_name_id?: number | null;
 }
 
 export interface UserUpdate {
@@ -23,6 +26,7 @@ export interface UserUpdate {
   email?: string;
   password?: string;
   role?: string;
+  teacher_name_id?: number | null;
 }
 
 export namespace UserAPI {

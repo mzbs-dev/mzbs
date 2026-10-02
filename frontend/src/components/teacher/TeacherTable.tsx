@@ -27,8 +27,11 @@ import AddNewTeacher from "./CreateTeacher";
 import DelConfirmMsg from "../DelConfMsg";
 import { toast } from "sonner";
 import { useRole } from "@/context/RoleContext";
+import { UserAPI } from "@/api/User/UserAPI";
+import { useRouter } from "next/navigation";
 
 export default function TeacherTable() {
+  const router = useRouter();
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState<TeacherModel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,13 +42,33 @@ export default function TeacherTable() {
 
   useEffect(() => {
     GetData();
-  }, []);
+  }, [role]);
 
   const GetData = async () => {
     setLoading(true);
     try {
       const response = await API.Get();
-      setData(Array.isArray(response.data) ? response.data : []);
+      const teachers: TeacherModel[] = Array.isArray(response.data) ? response.data : [];
+      if (!canAddTeacher) {
+        setData(teachers);
+        return;
+      }
+
+      try {
+        const users = await UserAPI.getAllUsers();
+        const linkedTeacherIds = new Set(
+          users
+            .map((user) => user.teacher_name_id)
+            .filter((teacherId): teacherId is number => teacherId != null)
+        );
+        setData(teachers.map((teacher) => ({
+          ...teacher,
+          has_user_account: linkedTeacherIds.has(teacher.teacher_name_id),
+        })));
+      } catch (error) {
+        console.error("Error checking teacher account links:", error);
+        setData(teachers.map((teacher) => ({ ...teacher, has_user_account: null })));
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -75,6 +98,12 @@ export default function TeacherTable() {
     }
   };
 
+  const handleCreateUser = (teacher: TeacherModel) => {
+    router.push(
+      `/dashboard/setup/manage_user?from=teacher-create&teacher_name_id=${teacher.teacher_name_id}&teacher_name=${encodeURIComponent(teacher.teacher_name)}`
+    );
+  };
+
   const baseColumns: ColumnDef<TeacherModel>[] = [
     {
       id: "sr_no",
@@ -87,6 +116,20 @@ export default function TeacherTable() {
       accessorKey: "teacher_name",
       header: "Teacher Name",
     },
+    ...(canAddTeacher ? [{
+      id: "user_account",
+      header: "User Account",
+      cell: ({ row }: { row: { original: TeacherModel } }) => {
+        const teacher = row.original;
+        if (teacher.has_user_account == null) return <span className="text-muted-foreground">Unavailable</span>;
+        if (teacher.has_user_account) return <span className="text-success">Linked</span>;
+        return (
+          <Button type="button" variant="outline" size="sm" onClick={() => handleCreateUser(teacher)}>
+            Create User
+          </Button>
+        );
+      },
+    } as ColumnDef<TeacherModel>] : []),
     {
       accessorKey: "created_at",
       header: "Created Date",

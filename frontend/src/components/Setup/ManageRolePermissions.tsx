@@ -38,6 +38,7 @@ const MODULE_GROUPS: { label: string; modules: { key: string; label: string }[] 
       { key: "exam_session", label: "Exam (Bulk Session Delete)" },
       { key: "staff", label: "Staff" },
       { key: "staff_profile", label: "Staff Profile" },
+      { key: "deleted_staff", label: "Deleted Staff" },
       { key: "self_attendance", label: "Self-Attendance" },
       { key: "attendance_review", label: "Attendance Review" },
       { key: "fees", label: "Fees" },

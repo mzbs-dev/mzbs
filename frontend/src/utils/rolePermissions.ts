@@ -107,6 +107,7 @@ const SUBMENU_MODULE_MAP: { match: string; module: string; action: string }[] = 
   { match: "/expense/debit/view", module: "debit", action: "view" },
   { match: "/profile/self-attendance", module: "self_attendance", action: "view" },
   { match: "/staff/profile", module: "staff_profile", action: "view" },
+  { match: "/staff/deleted", module: "deleted_staff", action: "view" },
   { match: "/staff/attendance-review", module: "attendance_review", action: "view" },
 ];
 
@@ -299,6 +300,10 @@ function canAccessSubmenuItemStatic(role: string, submenuPath: string): boolean 
 
   if (submenuPath.includes("/students/deleted")) {
     return role === "ADMIN" || isPrincipalLikeRole;
+  }
+
+  if (submenuPath.includes("/staff/deleted")) {
+    return role === "ADMIN" || role === "CHIEF_PRINCIPAL";
   }
 
   if (submenuPath.includes("/setup/manage_user")) {

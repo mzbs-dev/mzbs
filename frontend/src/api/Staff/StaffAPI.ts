@@ -40,4 +40,16 @@ export namespace StaffAPI {
   export const deleteAttendance = async (attendanceId: number) => {
     return AxiosInstance.delete(`/staff/attendance/${attendanceId}`);
   };
+
+  export const getDeletedStaff = async () => {
+    return AxiosInstance.get('/deleted-staff/');
+  };
+
+  export const restoreDeletedStaff = async (teacherId: number) => {
+    return AxiosInstance.post(`/deleted-staff/${teacherId}/restore`);
+  };
+
+  export const permanentlyDeleteDeletedStaff = async (teacherId: number) => {
+    return AxiosInstance.delete(`/deleted-staff/${teacherId}/permanent`);
+  };
 }

@@ -13,6 +13,8 @@ class TeacherNamesBase(SQLModel):
     teacher_name_id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default=datetime.now(), nullable=False)
     is_deleted: bool = Field(default=False, nullable=False)
+    deleted_at: Optional[datetime] = Field(default=None, nullable=True)
+    deleted_by: Optional[int] = Field(default=None, nullable=True, foreign_key="user.id")
 
 
 class TeacherNames(TeacherNamesBase, table=True):

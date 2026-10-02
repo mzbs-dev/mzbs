@@ -42,6 +42,7 @@ from router.student_profile import student_profile_router
 from router.student_portal_auth import student_portal_auth_router
 from router.staff import staff_router
 from router.staff_profile import staff_profile_router
+from router.deleted_staff import deleted_staff_router
 from router.permissions import permissions_router
 from router.self_attendance import self_attendance_router
 from control_plane_client.tenant_branding import tenant_branding_router
@@ -176,6 +177,7 @@ app.include_router(student_profile_router)
 app.include_router(student_portal_auth_router)
 app.include_router(staff_router)
 app.include_router(staff_profile_router)
+app.include_router(deleted_staff_router)
 app.include_router(self_attendance_router)
 app.include_router(permissions_router)
 app.include_router(adm_del_router)

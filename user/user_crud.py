@@ -57,6 +57,12 @@ def user_login(tenant_id: str, form_data: UserLogin | OAuth2PasswordRequestForm)
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been disabled. Please contact administration.",
+            )
+
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.username, "tenant_id": tenant_id},
@@ -177,6 +183,12 @@ async def get_current_user(
     user = get_user_by_username(db, username=token_data.username)
     if user is None:
         raise credentials_exception
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been disabled. Please contact administration.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 # ==================== SIMPLE ROLE CHECKING SYSTEM ====================

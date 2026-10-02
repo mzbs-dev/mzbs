@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -16,6 +17,7 @@ import { TeacherNameAPI as API } from "@/api/Teacher/TeacherAPI";
 import { TeacherModel } from "@/models/teacher/Teacher";
 
 const AddNewTeacher = ({ onClassAdded }: { onClassAdded: () => void }) => {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -33,12 +35,23 @@ const AddNewTeacher = ({ onClassAdded }: { onClassAdded: () => void }) => {
       if (response) {
         setOpen(false);
         reset();
-        toast("Teacher Name Added Successfully!");
-        onClassAdded(); // Call the function to refresh the table
+        toast.success(`Teacher "${data.teacher_name}" created successfully.`);
+        onClassAdded();
+
+        const shouldProceed = window.confirm(
+          `Do you want to create the linked user account for "${data.teacher_name}" now?`
+        );
+
+        if (shouldProceed) {
+          router.push(
+            `/dashboard/setup/manage_user?from=teacher-create&teacher_name_id=${response.teacher_name_id}&teacher_name=${encodeURIComponent(response.teacher_name || data.teacher_name)}`
+          );
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating teacher:", error);
-      toast("Failed to add teacher name");
+      const detail = error?.response?.data?.detail || "Failed to add teacher name";
+      toast.error(detail);
     } finally {
       setLoading(false);
     }

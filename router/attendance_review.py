@@ -651,7 +651,10 @@ def get_attendance_review_history(
         query = query.where(StaffAttendance.attendance_time_id == attendance_time_id)
 
     records = session.exec(query.order_by(StaffAttendance.attendance_date.desc())).all()
-    staff_names = {staff.teacher_name_id: staff.teacher_name for staff in session.exec(select(TeacherNames)).all()}
+    staff_names = {
+        staff.teacher_name_id: staff.teacher_name
+        for staff in session.exec(select(TeacherNames).where(TeacherNames.is_deleted.is_(False))).all()
+    }
 
     return [
         AttendanceReviewHistoryRow(

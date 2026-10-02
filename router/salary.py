@@ -40,6 +40,7 @@ def ensure_salary_ledger_exists(
     Ensure a salary ledger exists for the given teacher/month/year.
     If it doesn't exist, create it using the teacher's current base salary.
     """
+    _require_active_teacher(db, teacher_id)
     # Check if ledger already exists
     existing_ledger = db.exec(
         select(SalaryLedger)
@@ -142,6 +143,28 @@ def _serialize_date_value(value):
     if isinstance(value, str):
         return value
     return value.isoformat()
+
+
+def _require_active_teacher(session: Session, teacher_id: int) -> TeacherNames:
+    teacher = session.get(TeacherNames, teacher_id)
+    if teacher is None or teacher.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Teacher with ID {teacher_id} not found or is deleted",
+        )
+    return teacher
+
+
+def _active_teacher_ids(session: Session) -> list[int]:
+    rows = session.exec(
+        select(TeacherNames.teacher_name_id).where(TeacherNames.is_deleted.is_(False))
+    ).all()
+    teacher_ids: list[int] = []
+    for row in rows:
+        teacher_ids.append(row[0] if isinstance(row, tuple) else row)
+    return teacher_ids
+
+
 salary_router = APIRouter(
     prefix="/salary",
     tags=["Salary"],
@@ -161,8 +184,11 @@ def get_all_teacher_salaries(
     """Get all teacher salary configurations with effective_till."""
     try:
         from sqlalchemy import func
-        total = db.exec(select(func.count(TeacherSalary.id))).one()
-        query = select(TeacherSalary)
+        active_ids = set(_active_teacher_ids(db))
+        total = db.exec(
+            select(func.count(TeacherSalary.id)).where(TeacherSalary.teacher_id.in_(list(active_ids)))
+        ).one() if active_ids else 0
+        query = select(TeacherSalary).where(TeacherSalary.teacher_id.in_(list(active_ids)))
         if not all:
             query = query.offset((page - 1) * page_size).limit(page_size)
         salaries = db.exec(query).all()
@@ -171,6 +197,7 @@ def get_all_teacher_salaries(
             teacher = db.exec(
                 select(TeacherNames)
                 .where(TeacherNames.teacher_name_id == salary.teacher_id)
+                .where(TeacherNames.is_deleted.is_(False))
             ).first()
             response.append(TeacherSalaryResponse(
                 id=salary.id,
@@ -201,16 +228,8 @@ def create_teacher_salary(
 ):
     """Create a new teacher salary configuration."""
     try:
-        # Verify teacher exists
-        teacher = db.exec(
-            select(TeacherNames)
-            .where(TeacherNames.teacher_name_id == salary_data.teacher_id)
-        ).first()
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Teacher with ID {salary_data.teacher_id} not found"
-            )
+        # Verify teacher exists and is not soft-deleted
+        teacher = _require_active_teacher(db, salary_data.teacher_id)
         # Validate: no overlapping active record with same effective_from
         existing = db.exec(
             select(TeacherSalary)
@@ -260,15 +279,12 @@ def get_teacher_salary_history(
 ):
     """Get salary history for a specific teacher."""
     try:
+        teacher = _require_active_teacher(db, teacher_id)
         salaries = db.exec(
             select(TeacherSalary)
             .where(TeacherSalary.teacher_id == teacher_id)
             .order_by(TeacherSalary.effective_from.desc())
         ).all()
-        teacher = db.exec(
-            select(TeacherNames)
-            .where(TeacherNames.teacher_name_id == teacher_id)
-        ).first()
         response = []
         for salary in salaries:
             response.append(
@@ -381,11 +397,7 @@ def get_teacher_salary_summary(
     - Payment history details
     """
     try:
-        # Verify teacher exists
-        teacher = db.get(TeacherNames, teacher_id)
-        if not teacher:
-            raise HTTPException(status_code=404, detail="Teacher not found")
-        # Calculate summary using the service function
+        teacher = _require_active_teacher(db, teacher_id)
         summary = calculate_teacher_salary_summary(db, teacher_id)
         return summary
     except HTTPException:
@@ -409,9 +421,15 @@ def get_all_salary_ledgers(
     """Get all salary ledger records."""
     try:
         from sqlalchemy import func
-        total = db.exec(select(func.count(SalaryLedger.id))).one()
+        active_ids = set(_active_teacher_ids(db))
         query = select(SalaryLedger, TeacherNames)
         query = query.join(TeacherNames, SalaryLedger.teacher_id == TeacherNames.teacher_name_id)
+        query = query.where(TeacherNames.is_deleted.is_(False))
+        if active_ids:
+            query = query.where(SalaryLedger.teacher_id.in_(list(active_ids)))
+        total = db.exec(
+            select(func.count(SalaryLedger.id)).where(SalaryLedger.teacher_id.in_(list(active_ids)))
+        ).one() if active_ids else 0
         if not all:
             query = query.offset((page - 1) * page_size).limit(page_size)
         ledgers = db.exec(query).all()
@@ -451,16 +469,7 @@ def create_salary_ledger(
 ):
     """Create a new salary ledger record."""
     try:
-        # Verify teacher exists
-        teacher = db.exec(
-            select(TeacherNames)
-            .where(TeacherNames.teacher_name_id == ledger_data.teacher_id)
-        ).first()
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Teacher with ID {ledger_data.teacher_id} not found"
-            )
+        teacher = _require_active_teacher(db, ledger_data.teacher_id)
         # Return existing ledger if already present for the same teacher/month/year
         existing_ledger = db.exec(
             select(SalaryLedger)
@@ -659,16 +668,7 @@ def create_salary_payment(
 ):
     """Create a new salary payment record."""
     try:
-        # Verify teacher exists
-        teacher = db.exec(
-            select(TeacherNames)
-            .where(TeacherNames.teacher_name_id == payment_data.teacher_id)
-        ).first()
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Teacher with ID {payment_data.teacher_id} not found"
-            )
+        teacher = _require_active_teacher(db, payment_data.teacher_id)
         # Verify ledger exists (should already exist, but double-check)
         ledger = db.exec(
             select(SalaryLedger)
@@ -737,7 +737,10 @@ def get_ledger_payments(
             teacher = db.exec(
                 select(TeacherNames)
                 .where(TeacherNames.teacher_name_id == payment.teacher_id)
+                .where(TeacherNames.is_deleted.is_(False))
             ).first()
+            if teacher is None:
+                continue
             response.append(
                 SalaryPaymentResponse(
                     id=payment.id,
@@ -771,7 +774,10 @@ def get_all_payments(
             teacher = db.exec(
                 select(TeacherNames)
                 .where(TeacherNames.teacher_name_id == payment.teacher_id)
+                .where(TeacherNames.is_deleted.is_(False))
             ).first()
+            if teacher is None:
+                continue
             response.append(
                 SalaryPaymentResponse(
                     id=payment.id,
@@ -903,16 +909,7 @@ def create_allowance(
 ):
     """Create a new allowance record."""
     try:
-        # Verify teacher exists
-        teacher = db.exec(
-            select(TeacherNames)
-            .where(TeacherNames.teacher_name_id == allowance_data.teacher_id)
-        ).first()
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Teacher with ID {allowance_data.teacher_id} not found"
-            )
+        teacher = _require_active_teacher(db, allowance_data.teacher_id)
         # Ensure salary ledger exists for this teacher/month/year
         ledger = ensure_salary_ledger_exists(
             db, allowance_data.teacher_id, allowance_data.month, allowance_data.year
@@ -967,6 +964,7 @@ def get_teacher_allowances(
 ):
     """Get allowances for a specific teacher, optionally filtered by month/year."""
     try:
+        _require_active_teacher(db, teacher_id)
         query = select(Allowance).where(Allowance.teacher_id == teacher_id)
         if month and year:
             query = query.where(
@@ -977,6 +975,7 @@ def get_teacher_allowances(
         teacher = db.exec(
             select(TeacherNames)
             .where(TeacherNames.teacher_name_id == teacher_id)
+            .where(TeacherNames.is_deleted.is_(False))
         ).first()
         response = []
         for allowance in allowances:
@@ -1014,7 +1013,10 @@ def get_all_allowances(
             teacher = db.exec(
                 select(TeacherNames)
                 .where(TeacherNames.teacher_name_id == allowance.teacher_id)
+                .where(TeacherNames.is_deleted.is_(False))
             ).first()
+            if teacher is None:
+                continue
             response.append(
                 AllowanceResponse(
                     id=allowance.id,
@@ -1141,16 +1143,7 @@ def create_deduction(
 ):
     """Create a new deduction record."""
     try:
-        # Verify teacher exists
-        teacher = db.exec(
-            select(TeacherNames)
-            .where(TeacherNames.teacher_name_id == deduction_data.teacher_id)
-        ).first()
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Teacher with ID {deduction_data.teacher_id} not found"
-            )
+        teacher = _require_active_teacher(db, deduction_data.teacher_id)
         # Ensure salary ledger exists for this teacher/month/year
         ledger = ensure_salary_ledger_exists(
             db, deduction_data.teacher_id, deduction_data.month, deduction_data.year
@@ -1201,6 +1194,7 @@ def get_teacher_deductions(
 ):
     """Get deductions for a specific teacher, optionally filtered by month/year."""
     try:
+        _require_active_teacher(db, teacher_id)
         query = select(Deduction).where(Deduction.teacher_id == teacher_id)
         if month and year:
             query = query.where(
@@ -1211,6 +1205,7 @@ def get_teacher_deductions(
         teacher = db.exec(
             select(TeacherNames)
             .where(TeacherNames.teacher_name_id == teacher_id)
+            .where(TeacherNames.is_deleted.is_(False))
         ).first()
         response = []
         for deduction in deductions:
@@ -1244,8 +1239,12 @@ def get_all_deductions(
     """Get all deductions."""
     try:
         from sqlalchemy import func
-        total = db.exec(select(func.count(Deduction.id))).one()
-        query = select(Deduction).order_by(Deduction.year.desc(), Deduction.month.desc())
+        active_ids = set(_active_teacher_ids(db))
+        total = db.exec(
+            select(func.count(Deduction.id)).where(Deduction.teacher_id.in_(list(active_ids)))
+        ).one() if active_ids else 0
+        query = select(Deduction).where(Deduction.teacher_id.in_(list(active_ids))) if active_ids else select(Deduction).where(Deduction.teacher_id.in_([]))
+        query = query.order_by(Deduction.year.desc(), Deduction.month.desc())
         if not all:
             query = query.offset((page - 1) * page_size).limit(page_size)
         deductions = db.exec(query).all()
@@ -1254,7 +1253,10 @@ def get_all_deductions(
             teacher = db.exec(
                 select(TeacherNames)
                 .where(TeacherNames.teacher_name_id == deduction.teacher_id)
+                .where(TeacherNames.is_deleted.is_(False))
             ).first()
+            if teacher is None:
+                continue
             response.append(DeductionResponse(
                 id=deduction.id,
                 teacher_id=deduction.teacher_id,

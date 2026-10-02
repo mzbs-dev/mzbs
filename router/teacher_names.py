@@ -1,8 +1,10 @@
 from asyncio.log import logger
+from datetime import datetime
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
-from sqlalchemy.exc import IntegrityError  # <-- Add this import
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
 from db import get_session
 from utils.cache import cache_get, cache_set, cache_invalidate
@@ -13,13 +15,50 @@ from schemas.attendance_model import Attendance
 from schemas.exam_marks_model import ExamMark
 from schemas.salary_model import TeacherSalary, SalaryLedger, SalaryPayment, Allowance, Deduction
 from user.user_crud import require_permission
-from user.user_models import User
+from user.user_models import User, UserRole
 
 teachernames_router = APIRouter(
     prefix="/teacher_name",
     tags=["Teacher Name"],
     responses={404: {"Description": "Not found"}}
 )
+
+
+def _normalize_teacher_name(teacher_name: str) -> str:
+    return " ".join(teacher_name.strip().split())
+
+
+def _teacher_name_duplicate_detail(teacher_name: str, existing: TeacherNames | None) -> str:
+    normalized_name = _normalize_teacher_name(teacher_name)
+    if existing is not None and existing.is_deleted:
+        return (
+            f'Teacher name "{normalized_name}" already exists in deleted records. '
+            'Please restore that teacher or choose a different name.'
+        )
+    return (
+        f'Teacher name "{normalized_name}" already exists and is active. '
+        'Please choose a different name.'
+    )
+
+
+def _validate_teacher_name_not_in_use(session: Session, teacher_name: str) -> None:
+    normalized_name = _normalize_teacher_name(teacher_name)
+    if not normalized_name:
+        raise HTTPException(status_code=400, detail="Teacher name is required.")
+
+    existing = session.exec(
+        select(TeacherNames).where(
+            func.lower(TeacherNames.teacher_name) == normalized_name.lower()
+        )
+    ).first()
+
+    if existing is None:
+        return
+
+    raise HTTPException(
+        status_code=409,
+        detail=_teacher_name_duplicate_detail(normalized_name, existing),
+    )
 
 
 @teachernames_router.get("/", response_model=dict)
@@ -34,6 +73,10 @@ def create_teachernames(
     session: Session = Depends(get_session),
     payload: TokenPayload = Depends(get_token_payload),
 ):
+    normalized_name = _normalize_teacher_name(teachernames.teacher_name)
+    teachernames.teacher_name = normalized_name
+    _validate_teacher_name_not_in_use(session, teachernames.teacher_name)
+
     db_teachernames = TeacherNames(**teachernames.model_dump())
     session.add(db_teachernames)
 
@@ -45,8 +88,14 @@ def create_teachernames(
         session.rollback()
         logger.error(f"Integrity error: {e}")
         if "unique constraint" in str(e.orig).lower() or "duplicate key" in str(e.orig).lower():
+            existing = session.exec(
+                select(TeacherNames).where(
+                    func.lower(TeacherNames.teacher_name) == normalized_name.lower()
+                )
+            ).first()
             raise HTTPException(
-                status_code=400, detail="Teacher name or ID must be unique."
+                status_code=409,
+                detail=_teacher_name_duplicate_detail(normalized_name, existing),
             )
         raise HTTPException(
             status_code=400, detail="Database integrity error."
@@ -64,14 +113,52 @@ def create_teachernames(
 # # Returns all placed teacher names
 
 
+def _get_linked_user_for_teacher(session: Session, teacher_id: int) -> User | None:
+    return session.exec(
+        select(User).where(User.teacher_name_id == teacher_id)
+    ).first()
+
+
+def _soft_delete_teacher(session: Session, teacher: TeacherNames, actor: User) -> TeacherNames:
+    teacher.is_deleted = True
+    teacher.deleted_at = datetime.utcnow()
+    teacher.deleted_by = actor.id
+
+    linked_user = _get_linked_user_for_teacher(session, teacher.teacher_name_id)
+    if linked_user is not None:
+        if linked_user.role == UserRole.ADMIN:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete this teacher because the linked user is an ADMIN account.",
+            )
+        linked_user.is_active = False
+        session.add(linked_user)
+
+    session.add(teacher)
+    return teacher
+
+
+def _restore_teacher(session: Session, teacher: TeacherNames) -> TeacherNames:
+    teacher.is_deleted = False
+    teacher.deleted_at = None
+    teacher.deleted_by = None
+
+    linked_user = _get_linked_user_for_teacher(session, teacher.teacher_name_id)
+    if linked_user is not None and linked_user.role != UserRole.ADMIN:
+        linked_user.is_active = True
+        session.add(linked_user)
+
+    session.add(teacher)
+    return teacher
+
+
 @teachernames_router.get("/teacher-names-for-attendance/", response_model=List[TeacherNamesResponse])
 def read_teachernames_for_attendance(
     current_user: Annotated[User, Depends(require_permission("attendance", "view"))],
     session: Session = Depends(get_session),
     payload: TokenPayload = Depends(get_token_payload),
 ):
-    """Fetch teacher names for attendance marking. Requires attendance:view, not setup:view.
-    Allows teachers and other attendance users to see the teacher list even without setup permissions."""
+    """Fetch active teacher names for attendance marking. Soft-deleted staff stay excluded."""
     cached = cache_get("teacher_names", payload.tenant_id)
     if cached is not None:
         return cached
@@ -80,7 +167,7 @@ def read_teachernames_for_attendance(
             TeacherNames.teacher_name_id,
             TeacherNames.teacher_name,
             TeacherNames.created_at,
-        )
+        ).where(TeacherNames.is_deleted.is_(False))
     ).all()
     result = [
         TeacherNamesResponse(
@@ -109,7 +196,7 @@ def read_teachernames(
             TeacherNames.teacher_name_id,
             TeacherNames.teacher_name,
             TeacherNames.created_at,
-        )
+        ).where(TeacherNames.is_deleted.is_(False))
     ).all()
     result = [
         TeacherNamesResponse(
@@ -129,7 +216,7 @@ def read_teachernames(
 @teachernames_router.get("/{teacher_name_id}", response_model=TeacherNamesResponse)
 def read_teachernames(current_user: Annotated[User, Depends(require_permission("setup_teachers", "view"))],teacher_name_id: int, session: Session = Depends(get_session)):
     teachernames = session.get(TeacherNames, teacher_name_id)
-    if not teachernames:
+    if not teachernames or teachernames.is_deleted:
         raise HTTPException(
             status_code=404, detail="Teacher name not found")
     return teachernames
@@ -147,18 +234,16 @@ def delete_teachernames(
     if not teachernames:
         raise HTTPException(
             status_code=404, detail="Teacher Name not found")
-    # Check for related records (adjust model and field as needed)
-    # related_records = session.exec(select(SomeRelatedModel).where(SomeRelatedModel.teacher_name == teacher_name)).all()
-    related_records = []  # <-- Replace with actual query if you have related records
-    if related_records:
+    if teachernames.is_deleted:
         raise HTTPException(
-            status_code=400,
-            detail="Cannot delete: There are records using this teacher names."
+            status_code=409,
+            detail="Teacher is already deleted."
         )
-    session.delete(teachernames)
+
+    _soft_delete_teacher(session, teachernames, user)
     session.commit()
     cache_invalidate("teacher_names", payload.tenant_id)
-    return {"message": "Teacher Name deleted successfully"}
+    return {"message": "Teacher Name soft-deleted successfully"}
 
 def _get_related_teacher_record_names(session: Session, teacher_id: int) -> list[str]:
     related_records: list[str] = []
@@ -188,7 +273,7 @@ def delete_teacher_by_id(
     session: Session = Depends(get_session),
     payload: TokenPayload = Depends(get_token_payload),
 ):
-    """Delete a teacher by their ID"""
+    """Soft-delete a teacher by their ID."""
     teacher = session.get(TeacherNames, teacher_id)
     if not teacher:
         raise HTTPException(
@@ -196,19 +281,20 @@ def delete_teacher_by_id(
             detail=f"Teacher with ID {teacher_id} not found"
         )
 
-    related_records = _get_related_teacher_record_names(session, teacher_id)
-    if related_records:
-        related_list = ", ".join(related_records)
+    if teacher.is_deleted:
         raise HTTPException(
             status_code=409,
-            detail=f"Please delete related {related_list} records first before deleting this teacher."
+            detail=f"Teacher with ID {teacher_id} is already deleted."
         )
 
     try:
-        session.delete(teacher)
+        _soft_delete_teacher(session, teacher, user)
         session.commit()
         cache_invalidate("teacher_names", payload.tenant_id)
-        return {"message": f"Teacher with ID {teacher_id} deleted successfully"}
+        return {"message": f"Teacher with ID {teacher_id} soft-deleted successfully"}
+    except HTTPException:
+        session.rollback()
+        raise
     except IntegrityError as e:
         session.rollback()
         logger.error(f"Error deleting teacher: {e}")

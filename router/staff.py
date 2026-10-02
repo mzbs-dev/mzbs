@@ -76,7 +76,7 @@ def get_staff_list(
     session: Session = Depends(get_session),
     search: Optional[str] = Query(None),
 ):
-    query = select(TeacherNames)
+    query = select(TeacherNames).where(TeacherNames.is_deleted.is_(False))
     if search:
         query = query.where(TeacherNames.teacher_name.ilike(f"%{search}%"))
 
@@ -99,7 +99,7 @@ def get_staff_list(
 @staff_router.get("/debug/list", response_model=List[StaffListItem])
 def debug_staff_list(session: Session = Depends(get_session)) -> List[StaffListItem]:
     """Temporary debug endpoint (no auth) to verify backend connectivity."""
-    staff_members = session.exec(select(TeacherNames).order_by(TeacherNames.teacher_name)).all()
+    staff_members = session.exec(select(TeacherNames).where(TeacherNames.is_deleted.is_(False)).order_by(TeacherNames.teacher_name)).all()
     items: List[StaffListItem] = []
     for member in staff_members:
         created_at = member.created_at or datetime.utcnow()
@@ -123,7 +123,7 @@ def get_staff_attendance_rows(
 ):
     try:
         selected_date = attendance_date or date.today()
-        staff_members = session.exec(select(TeacherNames).order_by(TeacherNames.teacher_name)).all()
+        staff_members = session.exec(select(TeacherNames).where(TeacherNames.is_deleted.is_(False)).order_by(TeacherNames.teacher_name)).all()
         query = select(StaffAttendance).where(StaffAttendance.attendance_date == selected_date)
         if attendance_time_id is not None:
             query = query.where(StaffAttendance.attendance_time_id == attendance_time_id)
@@ -212,7 +212,10 @@ def create_staff_attendance_bulk(
     if payload.attendance_time_id is not None:
         query = query.where(StaffAttendance.attendance_time_id == payload.attendance_time_id)
     saved = session.exec(query).all()
-    staff_lookup = {member.teacher_name_id: member.teacher_name for member in session.exec(select(TeacherNames)).all()}
+    staff_lookup = {
+        member.teacher_name_id: member.teacher_name
+        for member in session.exec(select(TeacherNames).where(TeacherNames.is_deleted.is_(False))).all()
+    }
     response: List[StaffAttendanceResponse] = []
     for item in saved:
         teacher = session.get(TeacherNames, item.staff_id)
@@ -267,7 +270,10 @@ def get_staff_attendance_history(
         query = query.where(StaffAttendance.attendance_time_id == attendance_time_id)
 
     records = session.exec(query.order_by(StaffAttendance.attendance_date.desc())).all()
-    staff_lookup = {member.teacher_name_id: member.teacher_name for member in session.exec(select(TeacherNames)).all()}
+    staff_lookup = {
+        member.teacher_name_id: member.teacher_name
+        for member in session.exec(select(TeacherNames).where(TeacherNames.is_deleted.is_(False))).all()
+    }
     response: List[StaffAttendanceResponse] = []
     for item in records:
         teacher = session.get(TeacherNames, item.staff_id)

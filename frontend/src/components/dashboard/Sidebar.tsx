@@ -200,6 +200,12 @@ const menuList: MenuItem[] = [
         icon: GoDotFill,
         path: "/dashboard/staff/attendance-review",
       },
+      {
+        id: 373,
+        name: "Deleted Staff",
+        icon: GoDotFill,
+        path: "/dashboard/staff/deleted",
+      },
     ],
   },
   {
@@ -490,6 +496,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed: desktop
         "/dashboard/setup/role_permissions",
         "/dashboard/setup/manage_user",
         "/dashboard/setup/appearance",
+        "/dashboard/staff/deleted",
       ];
 
       if (adminOnlyPaths.includes(subItem.path.toLowerCase())) {

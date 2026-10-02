@@ -23,6 +23,7 @@ from .services import (
 )
 from .settings import DEFAULT_TENANT_ID
 from db import get_session
+from schemas.teacher_names_model import TeacherNames
 from typing import Annotated, List
 
 # Create separate routers for auth and public endpoints
@@ -321,11 +322,18 @@ async def refresh_token(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found"
             )
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been disabled. Please contact administration.",
+            )
+
+        tenant_id = payload.get("tenant_id") or DEFAULT_TENANT_ID
 
         # Create new access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user.username},
+            data={"sub": user.username, "tenant_id": tenant_id},
             expires_delta=access_token_expires
         )
 
@@ -373,7 +381,9 @@ def read_users(
                 id=user.id,
                 username=user.username,
                 email=user.email,
-                role=user.role.value  # Convert enum to string
+                role=user.role.value,
+                is_active=user.is_active,
+                teacher_name_id=user.teacher_name_id,
             )
             for user in users
         ]
@@ -411,8 +421,32 @@ def create_user(
             username=user_data.username,
             email=user_data.email,
             password=get_password_hash(user_data.password),  # Hash password for security
-            role=UserRole(user_data.role.upper()) if isinstance(user_data.role, str) else user_data.role
+            role=UserRole(user_data.role.upper()) if isinstance(user_data.role, str) else user_data.role,
+            teacher_name_id=user_data.teacher_name_id,
         )
+
+        if new_user.teacher_name_id is not None and new_user.role == UserRole.ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A teacher-linked account cannot use the ADMIN role.",
+            )
+
+        if new_user.teacher_name_id is not None:
+            teacher = db.get(TeacherNames, new_user.teacher_name_id)
+            if teacher is None or teacher.is_deleted:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="The selected teacher does not exist or is deleted.",
+                )
+
+            existing_link = db.exec(
+                select(User).where(User.teacher_name_id == new_user.teacher_name_id)
+            ).first()
+            if existing_link is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This teacher is already linked to a user account.",
+                )
 
         db.add(new_user)
         db.commit()
@@ -422,7 +456,9 @@ def create_user(
             id=new_user.id,
             username=new_user.username,
             email=new_user.email,
-            role=new_user.role.value
+            role=new_user.role.value,
+            is_active=new_user.is_active,
+            teacher_name_id=new_user.teacher_name_id,
         )
     except HTTPException:
         raise
@@ -492,6 +528,36 @@ def update_user_admin(
         if user_data.role:
             user.role = UserRole(user_data.role.upper()) if isinstance(user_data.role, str) else user_data.role
 
+        if "teacher_name_id" in user_data.model_fields_set:
+            teacher = None
+            if user_data.teacher_name_id is not None:
+                teacher = db.get(TeacherNames, user_data.teacher_name_id)
+                if teacher is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Teacher not found.",
+                    )
+                if user.role == UserRole.ADMIN:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="An ADMIN account cannot be linked to a teacher record.",
+                    )
+                existing_link = db.exec(
+                    select(User).where(
+                        User.teacher_name_id == user_data.teacher_name_id,
+                        User.id != user_id,
+                    )
+                ).first()
+                if existing_link is not None:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="This teacher is already linked to another user account.",
+                    )
+
+            user.teacher_name_id = user_data.teacher_name_id
+            if teacher is not None:
+                user.is_active = not teacher.is_deleted
+
         db.commit()
         db.refresh(user)
 
@@ -499,7 +565,9 @@ def update_user_admin(
             id=user.id,
             username=user.username,
             email=user.email,
-            role=user.role.value
+            role=user.role.value,
+            is_active=user.is_active,
+            teacher_name_id=user.teacher_name_id,
         )
     except HTTPException:
         raise
@@ -576,12 +644,27 @@ async def update_user_role(
         else:
             new_role = user_update.role
 
+        if user_to_update.teacher_name_id is not None and new_role == UserRole.ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A teacher-linked account cannot use the ADMIN role.",
+            )
+
         # Update the user's role
         user_to_update.role = new_role
         db.commit()
         db.refresh(user_to_update)
-        return user_to_update
-        
+        return UserResponse(
+            id=user_to_update.id,
+            username=user_to_update.username,
+            email=user_to_update.email,
+            role=user_to_update.role.value,
+            is_active=user_to_update.is_active,
+            teacher_name_id=user_to_update.teacher_name_id,
+        )
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(

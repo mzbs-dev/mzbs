@@ -51,7 +51,7 @@ def get_staff_profile_list(
     current_user: Annotated[User, Depends(require_permission("staff_profile", "view"))],
     session: Session = Depends(get_session),
 ):
-    staff_members = session.exec(select(TeacherNames).order_by(TeacherNames.teacher_name)).all()
+    staff_members = session.exec(select(TeacherNames).where(TeacherNames.is_deleted.is_(False)).order_by(TeacherNames.teacher_name)).all()
     return [
         StaffListItem(
             staff_id=m.teacher_name_id,
@@ -70,7 +70,7 @@ def get_staff_profile(
     session: Session = Depends(get_session),
 ):
     staff = session.get(TeacherNames, staff_id)
-    if not staff:
+    if not staff or staff.is_deleted:
         raise HTTPException(status_code=404, detail="Staff member not found.")
 
     records = session.exec(
@@ -144,7 +144,7 @@ def replace_staff_shifts(
     session: Session = Depends(get_session),
 ):
     staff = session.get(TeacherNames, staff_id)
-    if not staff:
+    if not staff or staff.is_deleted:
         raise HTTPException(status_code=404, detail="Staff member not found.")
 
     requested_ids = set(payload.attendance_time_ids)

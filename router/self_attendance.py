@@ -41,17 +41,12 @@ def get_current_staff(
 ) -> TeacherNames:
     if current_user.teacher_name_id:
         staff = session.get(TeacherNames, current_user.teacher_name_id)
-        if staff:
+        if staff and not staff.is_deleted:
             return staff
-
-    if current_user.role in {"ADMIN", "CHIEF_PRINCIPAL", "PRINCIPAL", "ACCOUNTANT", "FEE_MANAGER"}:
-        fallback_staff = session.exec(select(TeacherNames).limit(1)).first()
-        if fallback_staff:
-            return fallback_staff
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail="Your account is not linked to a staff record yet. Please contact your administrator.",
+        detail="Your account is not linked to an active staff record yet. Please contact your administrator.",
     )
 
 # ============================================================================
