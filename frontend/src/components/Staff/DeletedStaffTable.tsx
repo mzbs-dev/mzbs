@@ -1,9 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCcw, Trash2 } from "lucide-react";
+import { Eye, RotateCcw, Trash2 } from "lucide-react";
 import { StaffAPI } from "@/api/Staff/StaffAPI";
 import { useRole } from "@/context/RoleContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface DeletedStaffItem {
   teacher_name_id: number;
@@ -28,6 +34,10 @@ export default function DeletedStaffTable({ staff, onRefresh }: DeletedStaffTabl
   const [restoringId, setRestoringId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [referencesFor, setReferencesFor] = useState<DeletedStaffItem | null>(null);
+  const [references, setReferences] = useState<StaffAPI.DeletedStaffReferences | null>(null);
+  const [referencesLoading, setReferencesLoading] = useState(false);
+  const [referencesError, setReferencesError] = useState<string | null>(null);
 
   const formatDate = (value?: string | null) => {
     if (!value) return "—";
@@ -69,6 +79,21 @@ export default function DeletedStaffTable({ staff, onRefresh }: DeletedStaffTabl
     }
   };
 
+  const handleShowReferences = async (member: DeletedStaffItem) => {
+    setReferencesFor(member);
+    setReferences(null);
+    setReferencesError(null);
+    setReferencesLoading(true);
+    try {
+      const response = await StaffAPI.getDeletedStaffReferences(member.teacher_name_id);
+      setReferences(response.data);
+    } catch (err: any) {
+      setReferencesError(err?.response?.data?.detail || "Failed to load related records.");
+    } finally {
+      setReferencesLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {error && (
@@ -104,6 +129,14 @@ export default function DeletedStaffTable({ staff, onRefresh }: DeletedStaffTabl
                     <div className="flex justify-end gap-2">
                       <button
                         type="button"
+                        onClick={() => void handleShowReferences(member)}
+                        className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-medium transition hover:bg-muted"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        Related Records
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleRestore(member.teacher_name_id, member.teacher_name)}
                         disabled={!canRestore || restoringId === member.teacher_name_id}
                         className="inline-flex items-center gap-2 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs font-medium text-success transition hover:bg-success/20 disabled:cursor-not-allowed disabled:opacity-50"
@@ -129,6 +162,53 @@ export default function DeletedStaffTable({ staff, onRefresh }: DeletedStaffTabl
           </table>
         </div>
       )}
+
+      <Dialog
+        open={!!referencesFor}
+        onOpenChange={(open) => {
+          if (!open) setReferencesFor(null);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Related Records{referencesFor ? ` — ${referencesFor.teacher_name}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This is a read-only list of records linked to this staff member. These records are preserved.
+          </p>
+          {referencesLoading && (
+            <p className="text-sm text-muted-foreground">Loading related records…</p>
+          )}
+          {referencesError && (
+            <p role="alert" className="text-sm text-destructive">{referencesError}</p>
+          )}
+          {references && (
+            <div className="space-y-3">
+              {references.categories.map((category) => (
+                <section key={category.label} className="rounded-lg border border-border p-3">
+                  <h3 className="text-sm font-semibold">
+                    {category.label} <span className="text-muted-foreground">({category.count})</span>
+                  </h3>
+                  {category.records.length > 0 ? (
+                    <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                      {category.records.map((record) => (
+                        <li key={`${category.label}-${record.id}`} className="break-words">
+                          {record.id != null && <span className="font-medium">#{record.id}: </span>}
+                          {record.details}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-sm text-muted-foreground">No records.</p>
+                  )}
+                </section>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

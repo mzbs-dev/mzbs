@@ -36,7 +36,11 @@ dashboard_router = APIRouter(
 def get_user_role_summary(session: Session = Depends(get_session)):
     """Fetch user role distribution summary. Requires auth."""
     try:
-        stmt = select(User.role, func.count(User.role).label("role_count")).group_by(User.role)
+        stmt = (
+            select(User.role, func.count(User.role).label("role_count"))
+            .where(User.is_active.is_(True))
+            .group_by(User.role)
+        )
         result = session.exec(stmt).all()
 
         role_counts = {}
@@ -80,7 +84,7 @@ def get_user_role_summary(session: Session = Depends(get_session)):
                 borderColor="rgba(0, 0, 0, 1)",
                 borderWidth=2
             )],
-            title="Total Users Role Wise",
+            title="Total Active Users Role Wise",
         )
         return LoginGraphData(summary=summary, graph=graph_data)
 

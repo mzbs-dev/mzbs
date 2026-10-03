@@ -716,7 +716,7 @@ export function AdminDashboard() {
           <SectionCard delay={0}>
             <SectionHeader
               title="Total Users Role-wise"
-              subtitle="System-wide user distribution by role"
+              subtitle="Active users by role"
               controls={
                 <DashboardToolbar>
                   <DashboardViewLink href="/dashboard/setup/manage_user" label="Manage Users" />

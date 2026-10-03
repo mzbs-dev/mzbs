@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { CalendarDays, LoaderCircle, LockKeyhole } from "lucide-react";
+import { CalendarDays, LoaderCircle, LockKeyhole, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRole } from "@/context/RoleContext";
 import {
@@ -59,8 +59,15 @@ function StatusBadge({ status }: { status: FinalStatus | null }) {
 export default function AttendanceReview() {
   const { permissions } = useRole();
   const canFinalize = permissions?.attendance_review?.add ?? false;
+  const canDeleteAttendanceReview = permissions?.attendance_review?.delete ?? false;
 
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
   const [scopeInitialized, setScopeInitialized] = useState(false);
   const [timings, setTimings] = useState<Array<{ attendance_time_id: number; attendance_time: string }>>([]);
   const [selectedTimingId, setSelectedTimingId] = useState<number | null>(null);
@@ -608,7 +615,20 @@ export default function AttendanceReview() {
                       {!row.is_finalized && draft && (
                         <span className="text-xs font-medium text-muted-foreground">In review</span>
                       )}
-                      {row.is_finalized && (
+                      {row.is_finalized && canDeleteAttendanceReview && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Delete finalized attendance for ${row.staff_name}`}
+                          title="Delete finalized attendance"
+                          onClick={() => void handleDelete(row)}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      )}
+                      {row.is_finalized && !canDeleteAttendanceReview && (
                         <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
                           <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
                           Locked

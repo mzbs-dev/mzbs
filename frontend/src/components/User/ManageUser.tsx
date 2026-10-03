@@ -221,12 +221,6 @@ const ManageUser = () => {
   };
 
   const handleDelete = async (userId: number, username: string) => {
-    const targetUser = users.find((user) => user.id === userId);
-    if (targetUser?.is_active === false) {
-      toast.info("Inactive teacher-linked users are read-only and cannot be deleted here.");
-      return;
-    }
-
     if (window.confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
       try {
         setIsDeleting(true);
@@ -400,10 +394,10 @@ const ManageUser = () => {
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => !isReadOnly && handleDelete(user.id, user.username)}
-                          disabled={isReadOnly || isDeleting}
+                          onClick={() => handleDelete(user.id, user.username)}
+                          disabled={isDeleting}
                           className="p-2 text-destructive hover:bg-destructive/10 dark:hover:bg-red-900 rounded transition disabled:opacity-40 disabled:cursor-not-allowed"
-                          title={isReadOnly ? "Inactive users are read-only" : "Delete"}
+                          title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

@@ -207,3 +207,35 @@ def test_attendance_review_summary_counts_staff_shifts_and_statuses(
             "unmarked": 0,
         },
     }
+
+
+def test_delete_finalized_attendance_review_record(
+    test_client,
+    test_session,
+    admin_token,
+):
+    attendance_date = date(2026, 9, 29)
+    staff = TeacherNames(teacher_name="Finalized Attendance Delete Test")
+    test_session.add(staff)
+    test_session.commit()
+    test_session.refresh(staff)
+
+    record = StaffAttendance(
+        staff_id=staff.teacher_name_id,
+        attendance_time_id=None,
+        attendance_date=attendance_date,
+        final_status="PRESENT",
+        is_finalized=True,
+    )
+    test_session.add(record)
+    test_session.commit()
+
+    response = test_client.delete(
+        f"/attendance-review/{staff.teacher_name_id}",
+        params={"attendance_date": attendance_date.isoformat()},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["detail"] == "Attendance record deleted."
+    assert test_session.get(StaffAttendance, record.staff_attendance_id) is None

@@ -61,6 +61,43 @@ dozens of independent tenant Postgres databases, no shared DB.
    data shape, a locked table, a connectivity blip worth distinguishing
    from a real schema conflict).
 
+## Verify and apply one migration on selected tenants
+
+Use `--dry-run` to check whether a migration is pending. It does not apply
+the migration. Add `--tenant` to limit the check to one exact tenant ID, or
+omit it to check all active tenants.
+
+Check migration `0015_add_user_active_and_teacher_delete_metadata` across all
+active tenants:
+
+```bash
+uv run python -m migrations.run_all_tenants --dry-run --only 0015_add_user_active_and_teacher_delete_metadata
+```
+
+Check all pending migrations for one tenant:
+
+```bash
+uv run python -m migrations.run_all_tenants --dry-run --tenant <tenant_id>
+```
+
+Check one migration for one tenant without applying it:
+
+```bash
+uv run python -m migrations.run_all_tenants --dry-run --only <migration_id> --tenant <tenant_id>
+```
+
+After reviewing the dry-run output and confirming the tenant ID, apply only
+that migration to the staging tenant:
+
+```bash
+uv run python -m migrations.run_all_tenants --only 0015_add_user_active_and_teacher_delete_metadata --tenant mzbs_staging_school
+```
+
+The last command is a live schema change, not a verification command. For a
+different tenant, replace `mzbs_staging_school` with its exact control-plane
+`tenant_id`; use this only after the staging run succeeds and the change is
+approved for that tenant.
+
 6. **Never delete or renumber an already-applied migration file.**
    `schema_migrations` (inside each tenant DB) references files by
    `migration_id`, and onboarding a brand-new school (#2, #3, ... #50) means

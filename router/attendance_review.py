@@ -623,8 +623,6 @@ def delete_attendance_review_record(
     ).first()
     if not record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attendance record not found.")
-    if record.is_finalized:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Finalized attendance cannot be deleted.")
 
     session.delete(record)
     session.commit()

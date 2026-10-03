@@ -1,6 +1,23 @@
 import AxiosInstance from "@/api/axiosInterceptorInstance";
 
 export namespace StaffAPI {
+  export interface DeletedStaffReferenceRecord {
+    id: number | null;
+    details: string;
+  }
+
+  export interface DeletedStaffReferenceCategory {
+    label: string;
+    count: number;
+    records: DeletedStaffReferenceRecord[];
+  }
+
+  export interface DeletedStaffReferences {
+    teacher_id: number;
+    teacher_name: string;
+    categories: DeletedStaffReferenceCategory[];
+  }
+
   export const getStaff = async (search?: string) => {
     const params = search ? { search } : {};
     return AxiosInstance.get("/staff/list", { params });
@@ -43,6 +60,10 @@ export namespace StaffAPI {
 
   export const getDeletedStaff = async () => {
     return AxiosInstance.get('/deleted-staff/');
+  };
+
+  export const getDeletedStaffReferences = async (teacherId: number) => {
+    return AxiosInstance.get<DeletedStaffReferences>(`/deleted-staff/${teacherId}/references`);
   };
 
   export const restoreDeletedStaff = async (teacherId: number) => {
