@@ -92,30 +92,39 @@ export default function DeletedStudentsTable({
       ) : (
         <>
           <div className="hidden sm:block w-full overflow-x-auto rounded-3xl border border-border bg-card shadow-sm">
-            <table className="w-full min-w-[920px] table-fixed border-collapse">
+            <table className="w-full table-fixed border-collapse" style={{ minWidth: 740 }}>
+              <colgroup>
+                <col style={{ width: 48 }} />
+                <col style={{ width: 108 }} />
+                <col style={{ width: 80 }} />
+                <col style={{ width: 180 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 124 }} />
+              </colgroup>
               <thead>
                 <tr className="bg-primary text-primary-foreground">
-                  <th className="py-3 px-4 text-left text-sm font-semibold w-16">Sr. No</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold">Student Name</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold">Class</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold">Reason</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold">Deleted By</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold">Deletion Date</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold w-24">Actions</th>
+                  <th className="whitespace-normal break-words py-2 px-2 text-left text-sm font-semibold"><span className="block">Sr.</span><span className="block">No</span></th>
+                  <th className="whitespace-normal break-words py-2 px-2 text-left text-sm font-semibold"><span className="block">Student</span><span className="block">Name</span></th>
+                  <th className="whitespace-normal break-words py-2 px-2 text-left text-sm font-semibold">Class</th>
+                  <th className="whitespace-normal break-words py-2 px-2 text-left text-sm font-semibold">Reason</th>
+                  <th className="whitespace-normal break-words py-2 px-2 text-left text-sm font-semibold"><span className="block">Deleted</span><span className="block">By</span></th>
+                  <th className="whitespace-normal break-words py-2 px-2 text-left text-sm font-semibold"><span className="block">Deletion</span><span className="block">Date</span></th>
+                  <th className="whitespace-normal break-words py-2 px-2 text-left text-sm font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {students.map((student, index) => (
                   <tr key={student.student_id} className="border-b border-border/60">
-                    <td className="py-4 px-4 text-sm text-foreground">{index + 1}</td>
-                    <td className="py-4 px-4 text-sm text-foreground">{student.student_name}</td>
-                    <td className="py-4 px-4 text-sm text-foreground">{student.class_name}</td>
-                    <td className="py-4 px-4 text-sm text-foreground">{student.reason}</td>
-                    <td className="py-4 px-4 text-sm text-foreground">
+                    <td className="whitespace-normal break-words align-top py-3 px-2 text-sm text-foreground">{index + 1}</td>
+                    <td className="whitespace-normal break-words align-top py-3 px-2 text-sm text-foreground">{student.student_name}</td>
+                    <td className="whitespace-normal break-words align-top py-3 px-2 text-sm text-foreground">{student.class_name}</td>
+                    <td className="whitespace-normal break-words align-top py-3 px-2 text-sm text-foreground">{student.reason}</td>
+                    <td className="whitespace-normal break-words align-top py-3 px-2 text-sm text-foreground">
                       {student.deleted_by_name || `User #${student.deleted_by}`}
                     </td>
-                    <td className="py-4 px-4 text-sm text-foreground">{formatDate(student.deleted_at)}</td>
-                    <td className="py-4 px-4 text-sm">
+                    <td className="whitespace-normal break-words align-top py-3 px-2 text-sm text-foreground">{formatDate(student.deleted_at)}</td>
+                    <td className="whitespace-normal break-words align-top py-3 px-2 text-sm">
                       <div className="flex gap-2 items-center">
                         <button
                           onClick={() => setViewingStudent(student)}

@@ -112,10 +112,12 @@ export default function ExpenseCat() {
           id: "delete",
           header: "Delete",
           cell: ({ row }) => (
-            <DelConfirmMsg
-              rowId={row.original.expense_cat_name_id}
-              OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
-            />
+            <div className="flex items-center justify-center">
+              <DelConfirmMsg
+                rowId={row.original.expense_cat_name_id}
+                OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+              />
+            </div>
           ),
         },
       ]
@@ -241,4 +243,3 @@ export default function ExpenseCat() {
     </div>
   );
 }
-

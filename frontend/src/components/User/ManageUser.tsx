@@ -344,7 +344,7 @@ const ManageUser = () => {
                   <th className="text-left py-3 px-2 font-semibold text-foreground dark:text-foreground">
                     Role
                   </th>
-                  <th className="text-left py-3 px-2 font-semibold text-foreground dark:text-foreground">
+                  <th className="py-3 px-2 text-center font-semibold text-foreground dark:text-foreground">
                     Actions
                   </th>
                 </tr>
@@ -384,23 +384,25 @@ const ManageUser = () => {
                           <option value="FEE_MANAGER">FEE_MANAGER</option>
                         </select>
                       </td>
-                      <td className="py-3 px-2 flex gap-2">
-                        <button
-                          onClick={() => !isReadOnly && handleEdit(user)}
-                          disabled={isReadOnly}
-                          className="p-2 text-primary hover:bg-primary/10 dark:hover:bg-blue-900 rounded transition disabled:opacity-40 disabled:cursor-not-allowed"
-                          title={isReadOnly ? "Inactive users are read-only" : "Edit"}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(user.id, user.username)}
-                          disabled={isDeleting}
-                          className="p-2 text-destructive hover:bg-destructive/10 dark:hover:bg-red-900 rounded transition disabled:opacity-40 disabled:cursor-not-allowed"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <td className="py-3 px-2">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => !isReadOnly && handleEdit(user)}
+                            disabled={isReadOnly}
+                            className="p-2 text-primary hover:bg-primary/10 dark:hover:bg-blue-900 rounded transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={isReadOnly ? "Inactive users are read-only" : "Edit"}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(user.id, user.username)}
+                            disabled={isDeleting}
+                            className="p-2 text-destructive hover:bg-destructive/10 dark:hover:bg-red-900 rounded transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

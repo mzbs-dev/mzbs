@@ -281,12 +281,12 @@ const ViewExpense = () => {
     <div>
       <Header value="View Expense" />
       <form className="space-y-4 border w-full my-2">
-        <div className="space-y-4 px-2 rounded-md">
-          <label className="font-bold text-sm dark:text-foreground">
-            Category:{" "}
+        <div className="flex min-w-0 items-center gap-3 px-2 py-2 rounded-md">
+          <label className="shrink-0 whitespace-nowrap font-bold text-sm dark:text-foreground">
+            Category:
           </label>
           <select
-            className="w-[14rem] border bg-card rounded-md px-3 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground"
+            className="h-10 w-full min-w-0 flex-1 border bg-card rounded-md px-3 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground"
             value={selectedCategory}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
               const value = Number(e.target.value);

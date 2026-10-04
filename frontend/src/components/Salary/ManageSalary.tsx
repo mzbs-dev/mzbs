@@ -686,7 +686,7 @@ const ManageSalary = () => {
 
             {/* Reason / Description - Optional */}
             <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+              <label className="mb-2 block text-center text-sm font-medium text-gray-700 dark:text-gray-200">
                 Reason / Description
                 <span className="text-gray-500 ml-1">(Optional)</span>
               </label>

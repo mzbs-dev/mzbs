@@ -862,7 +862,7 @@ const AttendanceTable: React.FC = () => {
                 squishing columns unreadably.
               */}
               <div id="attendance-print-area" className="overflow-x-auto bg-card dark:bg-card">
-                <Table className="w-full min-w-full">
+                <Table className="w-full min-w-[1100px]">
                   <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
                       <TableRow key={headerGroup.id} className="border-0">
@@ -873,7 +873,7 @@ const AttendanceTable: React.FC = () => {
                               text-center text-xs font-bold uppercase tracking-wider
                               bg-card dark:bg-background
                               text-foreground dark:text-foreground
-                              py-3.5 border-0 whitespace-nowrap px-3
+                              py-3.5 border-0 px-3
                               ${header.column.columnDef.id === "actions" ? "no-print" : ""}
                             `}
                           >
@@ -918,7 +918,7 @@ const AttendanceTable: React.FC = () => {
                           {row.getVisibleCells().map((cell) => (
                             <TableCell 
                               key={cell.id} 
-                              className={`px-3 py-2 whitespace-nowrap text-center ${
+                              className={`px-3 py-2 text-center ${
                                 cell.column.columnDef.id === "actions" ? "no-print" : ""
                               }`}
                             >

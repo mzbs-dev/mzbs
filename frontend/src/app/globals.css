@@ -19,6 +19,125 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
 }
 
+@media screen {
+  :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="color"]):not([type="hidden"]),
+    select,
+    textarea
+  ) {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-height: 2.5rem;
+  }
+
+  button:not([role="checkbox"]):not([aria-label]):not(table button):not([class*="h-7"]):not([class*="h-8"]):not([class*="h-9"]) {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-height: 2.5rem;
+  }
+
+  @media (max-width: 639px) {
+    form button:not([role="checkbox"]):not([aria-label]):not(table button) {
+      width: 100%;
+    }
+  }
+
+  @media (min-width: 640px) {
+    :is(
+      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="color"]):not([type="hidden"]),
+      select,
+      textarea
+    ),
+    button:not([role="checkbox"]):not([aria-label]):not(table button):not([class*="h-7"]):not([class*="h-8"]):not([class*="h-9"]) {
+      min-height: 2.75rem;
+    }
+
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="color"]):not([type="hidden"]) {
+    text-align: center;
+  }
+
+  input[type="date"] {
+    align-items: center;
+    gap: 0.25rem;
+    justify-content: center;
+    padding-inline: 0.5rem;
+  }
+
+  input[type="date"]::-webkit-datetime-edit {
+    margin-inline: auto !important;
+    padding-inline: 0 !important;
+    text-align: center !important;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    margin-block: 0 !important;
+  }
+
+  .attendance-review-date-filter input[type="date"] {
+    height: 100%;
+    min-height: 0;
+  }
+
+  select {
+    box-sizing: border-box;
+    height: 2.5rem;
+  }
+
+  @media (min-width: 640px) {
+    select {
+      height: 2.75rem;
+    }
+  }
+
+  select,
+  select option,
+  [role="option"] {
+    text-align: center;
+  }
+
+  select {
+    text-align-last: center;
+  }
+
+  [role="option"] [data-radix-select-item-text] {
+    width: 100%;
+    text-align: center;
+  }
+
+  label:not(.attendance-review-date-filter):has(+ input),
+  label:not(.attendance-review-date-filter):has(+ select),
+  label:not(.attendance-review-date-filter):has(+ div select),
+  label:not(.attendance-review-date-filter):has(+ [role="combobox"]),
+  label:not(.attendance-review-date-filter):has(+ div [role="combobox"]) {
+    display: block;
+    text-align: center;
+  }
+
+  table {
+    table-layout: fixed;
+  }
+
+  table th,
+  table td {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+  }
+
+  table th {
+    text-align: center !important;
+  }
+
+  table td {
+    text-align: center !important;
+  }
+}
+
 @layer base {
   :root {
     --background: 210 40% 98%;

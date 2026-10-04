@@ -109,10 +109,12 @@ export default function IncomeCat() {
           id: "delete",
           header: "Delete",
           cell: ({ row }) => (
-            <DelConfirmMsg
-              rowId={row.original.income_cat_name_id}
-              OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
-            />
+            <div className="flex items-center justify-center">
+              <DelConfirmMsg
+                rowId={row.original.income_cat_name_id}
+                OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+              />
+            </div>
           ),
         },
       ]
@@ -238,4 +240,3 @@ export default function IncomeCat() {
     </div>
   );
 }
-

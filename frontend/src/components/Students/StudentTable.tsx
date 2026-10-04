@@ -238,16 +238,19 @@ export default function ModernStudentTable() {
   const columns: ColumnDef<StudentModel>[] = [
     {
       id: "serialNumber",
-      header: "Sr. No",
+      size: 48,
+      header: () => <><span className="block">Sr.</span><span className="block">No</span></>,
       cell: ({ row }) => <div className="font-medium">{serialOffset + row.index + 1}</div>,
     },
     {
       accessorKey: "student_name",
-      header: "Student Name",
+      size: 108,
+      header: () => <><span className="block">Student</span><span className="block">Name</span></>,
     },
     {
       accessorKey: "student_age",
-      header: "Student Age",
+      size: 120,
+      header: () => <><span className="block">Student</span><span className="block">Age</span></>,
       cell: ({ row }) => {
         const dateOfBirth = row.original.student_date_of_birth;
         const age = dateOfBirth ? calculateAge(dateOfBirth) : "N/A";
@@ -256,26 +259,32 @@ export default function ModernStudentTable() {
     },
     {
       accessorKey: "student_gender",
-      header: "Student Gender",
+      size: 90,
+      header: () => <><span className="block">Student</span><span className="block">Gender</span></>,
     },
     {
       accessorKey: "class_name",
-      header: "Student Class Name",
+      size: 110,
+      header: () => <><span className="block">Student</span><span className="block">Class Name</span></>,
     },
     {
       accessorKey: "student_city",
-      header: "Student City",
+      size: 80,
+      header: () => <><span className="block">Student</span><span className="block">City</span></>,
     },
     {
       accessorKey: "father_name",
-      header: "Father Name",
+      size: 100,
+      header: () => <><span className="block">Father</span><span className="block">Name</span></>,
     },
     {
       accessorKey: "father_contact",
-      header: "Father Contact",
+      size: 100,
+      header: () => <><span className="block">Father</span><span className="block">Contact</span></>,
     },
     {
       accessorKey: "Action",
+      size: 100,
       header: "Action",
       cell: ({ row }) => {
         return (
@@ -523,14 +532,15 @@ export default function ModernStudentTable() {
       {/* Table rendering - Hidden on mobile, visible on sm and up */}
       <div className="hidden sm:block w-full max-w-full overflow-x-auto rounded-[24px] border border-slate-200/80 bg-white/80 shadow-[0_16px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70">
         <div id="student-print-area" className="w-full min-w-0">
-          <Table className="w-full min-w-[920px] whitespace-nowrap scroll-smooth">
+          <Table className="w-full min-w-[856px] table-fixed scroll-smooth">
           <TableHeader className="sticky top-0 z-10 bg-slate-50/90 text-slate-700 dark:bg-slate-900/80 dark:text-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className={`px-2 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 sm:px-3 sm:py-3 sm:text-sm dark:text-slate-400 ${
+                    style={{ width: header.column.getSize() }}
+                    className={`whitespace-normal break-words px-2 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 sm:px-2 sm:py-2 sm:text-sm dark:text-slate-400 ${
                       header.column.columnDef.id === "Action" ? "no-print" : ""
                     }`}
                   >
@@ -559,7 +569,7 @@ export default function ModernStudentTable() {
                   {row.getVisibleCells().map((cell) => (
                     <TableCell 
                       key={cell.id} 
-                      className={`px-2 py-2 text-xs text-slate-700 sm:px-3 sm:text-sm dark:text-slate-300 ${
+                      className={`whitespace-normal break-words px-2 py-2 text-xs text-slate-700 sm:px-2 sm:text-sm dark:text-slate-300 ${
                         cell.column.columnDef.id === "Action" ? "no-print" : ""
                       }`}
                     >

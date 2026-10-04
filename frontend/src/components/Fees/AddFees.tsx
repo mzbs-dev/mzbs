@@ -387,7 +387,7 @@ const AddFees = () => {
               <p className="text-red-500 text-xs">{errors.fee_year?.message}</p>
             </div>
 
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
               <label className="text-sm text-foreground dark:text-foreground font-bold">
                 Remarks
               </label>

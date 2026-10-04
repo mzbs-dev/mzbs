@@ -125,34 +125,37 @@ export default function DeletedStaffTable({ staff, onRefresh }: DeletedStaffTabl
                   <td className="px-4 py-3">{formatDate(member.created_at)}</td>
                   <td className="px-4 py-3">{formatDate(member.deleted_at)}</td>
                   <td className="px-4 py-3">{member.deleted_by ?? "—"}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-2">
                       <button
                         type="button"
                         onClick={() => void handleShowReferences(member)}
-                        className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-medium transition hover:bg-muted"
+                        title="View related records"
+                        aria-label={`View related records for ${member.teacher_name}`}
+                        className="rounded-lg p-1.5 text-primary transition hover:bg-primary/10"
                       >
-                        <Eye className="h-3.5 w-3.5" />
-                        Related Records
+                        <Eye className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleRestore(member.teacher_name_id, member.teacher_name)}
                         disabled={!canRestore || restoringId === member.teacher_name_id}
-                        className="inline-flex items-center gap-2 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs font-medium text-success transition hover:bg-success/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        title={restoringId === member.teacher_name_id ? "Restoring staff" : "Restore staff"}
+                        aria-label={`${restoringId === member.teacher_name_id ? "Restoring" : "Restore"} ${member.teacher_name}`}
+                        className="rounded-lg p-1.5 text-success transition hover:bg-success/10 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        {restoringId === member.teacher_name_id ? "Restoring..." : "Restore"}
+                        <RotateCcw className="h-4 w-4" />
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handlePermanentDelete(member.teacher_name_id, member.teacher_name)}
                         disabled={!canRestore || deletingId === member.teacher_name_id}
-                        className="inline-flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive transition hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        title={deletingId === member.teacher_name_id ? "Deleting staff permanently" : "Permanently delete staff"}
+                        aria-label={`${deletingId === member.teacher_name_id ? "Deleting" : "Permanently delete"} ${member.teacher_name}`}
+                        className="rounded-lg p-1.5 text-destructive transition hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        {deletingId === member.teacher_name_id ? "Deleting..." : "Permanent Delete"}
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </td>

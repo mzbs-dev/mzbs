@@ -1,7 +1,7 @@
 "use client";
 
 import { MarkAttInput } from "@/models/markattendance/markattendance";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "../ui/input";
 import { useForm } from "react-hook-form";
 import { ClassNameAPI as API } from "@/api/ClassName/ClassNameAPI";
@@ -63,6 +63,7 @@ interface ExistingAttendanceResponse {
   attendance_id: number;
   student_id?: number;
   attendance_value_id?: number;
+  teacher_name_id?: number;
 }
 export interface SelectOption {
   id: string | number;
@@ -193,6 +194,7 @@ const MarkAttendance = () => {
   const [existingAttendance, setExistingAttendance] = useState<ExistingAttendanceResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(true);
+  const initializedFromMarkLink = useRef(false);
 
   const today = new Date();
   const todayValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -297,27 +299,6 @@ const MarkAttendance = () => {
     }
   }, [classTimeList, getValues, setValue]);
 
-  useEffect(() => {
-    if (optionsLoading) return;
-
-    const params = new URLSearchParams(window.location.search);
-    const date = params.get("attendance_date");
-    const classNameId = Number(params.get("class_name_id"));
-    const attendanceTimeId = Number(params.get("attendance_time_id"));
-    if (
-      !date ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-      !classNameList.some((option) => Number(option.id) === classNameId) ||
-      !classTimeList.some((option) => Number(option.id) === attendanceTimeId)
-    ) {
-      return;
-    }
-
-    setValue("attendance_date", date);
-    setValue("class_name_id", classNameId);
-    setValue("attendance_time_id", attendanceTimeId);
-  }, [optionsLoading, classNameList, classTimeList, setValue]);
-
   // ── Mark All Helper ─────────────────────────────────────────────────────────
   const markAll = (field: "present" | "absent" | "late" | "leave") => {
     setData((prev) =>
@@ -365,7 +346,7 @@ const MarkAttendance = () => {
     columnHelper.accessor("name", {
       header: "Student Name",
       cell: (info) => (
-        <span className="font-medium text-foreground dark:text-foreground text-right block pr-2" dir="rtl">
+        <span className="font-medium text-foreground dark:text-foreground text-center block" dir="rtl">
           {info.getValue()}
         </span>
       ),
@@ -476,7 +457,10 @@ const MarkAttendance = () => {
   };
 
   // ── Fetch Students ──────────────────────────────────────────────────────────
-  const HandleSubmitForStudentGet = async (formData: MarkAttInput) => {
+  const loadAttendanceSheet = useCallback(async (
+    formData: MarkAttInput,
+    teacherId?: number
+  ) => {
     try {
       setIsLoading(true);
       const classId = Number(formData.class_name_id);
@@ -486,7 +470,7 @@ const MarkAttendance = () => {
           attendance_date: formData.attendance_date,
           attendance_time_id: Number(formData.attendance_time_id),
           class_name_id: classId,
-          teacher_name_id: Number(formData.teacher_name_id),
+          teacher_name_id: teacherId ?? (Number(formData.teacher_name_id) || 0),
           student_id: 0,
           father_name: "",
           attendance_value_id: 0,
@@ -494,6 +478,14 @@ const MarkAttendance = () => {
       ]);
       const students = extractArrayData<StudentResponse>(studentResponse);
       const existing = extractArrayData<ExistingAttendanceResponse>(attendanceResponse);
+
+      if (!teacherId && existing.length > 0) {
+        const recordedTeacherId = existing[0].teacher_name_id;
+        if (recordedTeacherId != null) {
+          setValue("teacher_name_id", recordedTeacherId);
+        }
+      }
+
       setStudentByFilter(
         students.map((item) => ({
           id: item.student_id,
@@ -502,12 +494,47 @@ const MarkAttendance = () => {
       );
       setExistingAttendance(existing);
     } catch (error) {
-      console.error("Error fetching students:", error);
+      console.error("Error fetching attendance sheet:", error);
       setStudentByFilter([]);
       setExistingAttendance([]);
+      toast.error("Unable to load students and attendance");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
+  }, [setValue]);
+
+  const HandleSubmitForStudentGet = async (formData: MarkAttInput) => {
+    await loadAttendanceSheet(formData);
   };
+
+  useEffect(() => {
+    if (optionsLoading || initializedFromMarkLink.current) return;
+    initializedFromMarkLink.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const date = params.get("attendance_date");
+    const classNameId = Number(params.get("class_name_id"));
+    const attendanceTimeId = Number(params.get("attendance_time_id"));
+    if (
+      !date ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !classNameList.some((option) => Number(option.id) === classNameId) ||
+      !classTimeList.some((option) => Number(option.id) === attendanceTimeId)
+    ) {
+      return;
+    }
+
+    setValue("attendance_date", date);
+    setValue("class_name_id", classNameId);
+    setValue("attendance_time_id", attendanceTimeId);
+    void loadAttendanceSheet({
+      attendance_date: date,
+      class_name_id: classNameId,
+      attendance_time_id: attendanceTimeId,
+      teacher_name_id: 0,
+      attendances: [],
+    }, 0);
+  }, [optionsLoading, classNameList, classTimeList, loadAttendanceSheet, setValue]);
 
   // ────────────────────────────────────────────────────────────────────────────
   //  RENDER
@@ -610,7 +637,7 @@ const MarkAttendance = () => {
                       required: "Time is required",
                     })}
                     DisplayItem="title"
-                    className="h-10 text-sm rounded-lg w-full"
+                    className="h-10 sm:h-11 text-sm rounded-lg w-full"
                   />
                   {errors.attendance_time_id && (
                     <p className="text-red-500 text-xs mt-0.5">
@@ -629,7 +656,7 @@ const MarkAttendance = () => {
                       required: "Class is required",
                     })}
                     DisplayItem="title"
-                    className="h-10 text-sm rounded-lg w-full"
+                    className="h-10 sm:h-11 text-sm rounded-lg w-full"
                   />
                   {errors.class_name_id && (
                     <p className="text-red-500 text-xs mt-0.5">
@@ -648,7 +675,7 @@ const MarkAttendance = () => {
                       required: "Teacher is required",
                     })}
                     DisplayItem="title"
-                    className="h-10 text-sm rounded-lg w-full"
+                    className="h-10 sm:h-11 text-sm rounded-lg w-full"
                   />
                   {errors.teacher_name_id && (
                     <p className="text-red-500 text-xs mt-0.5">
@@ -662,7 +689,7 @@ const MarkAttendance = () => {
                   <Button
                     type="button"
                     onClick={() => handleSubmit(HandleSubmitForStudentGet)()}
-                    className="w-full h-10 bg-primary hover:bg-primary/90 active:bg-blue-800 dark:bg-blue-700 dark:hover:bg-primary text-white font-bold text-sm rounded-lg transition-colors shadow-sm"
+                    className="w-full h-10 sm:h-11 bg-primary hover:bg-primary/90 active:bg-blue-800 dark:bg-blue-700 dark:hover:bg-primary text-white font-bold text-sm rounded-lg transition-colors shadow-sm"
                   >
                     Get Students
                   </Button>
@@ -718,8 +745,7 @@ const MarkAttendance = () => {
                               text-center text-xs font-bold uppercase tracking-wider
                               bg-card dark:bg-background
                               text-foreground dark:text-foreground
-                              py-3.5 border-0 whitespace-nowrap
-                              ${i === 0 ? "text-right pr-6 pl-4" : "px-3"}
+                              py-3.5 border-0 px-2
                             `}
                           >
                             {flexRender(
@@ -748,8 +774,7 @@ const MarkAttendance = () => {
                           <TableCell
                             key={cell.id}
                             className={`
-                              text-center whitespace-nowrap py-3.5
-                              ${i === 0 ? "text-right pr-6 pl-4" : "px-3"}
+                              text-center py-3.5 px-2
                             `}
                           >
                             {flexRender(

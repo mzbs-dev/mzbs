@@ -298,28 +298,30 @@ const ViewIncome = () => {
       <Header value="View Income" />
 
       <form className="space-y-4 border w-full my-2">
-        <div className="flex flex-wrap items-center gap-2 px-2 py-2 rounded-md">
-          <label className="font-bold text-sm dark:text-foreground">Category: </label>
-          <select
-            className="h-10 w-[14rem] border bg-card rounded-md px-3 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground"
-            value={selectedCategory}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-              const value = Number(e.target.value);
-              setSelectedCategory(value);
-              getIncome(value, 1);
-            }}
-          >
-            <option value={0}>All</option>
-            {incomeCategory.map((category) => (
-              <option
-                key={category.income_cat_name_id}
-                value={category.income_cat_name_id}
-              >
-                {category.income_cat_name}
-              </option>
-            ))}
-          </select>
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-3 items-end gap-2 px-2 py-2 rounded-md sm:items-center sm:gap-3">
+          <label className="flex min-w-0 flex-col gap-1 text-xs font-bold dark:text-foreground sm:flex-row sm:items-center sm:gap-2 sm:text-sm">
+            <span className="whitespace-nowrap">Category:</span>
+            <select
+              className="h-10 w-full min-w-0 flex-1 border bg-card rounded-md px-2 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground sm:px-3"
+              value={selectedCategory}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                const value = Number(e.target.value);
+                setSelectedCategory(value);
+                getIncome(value, 1);
+              }}
+            >
+              <option value={0}>All</option>
+              {incomeCategory.map((category) => (
+                <option
+                  key={category.income_cat_name_id}
+                  value={category.income_cat_name_id}
+                >
+                  {category.income_cat_name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="min-w-0">
             <Input
               value={sourceSearch}
               onChange={(e) => setSourceSearch(e.target.value)}
@@ -331,13 +333,15 @@ const ViewIncome = () => {
               }}
               placeholder="Search source"
               aria-label="Search income source"
-              className="h-10 w-[14rem] border bg-card rounded-md px-3 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground"
+              className="h-10 w-full min-w-0 border bg-card rounded-md px-3 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground"
             />
+          </div>
+          <div className="flex w-full min-w-0 items-center gap-2">
             <Button
               type="button"
               onClick={handleSourceSearch}
               disabled={isLoading}
-              className="h-10 gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90"
+              className="h-10 min-w-0 flex-1 gap-2 rounded-lg bg-primary px-2 py-2 text-xs font-medium text-white transition hover:bg-primary/90 sm:px-4 sm:text-sm"
             >
               Search
             </Button>
@@ -425,7 +429,7 @@ const ViewIncome = () => {
               </div>
             </div>
             <div id="income-print-area">
-              <Table>
+              <Table className="min-w-[1100px]">
                 <TableHeader className="bg-primary dark:bg-secondary hover:bg-none">
                   <TableRow>
                     <TableHead>Receipt Number</TableHead>
@@ -446,7 +450,7 @@ const ViewIncome = () => {
                       <TableCell>{item.recipt_number ?? "-"}</TableCell>
                       <TableCell>{formatDateToDDMMYY(item.date)}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-0 flex-wrap items-center justify-center gap-2">
                           <span>{item.category}</span>
                           {item.source_type && (
                             <span className={`text-xs px-2 py-1 rounded font-semibold ${getSourceBadgeClasses(item.source_type)}`}>
@@ -460,27 +464,29 @@ const ViewIncome = () => {
                       <TableCell>{item.contact}</TableCell>
                       <TableCell>{item.amount}</TableCell>
                       {(role === "ADMIN" || role === "ACCOUNTANT") && (
-                        <TableCell className="no-print flex gap-2 items-center">
-                          {!item.source_type && (
-                            <>
-                              <button
-                                onClick={() => handleEditClick(item)}
-                                className="p-1 text-primary hover:bg-blue-100 rounded transition"
-                                title="Edit"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          {role === "ADMIN" && (
-                            <button
-                              onClick={() => handleDeleteIncome(item.id)}
-                              className="p-1 text-destructive hover:bg-red-100 rounded transition"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-                            </>
-                          )}
+                        <TableCell className="no-print">
+                          <div className="flex items-center justify-center gap-2">
+                            {!item.source_type && (
+                              <>
+                                <button
+                                  onClick={() => handleEditClick(item)}
+                                  className="p-1 text-primary hover:bg-blue-100 rounded transition"
+                                  title="Edit"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                {role === "ADMIN" && (
+                                  <button
+                                    onClick={() => handleDeleteIncome(item.id)}
+                                    className="p-1 text-destructive hover:bg-red-100 rounded transition"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
@@ -645,4 +651,3 @@ const ViewIncome = () => {
 };
 
 export default ViewIncome;
-

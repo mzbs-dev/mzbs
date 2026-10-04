@@ -147,10 +147,12 @@ export default function TeacherTable() {
           id: "delete",
           header: "Delete",
           cell: ({ row }) => (
-            <DelConfirmMsg
-              rowId={row.original.teacher_name_id}
-              OnDelete={(confirmed) => handleDelete(confirmed, row.original)}
-            />
+            <div className="flex items-center justify-center">
+              <DelConfirmMsg
+                rowId={row.original.teacher_name_id}
+                OnDelete={(confirmed) => handleDelete(confirmed, row.original)}
+              />
+            </div>
           ),
         },
       ]
@@ -276,4 +278,3 @@ export default function TeacherTable() {
     </div>
   );
 }
-

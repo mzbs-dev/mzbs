@@ -278,10 +278,10 @@ const FinancialCard = ({
 }) => (
   <div className={`${colorClasses} p-5 rounded-xl shadow-sm`}>
     <div className="flex items-center">
-      <div className={`p-3 rounded-full ${iconBg} text-white mr-4`}>{icon}</div>
-      <div>
+      <div className={`p-3 rounded-full ${iconBg} text-white mr-4 shrink-0`}>{icon}</div>
+      <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-600">{label}</p>
-        <p className={`text-2xl font-bold ${amountColor}`}>Rs.{amount.toLocaleString()}</p>
+        <p className={`text-lg sm:text-xl xl:text-2xl font-bold leading-tight break-words ${amountColor}`}>Rs.{amount.toLocaleString()}</p>
       </div>
     </div>
   </div>
@@ -1029,7 +1029,7 @@ export function AdminDashboard() {
             />
 
             {!incomeExpenseLoading && incomeExpenseData && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                 <FinancialCard
                   label="Total Income" amount={incomeExpenseData.totals.income}
                   colorClasses="bg-gradient-to-r from-green-50 to-green-100"
@@ -1128,43 +1128,43 @@ export function AdminDashboard() {
 
             {!debitSummaryLoading && debitSummaryData ? (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                   <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-xl shadow-sm">
                     <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-blue-500 text-white mr-4">
+                      <div className="p-3 rounded-full bg-blue-500 text-white mr-4 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-600">Total Debit Taken</p>
-                        <p className="text-2xl font-bold text-blue-600">Rs.{formatCurrency(debitSummaryData.total_debit_taken)}</p>
+                        <p className="text-lg sm:text-xl xl:text-2xl font-bold leading-tight break-words text-blue-600">Rs.{formatCurrency(debitSummaryData.total_debit_taken)}</p>
                       </div>
                     </div>
                   </div>
                   <div className="bg-gradient-to-r from-green-50 to-green-100 p-5 rounded-xl shadow-sm">
                     <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-green-500 text-white mr-4">
+                      <div className="p-3 rounded-full bg-green-500 text-white mr-4 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-600">Total Debit Cleared</p>
-                        <p className="text-2xl font-bold text-green-600">Rs.{formatCurrency(debitSummaryData.total_debit_cleared)}</p>
+                        <p className="text-lg sm:text-xl xl:text-2xl font-bold leading-tight break-words text-green-600">Rs.{formatCurrency(debitSummaryData.total_debit_cleared)}</p>
                       </div>
                     </div>
                   </div>
                   <div className="bg-gradient-to-r from-red-50 to-red-100 p-5 rounded-xl shadow-sm">
                     <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-red-500 text-white mr-4">
+                      <div className="p-3 rounded-full bg-red-500 text-white mr-4 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-600">Outstanding Balance</p>
-                        <p className="text-2xl font-bold text-red-600">Rs.{formatCurrency(debitSummaryData.total_outstanding)}</p>
+                        <p className="text-lg sm:text-xl xl:text-2xl font-bold leading-tight break-words text-red-600">Rs.{formatCurrency(debitSummaryData.total_outstanding)}</p>
                       </div>
                     </div>
                   </div>

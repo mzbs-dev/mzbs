@@ -107,7 +107,7 @@ export default function LoginForm() {
           <div>
             <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-slate-700">Username</label>
             <div className="relative mt-1">
-              <Mail className="absolute left-3 top-2.75 h-5 w-5 text-slate-400" />
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <input
                 id="username"
                 type="text"
@@ -122,7 +122,7 @@ export default function LoginForm() {
           <div>
             <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-slate-700">Password</label>
             <div className="relative mt-1">
-              <Lock className="absolute left-3 top-2.75 h-5 w-5 text-slate-400" />
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -130,7 +130,7 @@ export default function LoginForm() {
                 className="w-full rounded-xl border border-slate-200 bg-white px-10 py-2.5 pr-12 text-slate-900 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 {...register("password", { required: "Password is required" })}
               />
-              <button type="button" onClick={togglePasswordVisibility} className="absolute right-3 top-2.75 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
+              <button type="button" onClick={togglePasswordVisibility} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>

@@ -384,8 +384,8 @@ export default function AttendanceReview() {
               Review staff self-reports and assign official attendance status.
             </p>
           </div>
-          <div className="grid min-w-0 grid-cols-1 gap-2 min-[520px]:grid-cols-[minmax(0,1fr)_minmax(150px,180px)]">
-            <label className="flex min-w-0 items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+          <div className="grid min-w-0 grid-cols-1 gap-2 min-[520px]:grid-cols-2">
+            <label className="attendance-review-date-filter flex h-10 min-w-0 items-center gap-2 rounded-lg border border-border px-3 py-0 text-sm sm:h-11">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
               <input
                 type="date"

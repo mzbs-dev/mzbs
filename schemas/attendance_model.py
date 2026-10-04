@@ -69,6 +69,7 @@ class FilteredAttendanceResponse(SQLModel):
     attendance_id: int
     student_id: Optional[int] = None
     attendance_value_id: Optional[int] = None
+    teacher_name_id: Optional[int] = None
     attendance_date: datetime
     attendance_time: str
     attendance_class: str

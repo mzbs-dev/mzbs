@@ -125,10 +125,12 @@ export default function ModernStudentTable() {
           id: "delete",
           header: "Delete",
           cell: ({ row }) => (
-            <DelConfirmMsg
-              rowId={row.original.class_name_id}
-              OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
-            />
+            <div className="flex items-center justify-center">
+              <DelConfirmMsg
+                rowId={row.original.class_name_id}
+                OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+              />
+            </div>
           ),
         },
       ]
@@ -254,7 +256,7 @@ export default function ModernStudentTable() {
               </div>
               {/* Delete button on mobile — gated on setup_classes.delete */}
               {canDeleteClass && (
-                <div className="flex justify-end pt-1">
+                <div className="flex justify-center pt-1">
                   <DelConfirmMsg
                     rowId={row.original.class_name_id}
                     OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
@@ -305,4 +307,3 @@ export default function ModernStudentTable() {
     </div>
   );
 }
-

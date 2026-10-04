@@ -57,6 +57,7 @@ def _build_response(att: Attendance) -> FilteredAttendanceResponse:
         attendance_id=att.attendance_id,
         student_id=att.student_id,
         attendance_value_id=att.attendance_value_id,
+        teacher_name_id=att.teacher_name_id,
         attendance_date=att.attendance_date,
         attendance_time=att.attendance_time.attendance_time if att.attendance_time else "N/A",
         attendance_class=att.attendance_class.class_name if att.attendance_class else "N/A",
@@ -505,4 +506,3 @@ def get_attendance_status_summary(
         )
         for record in records
     ]
-

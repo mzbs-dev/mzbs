@@ -126,10 +126,12 @@ export default function ClassTiming() {
           id: "delete",
           header: "Delete",
           cell: ({ row }) => (
-            <DelConfirmMsg
-              rowId={row.original.attendance_time_id}
-              OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
-            />
+            <div className="flex items-center justify-center">
+              <DelConfirmMsg
+                rowId={row.original.attendance_time_id}
+                OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
+              />
+            </div>
           ),
         },
       ]
@@ -254,7 +256,7 @@ export default function ClassTiming() {
               </div>
               {/* Delete button on mobile — gated on setup_timings.delete */}
               {canDeleteTiming && (
-                <div className="flex justify-end pt-1">
+                <div className="flex justify-center pt-1">
                   <DelConfirmMsg
                     rowId={row.original.attendance_time_id}
                     OnDelete={(confirmed) => formDeleteHandler(confirmed, row.original)}
@@ -312,4 +314,3 @@ export default function ClassTiming() {
     </div>
   );
 }
-

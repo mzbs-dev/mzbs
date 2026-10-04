@@ -236,8 +236,8 @@ const EditMarks = () => {
             />
           </div>
 
-          <div className="flex items-end">
-            <Button type="button" onClick={() => void loadPreviousExams()} className="bg-primary text-white">
+          <div className="flex w-full items-end">
+            <Button type="button" onClick={() => void loadPreviousExams()} className="w-full bg-primary text-white">
               {loadingHistory ? "Loading..." : "Load Previous Exams"}
             </Button>
           </div>

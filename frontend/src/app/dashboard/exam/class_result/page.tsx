@@ -387,8 +387,8 @@ const ClassResultPage = () => {
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-neutral-900 no-print">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="min-w-[160px] flex-1 max-w-[320px]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <div className="min-w-0 w-full">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Class</label>
               <Select
@@ -400,7 +400,7 @@ const ClassResultPage = () => {
             </div>
           </div>
 
-          <div className="min-w-[160px] flex-1 max-w-[320px]">
+          <div className="min-w-0 w-full">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Exam</label>
               <Select
@@ -412,11 +412,11 @@ const ClassResultPage = () => {
             </div>
           </div>
 
-          <div className="flex w-full flex-wrap items-end gap-3 sm:w-auto">
-            <Button onClick={loadClassResult} className="bg-primary text-white min-w-[150px]">
+          <div className="flex w-full flex-col gap-3 sm:col-span-2 sm:flex-row xl:col-span-1 xl:w-auto">
+            <Button onClick={loadClassResult} className="w-full bg-primary text-white sm:w-auto">
               Get Class Result
             </Button>
-            <Button onClick={() => window.print()} className="bg-slate-900 text-white min-w-[100px]">
+            <Button onClick={() => window.print()} className="w-full bg-slate-900 text-white sm:w-auto">
               Print
             </Button>
           </div>

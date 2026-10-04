@@ -283,7 +283,7 @@ def get_attendance_summary(
         graph_data = GraphData(
             labels=sorted_class_names,
             datasets=datasets,
-            title=f"Attendance Summary for {selected_date} (Total: {total_students})",
+            title="Attendance Summary",
         )
 
         return AttendanceGraphData(summary=summary, graph=graph_data)

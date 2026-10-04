@@ -356,17 +356,17 @@ export function AccountantDashboard() {
 
             {/* Financial summary cards with improved styling */}
             {!incomeExpenseLoading && incomeExpenseSummaryData && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                 <div className="bg-gradient-to-r from-green-50 to-green-100 p-5 rounded-xl shadow-sm">
                   <div className="flex items-center">
-                    <div className="p-3 rounded-full bg-green-500 text-white mr-4">
+                    <div className="p-3 rounded-full bg-green-500 text-white mr-4 shrink-0">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-600">Total Income</p>
-                      <p className="text-2xl font-bold text-green-600">
+                      <p className="text-lg sm:text-xl xl:text-2xl font-bold leading-tight break-words text-green-600">
                         Rs.{incomeExpenseSummaryData.totals.income.toLocaleString()}
                       </p>
                     </div>
@@ -375,14 +375,14 @@ export function AccountantDashboard() {
                 
                 <div className="bg-gradient-to-r from-red-50 to-red-100 p-5 rounded-xl shadow-sm">
                   <div className="flex items-center">
-                    <div className="p-3 rounded-full bg-red-500 text-white mr-4">
+                    <div className="p-3 rounded-full bg-red-500 text-white mr-4 shrink-0">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                       </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-600">Total Expense</p>
-                      <p className="text-2xl font-bold text-red-600">
+                      <p className="text-lg sm:text-xl xl:text-2xl font-bold leading-tight break-words text-red-600">
                         Rs.{incomeExpenseSummaryData.totals.expense.toLocaleString()}
                       </p>
                     </div>
@@ -391,16 +391,16 @@ export function AccountantDashboard() {
                 
                 <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-xl shadow-sm">
                   <div className="flex items-center">
-                    <div className={`p-3 rounded-full ${incomeExpenseSummaryData.totals.profit >= 0 ? 'bg-blue-500' : 'bg-red-500'} text-white mr-4`}>
+                    <div className={`p-3 rounded-full ${incomeExpenseSummaryData.totals.profit >= 0 ? 'bg-blue-500' : 'bg-red-500'} text-white mr-4 shrink-0`}>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={incomeExpenseSummaryData.totals.profit >= 0 
                           ? "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" 
                           : "M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"} />
                       </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-600">Net Profit/Loss</p>
-                      <p className={`text-2xl font-bold ${incomeExpenseSummaryData.totals.profit >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                      <p className={`text-lg sm:text-xl xl:text-2xl font-bold leading-tight break-words ${incomeExpenseSummaryData.totals.profit >= 0 ? "text-blue-600" : "text-red-600"}`}>
                         Rs.{incomeExpenseSummaryData.totals.profit.toLocaleString()}
                       </p>
                     </div>
@@ -537,43 +537,43 @@ export function AccountantDashboard() {
 
             {!debitSummaryLoading && debitSummaryData ? (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                   <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-xl shadow-sm">
                     <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-blue-500 text-white mr-4">
+                      <div className="p-3 rounded-full bg-blue-500 text-white mr-4 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-600">Total Debit Taken</p>
-                        <p className="text-2xl font-bold text-blue-600">Rs.{formatCurrency(debitSummaryData.total_debit_taken)}</p>
+                        <p className="text-lg sm:text-xl xl:text-2xl font-bold leading-tight break-words text-blue-600">Rs.{formatCurrency(debitSummaryData.total_debit_taken)}</p>
                       </div>
                     </div>
                   </div>
                   <div className="bg-gradient-to-r from-green-50 to-green-100 p-5 rounded-xl shadow-sm">
                     <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-green-500 text-white mr-4">
+                      <div className="p-3 rounded-full bg-green-500 text-white mr-4 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-600">Total Debit Cleared</p>
-                        <p className="text-2xl font-bold text-green-600">Rs.{formatCurrency(debitSummaryData.total_debit_cleared)}</p>
+                        <p className="text-lg sm:text-xl xl:text-2xl font-bold leading-tight break-words text-green-600">Rs.{formatCurrency(debitSummaryData.total_debit_cleared)}</p>
                       </div>
                     </div>
                   </div>
                   <div className="bg-gradient-to-r from-red-50 to-red-100 p-5 rounded-xl shadow-sm">
                     <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-red-500 text-white mr-4">
+                      <div className="p-3 rounded-full bg-red-500 text-white mr-4 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-600">Outstanding Balance</p>
-                        <p className="text-2xl font-bold text-red-600">Rs.{formatCurrency(debitSummaryData.total_outstanding)}</p>
+                        <p className="text-lg sm:text-xl xl:text-2xl font-bold leading-tight break-words text-red-600">Rs.{formatCurrency(debitSummaryData.total_outstanding)}</p>
                       </div>
                     </div>
                   </div>

@@ -23,6 +23,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
     background  = "transparent",
     DisplayItem = "title",
     DisplayCode = "code",
+    className = "",
     ...props
   },
   ref
@@ -42,7 +43,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           {...props}
           id={id}
           ref={ref}
-          className={`w-full px-3 py-2 dark:bg-neutral-950 dark:border-gray-300 border border-black bg-${background} rounded-md outline-none`}
+          className={`w-full px-3 py-2 dark:bg-neutral-950 dark:border-gray-300 border border-black bg-${background} rounded-md outline-none ${className}`}
         >
           <option value="">Select...</option>
           {options.map((option, index) => (
