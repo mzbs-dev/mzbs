@@ -4,10 +4,14 @@ import { AddExpenseModel, ExpenseCategory } from "@/models/expense/expense";
 
 // Export as a single API object
 export const ExpenseAPI = {
-  GetAllExpenseData: async (page = 1, pageSize = 10) => {
+  GetAllExpenseData: async (page = 1, pageSize = 10, search = "") => {
     try {
       const response = await AxiosInstance.get("/expenses/expenses-all/", {
-        params: { page, page_size: pageSize },
+        params: {
+          page,
+          page_size: pageSize,
+          ...(search.trim() ? { search } : {}),
+        },
       });
       return response;
     } catch (error) {
@@ -16,12 +20,21 @@ export const ExpenseAPI = {
     }
   },
 
-  GetExpenseData: async (category_id: number, page = 1, pageSize = 10) => {
+  GetExpenseData: async (
+    category_id: number,
+    page = 1,
+    pageSize = 10,
+    search = ""
+  ) => {
     try {
       const response = await AxiosInstance.get(
         `/expenses/filter-by-category/${category_id}`,
         {
-          params: { page, page_size: pageSize },
+          params: {
+            page,
+            page_size: pageSize,
+            ...(search.trim() ? { search } : {}),
+          },
         }
       );
       return response;

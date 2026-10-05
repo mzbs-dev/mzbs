@@ -103,29 +103,34 @@ export default function AttendanceReview() {
       }
       try {
         const t = await AttendanceTimeAPI.Get();
-        const items = Array.isArray(t?.data) ? t.data : [];
+        const items = [...t.data].sort(
+          (a, b) => a.attendance_time_id - b.attendance_time_id
+        );
         if (cancelled) return;
         setTimings(
-          items.map((it: any) => ({
+          items.map((it) => ({
             attendance_time_id: it.attendance_time_id,
             attendance_time: it.attendance_time,
           }))
         );
-        if (requestedShift === "all") {
-          setSelectedTimingId(null);
-          setSelectedGeneralOnly(false);
-        } else if (requestedShift === "none") {
+        if (requestedShift === "none") {
           setSelectedTimingId(null);
           setSelectedGeneralOnly(true);
         } else if (requestedShift && /^\d+$/.test(requestedShift)) {
-          setSelectedTimingId(Number(requestedShift));
+          const requestedTimingId = Number(requestedShift);
+          const requestedTiming = items.find(
+            (item) => item.attendance_time_id === requestedTimingId
+          );
+          setSelectedTimingId(
+            requestedTiming?.attendance_time_id ?? items[0]?.attendance_time_id ?? null
+          );
           setSelectedGeneralOnly(false);
-        } else if (items.length > 0) {
-          setSelectedTimingId(items[0].attendance_time_id);
+        } else {
+          setSelectedTimingId(items[0]?.attendance_time_id ?? null);
           setSelectedGeneralOnly(false);
         }
       } catch {
-        // Non-fatal — filter just stays empty
+        if (!cancelled) toast.error("Failed to load attendance shifts.");
       } finally {
         if (!cancelled) setScopeInitialized(true);
       }
@@ -167,6 +172,11 @@ export default function AttendanceReview() {
 
   const loadRows = useCallback(async () => {
     if (!scopeInitialized) return;
+    if (selectedTimingId == null && !selectedGeneralOnly) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await AttendanceReviewAPI.getRows(
@@ -397,17 +407,16 @@ export default function AttendanceReview() {
             </label>
 
             <Select
-              value={selectedGeneralOnly ? "none" : selectedTimingId != null ? String(selectedTimingId) : "all"}
+              value={selectedGeneralOnly ? "none" : selectedTimingId != null ? String(selectedTimingId) : ""}
               onValueChange={(value) => handleScopeChange(() => {
                 setSelectedGeneralOnly(value === "none");
-                setSelectedTimingId(value === "all" || value === "none" ? null : Number(value));
+                setSelectedTimingId(value === "none" ? null : Number(value));
               })}
             >
               <SelectTrigger className="w-full min-w-0">
-                <SelectValue />
+                <SelectValue placeholder="Select a shift" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All shifts</SelectItem>
                 <SelectItem value="none">General / No Shift Assigned</SelectItem>
                 {timings.map((t) => (
                   <SelectItem key={t.attendance_time_id} value={String(t.attendance_time_id)}>

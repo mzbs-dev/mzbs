@@ -218,11 +218,10 @@ def get_attendance_review_rows(
         staff_shifts = assigned_shift_ids.get(staff.teacher_name_id, [])
         if unassigned_only and staff_shifts:
             continue
-        shifts = (
-            [attendance_time_id]
-            if attendance_time_id is not None and attendance_time_id in staff_shifts
-            else staff_shifts
-        )
+        if attendance_time_id is not None:
+            shifts = [attendance_time_id] if attendance_time_id in staff_shifts else []
+        else:
+            shifts = staff_shifts
 
         if attendance_time_id is not None:
             if not shifts:

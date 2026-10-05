@@ -17,16 +17,9 @@ export namespace AttendanceTimeAPI {
   }
 
   export const Get = async () => {
-    try {
-      
-      const response = await AxiosInstance.get<ClassTiming>(
-        "/attendance_time/attendance-values-all/"
-      );
-      console.log("API Response:", response);
-      return response;
-    } catch (error) {
-      return error;
-    }
+    return AxiosInstance.get<ClassTiming[]>(
+      "/attendance_time/attendance-values-all/"
+    );
   }
 
   export const Create = async (ClassName: CreateTiming) => {

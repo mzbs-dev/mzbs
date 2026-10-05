@@ -73,6 +73,7 @@ const ViewExpense = () => {
   const [expenseCategory, setExpenseCategory] = useState<ExpenseCategory[]>([]);
   const [expenseData, setExpenseData] = useState<ExpenseDataItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number>(0);
+  const [expenseSearch, setExpenseSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize] = useState(10);
@@ -113,10 +114,10 @@ const ViewExpense = () => {
     }
   };
 
-  const getAllExpense = async (page = 1) => {
+  const getAllExpense = async (page = 1, search = expenseSearch) => {
     setIsLoading(true);
     try {
-      const res = await API.GetAllExpenseData(page, pageSize);
+      const res = await API.GetAllExpenseData(page, pageSize, search);
       const payload = res?.data;
       const items = Array.isArray(payload?.data)
         ? payload.data
@@ -133,14 +134,18 @@ const ViewExpense = () => {
     }
   };
 
-  const getExpense = async (CategoryId: number, page = 1) => {
+  const getExpense = async (
+    CategoryId: number,
+    page = 1,
+    search = expenseSearch
+  ) => {
     if (CategoryId === 0) {
-      getAllExpense(page);
+      getAllExpense(page, search);
       return;
     }
     setIsLoading(true);
     try {
-      const res = await API.GetExpenseData(CategoryId, page, pageSize);
+      const res = await API.GetExpenseData(CategoryId, page, pageSize, search);
       const payload = res?.data;
       const items = Array.isArray(payload?.data)
         ? payload.data
@@ -155,6 +160,15 @@ const ViewExpense = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSearch = () => {
+    getExpense(selectedCategory, 1, expenseSearch);
+  };
+
+  const clearSearch = () => {
+    setExpenseSearch("");
+    getExpense(selectedCategory, 1, "");
   };
 
   const handleDeleteExpense = async (expenseId: number) => {
@@ -166,7 +180,7 @@ const ViewExpense = () => {
     try {
       await API.DeleteExpense(expenseId);
       // Refresh the data
-      getAllExpense();
+      getExpense(selectedCategory, currentPage);
     } catch (error) {
       alert("Failed to delete expense record");
     } finally {
@@ -208,11 +222,7 @@ const ViewExpense = () => {
       setEditingExpense(null);
       
       // Refresh the data based on current selection
-      if (selectedCategory !== 0) {
-        getExpense(selectedCategory);
-      } else {
-        setExpenseData([]);
-      }
+      getExpense(selectedCategory, currentPage);
     } catch (error) {
       toast.error("Failed to update expense record");
     } finally {
@@ -229,8 +239,13 @@ const ViewExpense = () => {
       // Fetch first page to get total_pages
       const firstPageRes =
         selectedCategory === 0
-          ? await API.GetAllExpenseData(1, 50)
-          : await API.GetExpenseData(selectedCategory, 1, 50);
+          ? await API.GetAllExpenseData(1, 50, expenseSearch)
+          : await API.GetExpenseData(
+              selectedCategory,
+              1,
+              50,
+              expenseSearch
+            );
       const payload = firstPageRes?.data;
       const totalPages = payload?.total_pages || 1;
       
@@ -239,8 +254,17 @@ const ViewExpense = () => {
       for (let page = 1; page <= totalPages; page++) {
         const res =
           selectedCategory === 0
-            ? await API.GetAllExpenseData(page, 50)
-            : await API.GetExpenseData(selectedCategory, page, 50);
+            ? await API.GetAllExpenseData(
+                page,
+                50,
+                expenseSearch
+              )
+            : await API.GetExpenseData(
+                selectedCategory,
+                page,
+                50,
+                expenseSearch
+              );
         const pagePayload = res?.data;
         const items = Array.isArray(pagePayload?.data)
           ? pagePayload.data
@@ -280,30 +304,66 @@ const ViewExpense = () => {
   return (
     <div>
       <Header value="View Expense" />
-      <form className="space-y-4 border w-full my-2">
-        <div className="flex min-w-0 items-center gap-3 px-2 py-2 rounded-md">
-          <label className="shrink-0 whitespace-nowrap font-bold text-sm dark:text-foreground">
-            Category:
+      <form
+        className="space-y-4 border w-full my-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleSearch();
+        }}
+      >
+        <div className="grid grid-cols-1 items-end gap-2 px-2 py-2 rounded-md sm:grid-cols-2 sm:items-center sm:gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <label className="flex min-w-0 flex-col gap-1 text-xs font-bold dark:text-foreground md:flex-row md:items-center md:gap-2 md:text-sm">
+            <span className="whitespace-nowrap">Category:</span>
+            <select
+              className="h-10 w-full min-w-0 flex-1 border bg-card rounded-md px-2 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground md:h-11 md:px-3"
+              value={selectedCategory}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                const value = Number(e.target.value);
+                setSelectedCategory(value);
+                getExpense(value, 1, expenseSearch);
+              }}
+            >
+              <option value={0}>All</option>
+              {expenseCategory.map((category) => (
+                <option
+                  key={category.expense_cat_name_id}
+                  value={category.expense_cat_name_id}
+                >
+                  {category.expense_cat_name}
+                </option>
+              ))}
+            </select>
           </label>
-          <select
-            className="h-10 w-full min-w-0 flex-1 border bg-card rounded-md px-3 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground"
-            value={selectedCategory}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-              const value = Number(e.target.value);
-              setSelectedCategory(value);
-              getExpense(value, 1);
-            }}
-          >
-            <option value={0}>All</option>
-            {expenseCategory.map((category) => (
-              <option
-                key={category.expense_cat_name_id}
-                value={category.expense_cat_name_id}
+          <Input
+            value={expenseSearch}
+            onChange={(event) => setExpenseSearch(event.target.value)}
+            placeholder="Search to whom or description"
+            aria-label="Search expense recipient or description"
+            className="h-10 w-full min-w-0 border bg-card rounded-md px-3 py-2 focus:ring focus:ring-primary/20 dark:bg-background dark:text-foreground md:h-11"
+          />
+          <div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="h-10 min-w-0 flex-1 gap-2 rounded-lg bg-primary px-2 py-2 text-xs font-medium text-white transition hover:bg-primary/90 sm:px-4 sm:text-sm md:h-11 md:flex-none"
+            >
+              Search
+            </Button>
+            {expenseSearch && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={clearSearch}
+                disabled={isLoading}
+                aria-label="Clear expense searches"
+                title="Clear expense searches"
+                className="h-10 w-10 md:h-11 md:w-11"
               >
-                {category.expense_cat_name}
-              </option>
-            ))}
-          </select>
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </form>
 
@@ -374,13 +434,19 @@ const ViewExpense = () => {
               </div>
             </div>
             <div id="expense-print-area">
-              <Table>
+              <Table className="min-w-[1100px]">
                 <TableHeader className="bg-primary dark:bg-secondary hover:bg-none">
                   <TableRow>
-                    <TableHead>Bill number</TableHead>
+                    <TableHead>
+                      <span className="block">Bill</span>
+                      <span className="block">number</span>
+                    </TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>To Whom</TableHead>
+                    <TableHead>
+                      <span className="block">To</span>
+                      <span className="block">Whom</span>
+                    </TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Amount</TableHead>
                     {(role === "ADMIN" || role === "ACCOUNTANT") && (
@@ -407,27 +473,29 @@ const ViewExpense = () => {
                       <TableCell>{item.description}</TableCell>
                       <TableCell>{item.amount}</TableCell>
                       {(role === "ADMIN" || role === "ACCOUNTANT") && (
-                        <TableCell className="no-print flex gap-2 items-center">
-                          {!item.source_type && (
-                            <>
-                              <button
-                                onClick={() => handleEditClick(item)}
-                                className="p-1 text-primary hover:bg-blue-100 rounded transition"
-                                title="Edit"
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                              {role === "ADMIN" && (
+                        <TableCell className="no-print">
+                          <div className="flex items-center gap-2">
+                            {!item.source_type && (
+                              <>
                                 <button
-                                  onClick={() => handleDeleteExpense(item.id)}
-                                  className="p-1 text-destructive hover:bg-red-100 rounded transition"
-                                  title="Delete"
+                                  onClick={() => handleEditClick(item)}
+                                  className="p-1 text-primary hover:bg-blue-100 rounded transition"
+                                  title="Edit"
                                 >
-                                  <Trash2 size={16} />
+                                  <Edit2 size={16} />
                                 </button>
-                              )}
-                            </>
-                          )}
+                                {role === "ADMIN" && (
+                                  <button
+                                    onClick={() => handleDeleteExpense(item.id)}
+                                    className="p-1 text-destructive hover:bg-red-100 rounded transition"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
@@ -439,10 +507,16 @@ const ViewExpense = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Bill number</TableHead>
+                    <TableHead>
+                      <span className="block">Bill</span>
+                      <span className="block">number</span>
+                    </TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>To Whom</TableHead>
+                    <TableHead>
+                      <span className="block">To</span>
+                      <span className="block">Whom</span>
+                    </TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Amount</TableHead>
                   </TableRow>

@@ -3,7 +3,7 @@ from typing import List, Annotated, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
 from db import get_session
@@ -77,10 +77,21 @@ def read_expenses(
     session: Session = Depends(get_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
+    search: Optional[str] = Query(None),
 ):
-    total = session.scalar(select(func.count(Expense.id))) or 0
+    query = select(Expense)
+    if search and search.strip():
+        search_pattern = f"%{search.strip()}%"
+        query = query.where(
+            or_(
+                Expense.to_whom.ilike(search_pattern),
+                Expense.description.ilike(search_pattern),
+            )
+        )
+
+    total = session.scalar(select(func.count()).select_from(query.subquery())) or 0
     expenses = session.exec(
-        select(Expense)
+        query
             .order_by(Expense.date.desc(), Expense.id.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -191,12 +202,21 @@ def filter_expense_by_category(
     session: Session = Depends(get_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
+    search: Optional[str] = Query(None),
 ):
     """Return paginated expense records for a category filter or all categories when category_id is 0."""
     try:
         query = select(Expense)
         if category_id != 0:
             query = query.where(Expense.category_id == category_id)
+        if search and search.strip():
+            search_pattern = f"%{search.strip()}%"
+            query = query.where(
+                or_(
+                    Expense.to_whom.ilike(search_pattern),
+                    Expense.description.ilike(search_pattern),
+                )
+            )
 
         total = session.scalar(select(func.count()).select_from(query.subquery())) or 0
         expenses = session.exec(
@@ -231,4 +251,3 @@ def filter_expense_by_category(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error filtering expense records: {str(e)}")
-
