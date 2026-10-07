@@ -25,7 +25,7 @@ from schemas.staff_shift_assignment_model import StaffShiftAssignment
 from schemas.staff_shift_timing_model import StaffShiftTimingVersion
 from schemas.teacher_names_model import TeacherNames
 from user.user_crud import require_permission
-from user.user_models import User
+from user.user_models import User, UserRole
 from services.staff_shift_timing import apply_shift_timing
 from services.attendance_calendar import resolve_attendance_calendar
 
@@ -581,20 +581,17 @@ def update_attendance_review_record(
 
     if not record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attendance record not found.")
-    if record.is_finalized:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Finalized attendance cannot be edited.")
-
     if payload.final_status is not None:
         if payload.final_status not in VALID_FINAL_STATUSES:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid final status.")
         record.final_status = payload.final_status
-    if payload.final_remarks is not None:
+    if "final_remarks" in payload.model_fields_set:
         record.final_remarks = payload.final_remarks
     if payload.self_availability is not None:
         record.self_availability = payload.self_availability
-    if payload.arrival_time is not None:
+    if "arrival_time" in payload.model_fields_set:
         record.arrival_time = payload.arrival_time
-    if payload.departure_time is not None:
+    if "departure_time" in payload.model_fields_set:
         record.departure_time = payload.departure_time
 
     record.updated_at = datetime.utcnow()
@@ -612,6 +609,12 @@ def delete_attendance_review_record(
     attendance_date: date = Query(...),
     attendance_time_id: Optional[int] = Query(None),
 ):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can delete finalized attendance.",
+        )
+
     record = session.exec(
         select(StaffAttendance)
         .where(

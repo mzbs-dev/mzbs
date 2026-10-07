@@ -97,10 +97,10 @@ export interface AttendanceReviewEditPayload {
   attendance_date: string;
   attendance_time_id: number | null;
   final_status?: string;
-  final_remarks?: string;
+  final_remarks?: string | null;
   self_availability?: string;
-  arrival_time?: string;
-  departure_time?: string;
+  arrival_time?: string | null;
+  departure_time?: string | null;
 }
 
 export interface AttendanceReviewHistoryRow {

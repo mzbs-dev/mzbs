@@ -67,6 +67,7 @@ export interface SalaryPaymentResponse {
   ledger_id: number;
   amount: number;
   payment_date: string;
+  remarks?: string | null;
   created_at: string;
 }
 
@@ -75,6 +76,7 @@ export interface SalaryPaymentCreate {
   ledger_id: number;
   amount: number;
   payment_date: string;
+  remarks?: string;
 }
 
 export interface AllowanceResponse {
@@ -397,6 +399,7 @@ export namespace SalaryAPI {
         {
           amount: data.amount,
           payment_date: data.payment_date,
+          remarks: data.remarks,
         }
       );
       return response.data;

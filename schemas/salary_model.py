@@ -125,6 +125,7 @@ class SalaryPaymentBase(SQLModel):
     ledger_id: int = Field(foreign_key="salary_ledger.id", nullable=False)
     amount: Decimal = Field(max_digits=10, decimal_places=2, nullable=False)
     payment_date: str = Field(nullable=False)  # YYYY-MM-DD format
+    remarks: Optional[str] = Field(default=None, max_length=500)
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
 
 
@@ -141,11 +142,13 @@ class SalaryPaymentCreate(SQLModel):
     ledger_id: int
     amount: Decimal
     payment_date: str
+    remarks: Optional[str] = Field(default=None, max_length=500)
 
 
 class SalaryPaymentUpdate(SQLModel):
     amount: Optional[Decimal] = None
     payment_date: Optional[str] = None
+    remarks: Optional[str] = Field(default=None, max_length=500)
 
 
 class SalaryPaymentResponse(SQLModel):
@@ -154,6 +157,7 @@ class SalaryPaymentResponse(SQLModel):
     ledger_id: int
     amount: Decimal
     payment_date: str
+    remarks: Optional[str] = None
     created_at: datetime
     teacher_name: Optional[str] = None
     linked_expense_created: bool = False

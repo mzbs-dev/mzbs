@@ -88,7 +88,7 @@ export default function LoginForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.16),_transparent_30%),linear-gradient(135deg,_#f8fbff_0%,_#eef4ff_100%)] p-4">
-      <div className="w-full max-w-md rounded-[28px] border border-slate-200/80 bg-white/80 p-8 shadow-[0_30px_90px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+      <div className="w-full max-w-md rounded-[28px] border border-slate-200/80 bg-white/80 p-5 shadow-[0_30px_90px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:p-8">
         <div className="flex justify-center">
           <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-3 shadow-lg">
             <Image
@@ -130,7 +130,12 @@ export default function LoginForm() {
                 className="w-full rounded-xl border border-slate-200 bg-white px-10 py-2.5 pr-12 text-slate-900 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 {...register("password", { required: "Password is required" })}
               />
-              <button type="button" onClick={togglePasswordVisibility} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
+              <button
+                type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={togglePasswordVisibility}
+                className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>

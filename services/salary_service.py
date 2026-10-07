@@ -254,6 +254,7 @@ def calculate_teacher_salary_summary(
             "ledger_id": payment.ledger_id,
             "amount": float(payment.amount),
             "payment_date": payment.payment_date,
+            "remarks": payment.remarks,
             "created_at": payment.created_at,
         }
         for payment in payment_records

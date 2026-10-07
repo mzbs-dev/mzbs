@@ -684,7 +684,8 @@ def create_salary_payment(
             teacher_id=payment_data.teacher_id,
             ledger_id=payment_data.ledger_id,
             amount=payment_data.amount,
-            payment_date=payment_data.payment_date
+            payment_date=payment_data.payment_date,
+            remarks=payment_data.remarks
         )
         db.add(new_payment)
         db.commit()
@@ -708,6 +709,7 @@ def create_salary_payment(
             ledger_id=new_payment.ledger_id,
             amount=new_payment.amount,
             payment_date=new_payment.payment_date,
+            remarks=new_payment.remarks,
             created_at=new_payment.created_at,
             linked_expense_created=linked_expense_created
         )
@@ -749,6 +751,7 @@ def get_ledger_payments(
                     ledger_id=payment.ledger_id,
                     amount=payment.amount,
                     payment_date=payment.payment_date,
+                    remarks=payment.remarks,
                     created_at=payment.created_at
                 )
             )
@@ -786,6 +789,7 @@ def get_all_payments(
                     ledger_id=payment.ledger_id,
                     amount=payment.amount,
                     payment_date=payment.payment_date,
+                    remarks=payment.remarks,
                     created_at=payment.created_at
                 )
             )
@@ -858,6 +862,8 @@ def update_salary_payment(
             payment.amount = payment_data.amount
         if payment_data.payment_date is not None:
             payment.payment_date = payment_data.payment_date
+        if payment_data.remarks is not None:
+            payment.remarks = payment_data.remarks
         db.add(payment)
         db.commit()
         db.refresh(payment)
@@ -887,6 +893,7 @@ def update_salary_payment(
             ledger_id=payment.ledger_id,
             amount=payment.amount,
             payment_date=payment.payment_date,
+            remarks=payment.remarks,
             created_at=payment.created_at,
             linked_expense_created=linked_expense_created
         )

@@ -28,6 +28,7 @@ interface PaySalaryForm {
   teacher_id: string;
   amount: string;
   payment_date: string;
+  remarks: string;
 }
 
 interface PayAllowanceForm {
@@ -167,6 +168,7 @@ const ManageSalary = () => {
         ledger_id: ledger.id,
         amount: parseFloat(data.amount),
         payment_date: data.payment_date,
+        remarks: data.remarks.trim() || undefined,
       };
 
       await SalaryAPI.createSalaryPayment(paymentData);
@@ -378,6 +380,20 @@ const ManageSalary = () => {
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Payment will be recorded for the current month ({new Date().toLocaleString('default', { month: 'long', year: 'numeric' })})
               </p>
+            </div>
+
+            {/* Payment Remarks */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+                Remarks (Optional)
+              </label>
+              <Input
+                type="text"
+                placeholder="Enter payment remarks"
+                maxLength={500}
+                {...register("remarks")}
+                className="w-full"
+              />
             </div>
 
             {/* Button */}

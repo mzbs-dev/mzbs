@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { CalendarDays, LoaderCircle, LockKeyhole, Trash2 } from "lucide-react";
+import { CalendarDays, LoaderCircle, LockKeyhole, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRole } from "@/context/RoleContext";
 import {
@@ -57,9 +57,13 @@ function StatusBadge({ status }: { status: FinalStatus | null }) {
 }
 
 export default function AttendanceReview() {
-  const { permissions } = useRole();
+  const { permissions, role } = useRole();
   const canFinalize = permissions?.attendance_review?.add ?? false;
-  const canDeleteAttendanceReview = permissions?.attendance_review?.delete ?? false;
+  const canEditAttendanceReview =
+    permissions?.attendance_review?.edit ??
+    ["ADMIN", "CHIEF_PRINCIPAL"].includes(role ?? "");
+  const canDeleteAttendanceReview =
+    role === "ADMIN" && (permissions?.attendance_review?.delete ?? true);
 
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
@@ -224,9 +228,9 @@ export default function AttendanceReview() {
           attendance_date: editingRow.attendance_date,
           attendance_time_id: editingRow.attendance_time_id,
           final_status: modalStatus,
-          final_remarks: modalRemarks || undefined,
-          arrival_time: modalArrivalTime || undefined,
-          departure_time: modalDepartureTime || undefined,
+          final_remarks: modalRemarks,
+          arrival_time: modalArrivalTime || null,
+          departure_time: modalDepartureTime || null,
         });
         toast.success("Attendance record updated.");
       } else {
@@ -624,6 +628,19 @@ export default function AttendanceReview() {
                       {!row.is_finalized && draft && (
                         <span className="text-xs font-medium text-muted-foreground">In review</span>
                       )}
+                      {row.is_finalized && canEditAttendanceReview && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Edit finalized attendance for ${row.staff_name}`}
+                          title="Edit finalized attendance"
+                          onClick={() => openModal(row)}
+                          className="h-8 w-8"
+                        >
+                          <Pencil className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      )}
                       {row.is_finalized && canDeleteAttendanceReview && (
                         <Button
                           type="button"
@@ -637,7 +654,7 @@ export default function AttendanceReview() {
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       )}
-                      {row.is_finalized && !canDeleteAttendanceReview && (
+                      {row.is_finalized && !canEditAttendanceReview && !canDeleteAttendanceReview && (
                         <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
                           <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
                           Locked

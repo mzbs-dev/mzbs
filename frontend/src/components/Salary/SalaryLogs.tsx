@@ -25,6 +25,7 @@ interface SalaryTransaction {
   transactionType: 'payment' | 'allowance' | 'deduction';
   transactionAmount?: number;
   transactionReason?: string;
+  transactionRemarks?: string | null;
   paymentDate?: string;
   deductionType?: string;
   createdAt: string;
@@ -50,6 +51,7 @@ const SalaryLogs = () => {
   const [editAmount, setEditAmount] = useState<number>(0);
   const [editReason, setEditReason] = useState<string>("");
   const [editPaymentDate, setEditPaymentDate] = useState<string>("");
+  const [editPaymentRemarks, setEditPaymentRemarks] = useState<string>("");
   const [editDeductionType, setEditDeductionType] = useState<string>("");
 
   // FIX: selectedMonth stores 1-based month value (1=Jan, 12=Dec) or null for "All"
@@ -108,6 +110,7 @@ const SalaryLogs = () => {
             transactionType: 'payment',
             transactionAmount: payment.amount,
             paymentDate: payment.payment_date,
+            transactionRemarks: payment.remarks,
             createdAt: payment.created_at
           });
         }
@@ -240,6 +243,7 @@ const SalaryLogs = () => {
     setEditAmount(transaction.transactionAmount || 0);
     setEditReason(transaction.transactionReason || "");
     setEditPaymentDate(transaction.paymentDate || "");
+    setEditPaymentRemarks(transaction.transactionRemarks || "");
     setEditDeductionType(transaction.deductionType || "");
     setShowEditModal(true);
   };
@@ -287,6 +291,7 @@ const SalaryLogs = () => {
         await SalaryAPI.updateSalaryPayment(parseInt(transactionId), {
           amount: editAmount as any,
           payment_date: editPaymentDate,
+          remarks: editPaymentRemarks,
         });
         toast.success('Salary payment updated successfully');
       } else if (selectedTransaction.transactionType === 'allowance') {
@@ -524,6 +529,7 @@ const SalaryLogs = () => {
                     <>
                       <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Payment Date</th>
                       <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Payment Amount</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700 dark:text-gray-200">Remarks</th>
                     </>
                   )}
 
@@ -566,6 +572,7 @@ const SalaryLogs = () => {
                         <td className="py-3 px-2 font-medium text-green-600 dark:text-green-400">
                           Rs. {Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}
                         </td>
+                        <td className="py-3 px-2 text-gray-900 dark:text-gray-100 text-xs">{tx.transactionRemarks || '-'}</td>
                       </>
                     )}
 
@@ -646,7 +653,7 @@ const SalaryLogs = () => {
                   <tr>
                     <th>Serial No</th>
                     <th>Teacher Name</th>
-                    {activeTab === 'payment' && (<><th>Payment Date</th><th>Payment Amount</th><th>Net Salary</th><th>Remaining</th></>)}
+                    {activeTab === 'payment' && (<><th>Payment Date</th><th>Payment Amount</th><th>Remarks</th><th>Net Salary</th><th>Remaining</th></>)}
                     {activeTab === 'allowance' && (<><th>Month</th><th>Year</th><th>Allowance Amount</th><th>Reason</th></>)}
                     {activeTab === 'deduction' && (<><th>Month</th><th>Year</th><th>Deduction Amount</th><th>Type</th><th>Reason</th></>)}
                   </tr>
@@ -656,7 +663,7 @@ const SalaryLogs = () => {
                     <tr key={tx.id}>
                       <td>{index + 1}</td>
                       <td>{tx.teacherName}</td>
-                      {activeTab === 'payment' && (<><td>{tx.paymentDate ? new Date(tx.paymentDate).toLocaleDateString('en-PK') : '-'}</td><td>Rs. {Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td><td>Rs. {Math.round(tx.netSalary).toLocaleString("en-US")}</td><td>Rs. {Math.round(tx.remaining).toLocaleString("en-US")}</td></>)}
+                      {activeTab === 'payment' && (<><td>{tx.paymentDate ? new Date(tx.paymentDate).toLocaleDateString('en-PK') : '-'}</td><td>Rs. {Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td><td>{tx.transactionRemarks || '-'}</td><td>Rs. {Math.round(tx.netSalary).toLocaleString("en-US")}</td><td>Rs. {Math.round(tx.remaining).toLocaleString("en-US")}</td></>)}
                       {activeTab === 'allowance' && (<><td>{MONTHS[tx.month - 1]}</td><td>{tx.year}</td><td>Rs. {Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td><td>{tx.transactionReason || '-'}</td></>)}
                       {activeTab === 'deduction' && (<><td>{MONTHS[tx.month - 1]}</td><td>{tx.year}</td><td>Rs. {Math.round(tx.transactionAmount || 0).toLocaleString("en-US")}</td><td>{tx.deductionType || '-'}</td><td>{tx.transactionReason || '-'}</td></>)}
                     </tr>
@@ -688,6 +695,12 @@ const SalaryLogs = () => {
                     {MONTHS[selectedTransaction.month - 1]} {selectedTransaction.year}
                   </p>
                 </div>
+                {selectedTransaction.transactionType === 'payment' && selectedTransaction.transactionRemarks && (
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Remarks</p>
+                    <p className="text-gray-900 dark:text-white">{selectedTransaction.transactionRemarks}</p>
+                  </div>
+                )}
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 font-semibold">Salary Details</p>
                   <div className="space-y-2">
@@ -770,6 +783,17 @@ const SalaryLogs = () => {
                         type="date"
                         value={editPaymentDate}
                         onChange={(e) => setEditPaymentDate(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600 dark:text-gray-400">Remarks (Optional)</label>
+                      <Input
+                        type="text"
+                        value={editPaymentRemarks}
+                        onChange={(e) => setEditPaymentRemarks(e.target.value)}
+                        maxLength={500}
+                        placeholder="Enter payment remarks"
                         className="mt-1"
                       />
                     </div>

@@ -552,7 +552,7 @@ const ViewSalary = () => {
                             <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">#</th>
                             <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Type</th>
                             <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Date / Period</th>
-                            <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Reason</th>
+                            <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Remarks / Reason</th>
                             <th className="text-right py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Amount</th>
                           </tr>
                         </thead>
@@ -562,7 +562,7 @@ const ViewSalary = () => {
                               <td className="py-2 px-2 text-gray-900 dark:text-gray-100">{index + 1}</td>
                               <td className="py-2 px-2 text-gray-900 dark:text-gray-100">Salary Payment</td>
                               <td className="py-2 px-2 text-gray-900 dark:text-gray-100">{formatDateToDDMMYY(payment.payment_date)}</td>
-                              <td className="py-2 px-2 text-gray-900 dark:text-gray-100">-</td>
+                              <td className="py-2 px-2 text-gray-900 dark:text-gray-100">{payment.remarks || "-"}</td>
                               <td className="py-2 px-2 text-right font-medium text-gray-900 dark:text-gray-100">Rs. {Math.round(payment.amount).toLocaleString("en-US")}</td>
                             </tr>
                           ))}

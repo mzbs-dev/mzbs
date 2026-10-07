@@ -239,3 +239,55 @@ def test_delete_finalized_attendance_review_record(
     assert response.status_code == 200, response.text
     assert response.json()["detail"] == "Attendance record deleted."
     assert test_session.get(StaffAttendance, record.staff_attendance_id) is None
+
+
+def test_edit_finalized_attendance_review_record(
+    test_client,
+    test_session,
+    admin_token,
+):
+    attendance_date = date(2026, 9, 30)
+    staff = TeacherNames(teacher_name="Finalized Attendance Edit Test")
+    test_session.add(staff)
+    test_session.commit()
+    test_session.refresh(staff)
+
+    record = StaffAttendance(
+        staff_id=staff.teacher_name_id,
+        attendance_time_id=None,
+        attendance_date=attendance_date,
+        final_status="PRESENT",
+        final_remarks="Original remarks",
+        arrival_time=time(8, 0),
+        departure_time=time(14, 0),
+        is_finalized=True,
+    )
+    test_session.add(record)
+    test_session.commit()
+
+    response = test_client.patch(
+        f"/attendance-review/{staff.teacher_name_id}",
+        headers={"Authorization": f"******"},
+        json={
+            "attendance_date": attendance_date.isoformat(),
+            "attendance_time_id": None,
+            "final_status": "LATE",
+            "final_remarks": "Updated remarks",
+            "arrival_time": None,
+            "departure_time": "14:30:00",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["is_finalized"] is True
+    assert result["final_status"] == "LATE"
+    assert result["final_remarks"] == "Updated remarks"
+    assert result["arrival_time"] is None
+    assert result["departure_time"] == "14:30:00"
+
+    test_session.refresh(record)
+    assert record.is_finalized is True
+    assert record.final_status == "LATE"
+    assert record.arrival_time is None
+    assert record.departure_time == time(14, 30)
